@@ -1,15 +1,23 @@
 mod bottom_panel;
 mod center_panel;
+mod code_editor;
+mod dock_panel;
 mod left_panel;
+mod markdown_editor;
 mod right_panel;
 mod settings;
+mod toolbox_panel;
 
 pub use crate::app_state::AppSettings;
 pub use bottom_panel::BottomPanel;
+pub use code_editor::CodeEditorPanel;
 pub use center_panel::CenterPanel;
+pub use dock_panel::DockPanel;
 pub use left_panel::LeftPanel;
+pub use markdown_editor::MarkdownEditorPanel;
 pub use right_panel::RightPanel;
 pub use settings::SettingsPanel;
+pub use toolbox_panel::ToolboxPanel;
 
 use gpui::*;
 use gpui_component::dock::{Panel, PanelControl, PanelEvent};
