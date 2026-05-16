@@ -2,7 +2,7 @@ use gpui::*;
 use gpui_component::dock::{DockArea, DockItem, DockPlacement};
 use std::sync::Arc;
 
-use crate::panels::{BottomPanel, CenterPanel, LeftPanel, RightPanel};
+use crate::panels::{BottomPanel, CenterPanel, LeftPanel, ToolboxPanel};
 use crate::app_state::AppSettings;
 
 pub struct Workspace {
@@ -45,7 +45,7 @@ impl Workspace {
         let left_panel = cx.new(|cx| LeftPanel::new(window, cx));
         let left_item = DockItem::panel(Arc::new(left_panel));
 
-        let right_panel = cx.new(|cx| RightPanel::new(window, cx));
+        let right_panel = cx.new(|cx| ToolboxPanel::new(window, cx));
         let right_item = DockItem::panel(Arc::new(right_panel));
 
         let bottom_panel = cx.new(|cx| BottomPanel::new(window, cx));

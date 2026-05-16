@@ -12,11 +12,10 @@ use gpui_component::{
     group_box::{GroupBox, GroupBoxVariant, GroupBoxVariants as _},
     h_flex,
     label::Label,
-    table::{Column, ColumnSort, DataTable, TableDelegate, TableState},
+    table::{Column, ColumnSort, Table, TableDelegate, TableState},
 };
 use rust_i18n::t;
 
-use crate::utils;
 
 use super::super::ToolboxPanel;
 
@@ -28,11 +27,23 @@ pub struct CsvEntry {
 
 pub struct CsvTableDelegate {
     pub entries: Vec<CsvEntry>,
+    columns: Vec<Column>,
 }
 
 impl CsvTableDelegate {
     pub fn new(entries: Vec<CsvEntry>) -> Self {
-        Self { entries }
+        let columns = vec![
+            Column::new("index", "#".to_string())
+                .width(px(60.)),
+            Column::new("name", t!("toolbox.csv.col_name").to_string())
+                .width(px(400.))
+                .sortable(),
+            Column::new("lines", t!("toolbox.csv.col_lines").to_string())
+                .width(px(100.))
+                .sortable()
+                .text_right(),
+        ];
+        Self { entries, columns }
     }
 
     pub fn set_entries(&mut self, entries: Vec<CsvEntry>) {
@@ -49,23 +60,15 @@ impl gpui_component::table::TableDelegate for CsvTableDelegate {
         self.entries.len()
     }
 
-    fn column(&self, col_ix: usize, _cx: &App) -> Column {
+    fn column(&self, col_ix: usize, _cx: &App) -> &Column {
         match col_ix {
             // 第 0 列：序号列，固定较小宽度
-            0 => Column::new("index", "#".to_string())
-                .width(px(60.))
-                .min_width(px(40.)),
+            0 => &self.columns[0],
             // 第 1 列：文件名，列宽自动，给一个更大的最小宽度，并支持排序
-            1 => Column::new("name", t!("toolbox.csv.col_name").to_string())
-                .min_width(px(400.))
-                .sortable(),
+            1 => &self.columns[1],
             // 第 2 列：行数
-            2 => Column::new("lines", t!("toolbox.csv.col_lines").to_string())
-                .width(px(100.))
-                .min_width(px(60.))
-                .sortable()
-                .text_right(),
-            _ => Column::new("", ""),
+            2 => &self.columns[2],
+            _ => &self.columns[0],
         }
     }
 
@@ -276,7 +279,7 @@ impl CsvStatsState {
                 .col_movable(false)
                 .col_resizable(true)
                 .row_selectable(true)
-                .cell_selectable(false)
+                .col_selectable(false)
         });
 
         Self {
@@ -358,7 +361,7 @@ impl CsvStatsState {
                         .overflow_hidden()
                         .border_1()
                         .border_color(theme.border)
-                        .child(DataTable::new(&table_state).stripe(true).bordered(true)),
+                        .child(Table::new(&table_state).stripe(true).bordered(true)),
                 )
             })
             .when(has_data, |this| {

@@ -1,7 +1,7 @@
 use std::{path::PathBuf, rc::Rc, str::FromStr};
 
 use autocorrect::ignorer::Ignorer;
-use gpui::{prelude::FluentBuilder, *};
+use gpui::*;
 use gpui_component::{
     ActiveTheme, Icon, IconName, Sizable, StyledExt, WindowExt,
     button::{Button, ButtonVariants as _},
@@ -19,7 +19,7 @@ use rust_i18n::t;
 use super::lsp_providers::TextConvertor;
 use super::lsp_store::CodeEditorPanelLspStore;
 use super::types::build_file_items;
-use crate::AppState;
+use crate::app_state::AppState;
 
 pub struct CodeEditorPanel {
     editor: Entity<InputState>,
@@ -117,7 +117,7 @@ impl CodeEditorPanel {
 
         let tree_state = cx.new(|cx| TreeState::new(cx));
         let working_dir =
-            working_dir.unwrap_or_else(|| AppState::global(cx).current_working_dir().clone());
+            working_dir.unwrap_or_else(|| PathBuf::from(AppState::global(cx).current_working_dir().as_str()));
 
         let _subscriptions = vec![cx.subscribe(&editor, |this, _, _: &InputEvent, cx| {
             this.lint_document(cx);
@@ -409,7 +409,7 @@ impl CodeEditorPanel {
             .xsmall()
             .tooltip(t!("code_editor.tooltip.line_number").to_string())
             .child(
-                Icon::new(crate::assets::Icon::Hash)
+                Icon::new(IconName::File)
                     .size(px(18.))
                     .text_color(if self.line_number {
                         cx.theme().accent_foreground
@@ -432,7 +432,7 @@ impl CodeEditorPanel {
             .xsmall()
             .tooltip(t!("code_editor.tooltip.soft_wrap").to_string())
             .child(
-                Icon::new(crate::assets::Icon::TextWrap)
+                Icon::new(IconName::File)
                     .size(px(18.))
                     .text_color(if self.soft_wrap {
                         cx.theme().accent_foreground
@@ -459,7 +459,7 @@ impl CodeEditorPanel {
             .xsmall()
             .tooltip(t!("code_editor.tooltip.indent_guides").to_string())
             .child(
-                Icon::new(crate::assets::Icon::ListTree)
+                Icon::new(IconName::Folder)
                     .size(px(18.))
                     .text_color(if self.indent_guides {
                         cx.theme().accent_foreground
@@ -492,7 +492,7 @@ impl CodeEditorPanel {
                 h_flex()
                     .gap_1p5()
                     .items_center()
-                    .child(Icon::new(crate::assets::Icon::ArrowRightToLine).size(px(16.)))
+                    .child(Icon::new(IconName::ArrowRight).size(px(16.)))
                     .child(format!(
                         "{}:{} ({} byte)",
                         position.line + 1,
@@ -584,20 +584,26 @@ impl CodeEditorPanel {
 
         // 创建 action
         let action = crate::app::actions::AddCodeSelection {
-            file_path: file_path.clone(),
-            start_line: start_pos.line + 1,
-            start_column: start_pos.character + 1,
-            end_line: end_pos.line + 1,
-            end_column: end_pos.character + 1,
-            content: content.clone(),
+            file_path: file_path.clone().into(),
+            start_line: (start_pos.line + 1) as usize,
+            start_column: (start_pos.character + 1) as usize,
+            end_line: (end_pos.line + 1) as usize,
+            end_column: (end_pos.character + 1) as usize,
+            content: content.clone().into(),
         };
 
         // 发布到事件总线（替代 window.dispatch_action）
         log::info!("[CodeEditorPanel] Publishing code selection via EventHub");
 
-        let event_hub = crate::AppState::global(cx).event_hub().clone();
-        event_hub.publish_code_selection(crate::core::event_bus::CodeSelectionEvent {
-            selection: action.into(),
+        let event_hub = AppState::global(cx).event_hub().clone();
+        event_hub.lock().unwrap().publish_code_selection(crate::core::event_bus::CodeSelectionEvent {
+            file_path: action.file_path.clone(),
+            start_line: action.start_line,
+            start_column: action.start_column,
+            end_line: action.end_line,
+            end_column: action.end_column,
+            content: action.content.clone(),
+            selection: action.content.clone(),
         });
         log::info!("[CodeEditorPanel] Code selection event published");
     }

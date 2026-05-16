@@ -1,105 +1,464 @@
 _version: 1
+app.title: oasis
+menu.app.about: 关于
+menu.app.open: 打开...
+menu.app.appearance: 外观
+menu.app.appearance.light: 浅色
+menu.app.appearance.dark: 深色
+menu.app.theme: 主题
+menu.app.language: 语言
+menu.app.language.english: English
+menu.app.language.zh_cn: 简体中文
+menu.app.quit: 退出
+menu.edit.title: 编辑
+menu.edit.undo: 撤销
+menu.edit.redo: 重做
+menu.edit.cut: 剪切
+menu.edit.copy: 复制
+menu.edit.paste: 粘贴
+menu.edit.select_all: 全选
+menu.window.title: 窗口
+menu.window.close: 关闭窗口
+menu.help.title: 帮助
+menu.help.open_website: 打开网站
+title_bar.font_size.label: 字体大小
+title_bar.font_size.large: 大
+title_bar.font_size.medium_default: 中（默认）
+title_bar.font_size.small: 小
+settings.general.title: 通用
+settings.general.group.appearance: 外观
+settings.general.appearance.dark_mode.label: 深色模式
+settings.general.appearance.dark_mode.description: 在浅色与深色主题间切换。
+settings.general.appearance.auto_switch.label: 自动切换主题
+settings.general.appearance.auto_switch.description: 根据系统设置自动切换主题。
+settings.general.appearance.resettable.label: 重置按钮
+settings.general.appearance.resettable.description: 启用或禁用设置中的重置按钮。
+settings.general.group.font: 字体
+settings.general.font.family.label: 字体
+settings.general.font.family.description: 选择界面字体。
+settings.general.font.size.label: 字号
+settings.general.font.size.description: 调整字号以提升可读性。
+settings.general.font.line_height.label: 行高
+settings.general.font.line_height.description: 调整行高以提升可读性。
+settings.general.group.other: 其他
+settings.general.language.label: 语言
+settings.general.language.description: 选择界面语言。
+settings.general.auto_switch_theme.label: 自动切换主题
+settings.general.auto_switch_theme.description: 根据系统设置自动切换主题。
+tab.workbench: 工作台
+tab.config: 配置
+tab.log: 日志
+tab.monitor: 监控
+config.page.title: 系统配置
+config.group.appearance: 外观
+config.appearance.dark_mode.label: 深色模式
+config.appearance.dark_mode.description: 启用深色主题
+config.appearance.language.label: 语言
+config.appearance.language.description: 选择界面语言
+config.group.font: 字体
+config.font.label: 字体
+config.font.description: 选择界面字体
+config.font.size.label: 字号
+config.font.size.description: 调整字号以提升可读性
+config.font.line_height.label: 行高
+config.font.line_height.description: 调整行高以提升可读性
+config.group.other: 其他
+config.auto_switch_theme.label: 自动切换主题
+config.auto_switch_theme.description: 根据系统设置自动切换主题
+config.group.update: 软件更新
+config.update.current_version.label: 当前版本
+config.update.status.up_to_date: 已是最新版本
+config.update.status.checking: 正在检查更新...
+config.update.status.available: '发现新版本: %{version}'
+config.update.status.error: '检查更新失败: %{error}'
+config.update.check.label: 检查更新
+config.update.check.button: 立即检查
+config.update.check.description: 手动检查是否有可用的软件更新
+config.update.auto_check.label: 启动时自动检查
+config.update.auto_check.description: 应用启动时自动检查是否有新版本
+config.update.notifications.label: 更新通知
+config.update.notifications.description: 当有新版本时显示通知提醒
+config.update.auto_update.label: 自动更新
+config.update.auto_update.description: 发现新版本时自动下载并安装更新
+config.update.frequency.label: 检查频率
+config.update.frequency.description: 自动检查更新的间隔天数
+panel.workspace: 工作区
+lang.zh_cn: 简体中文
+lang.en: English
 
-# 应用
-app.title: "oasis"
+# 
+toolbox:
+  title: 工具箱
+  groups:
+    csv: CSV 工具
+    api: API 工具
+    files: 文件工具
+  home:
+    title: 工具箱
+    subtitle: 选择一个工具开始使用
+    card_hint: 点击打开
+  tools:
+    csv_stats: CSV 统计
+    csv_split: CSV 分割器
+    csv_convert: CSV 转换器
+    batch_rename: 批量重命名
+    excel_move_files: Excel 文件移动
+    api_request: API 请求
+    json_convert: JSON 转换器
+    json_merge: JSON 合并
+  back: 返回
+  csv:
+    section_title: CSV 统计
+    select_dir: 选择目录
+    no_dir: 请先选择目录
+    no_csv: 未找到 CSV 文件
+    loading: 加载中...
+    pick_folder: 选择文件夹
+    col_name: 列
+    col_lines: 行数
+    lines_suffix: 行
+    total: 总计
+  csv_split:
+    select_file: 选择 CSV 文件
+    no_file: 请选择 CSV 文件
+    output_dir: 输出目录
+    no_output_dir: 请选择输出目录
+    num_parts: 分割份数
+    total_lines: 总行数
+    estimated_per_file: 每份预估行数
+    pick_file_title: 选择 CSV 文件
+    pick_output_title: 选择输出目录
+    execute: 分割
+    success: 分割完成
+    error: 分割失败
+  csv_convert:
+    select_file: 选择文件
+    no_file: 请选择文件
+    output_file: 输出文件
+    no_output: 请指定输出文件
+    output_format: 输出格式
+    pick_file_title: 选择文件
+    pick_output_title: 指定输出文件
+    execute: 转换
+    success: 转换完成
+    error: 转换失败
+  rename:
+    select_dir: 选择目录
+    no_dir: 请选择目录
+    field_needle: 查找
+    field_replace: 替换为
+    placeholder_needle: 输入搜索文本...
+    placeholder_replace: 输入替换文本...
+    recursive: 递归
+    hint: 支持 * 和 ? 通配符
+    preview: 预览
+    preview_title: 重命名预览
+    preview_count_prefix: '重命名 '
+    preview_ok: 个匹配
+    preview_dup_prefix: '重复: '
+    preview_found_prefix: '已找到: '
+    preview_missing_prefix: '缺失: '
+    preview_total_prefix: '总计: '
+    no_matches: 未找到匹配文件
+    target_exists: 目标文件已存在
+    duplicate_target: 目标文件名重复
+    empty_needle: 搜索文本不能为空
+    scan_error: 目录扫描错误
+    done_renamed: 已重命名
+    done_files_suffix: 个文件
+    done_partial_errors: 部分完成但有错误
+    pick_dir_title: 选择目录
+    execute: 重命名
+  excel_move:
+    select_excel: 选择 Excel 文件
+    no_excel: 请选择 Excel 文件
+    select_input_dir: 选择源目录
+    no_input_dir: 请选择源目录
+    select_output_dir: 选择输出目录
+    no_output_dir: 请选择输出目录
+    placeholder_header: 表头列（如 A, B, C）
+    placeholder_index: 索引序号（从1开始）
+    placeholder_suffixes: 后缀（逗号分隔）
+    suffixes: 后缀
+    col_header: 表头列
+    col_index: 索引列
+    no_headers: 未找到表头
+    header_not_found: 未找到表头列
+    index_out_of_range: 索引超出范围
+    unsupported_format: 不支持的文件格式
+    no_suffixes: 未指定后缀
+    source_missing: 源文件缺失
+    output_exists: 输出文件已存在
+    duplicate_output: 输出文件名重复
+    preview: 预览
+    preview_title: 预览
+    preview_ok: 就绪
+    preview_found_prefix: '已找到: '
+    preview_missing_prefix: '缺失: '
+    preview_dup_prefix: '重复: '
+    preview_total_prefix: '总计: '
+    headers_click_hint: 点击列标题进行选择
+    done_moved: 已移动
+    done_files_suffix: 个文件
+    done_partial_errors: 部分完成但有错误
+    pick_excel_title: 选择 Excel 文件
+    pick_input_title: 选择源目录
+    pick_output_title: 选择输出目录
+    execute: 移动文件
+  json_convert:
+    select_file: 选择文件
+    no_file: 请选择文件
+    input_dir: 输入目录
+    no_input_dir: 请选择输入目录
+    output_dir: 输出目录
+    no_output_dir: 请选择输出目录
+    output_file: 输出文件
+    no_output: 请指定输出文件
+    output_format: 输出格式
+    json_path: JSON 路径
+    fields: 字段
+    mode: 模式
+    mode_single: 单个文件
+    mode_batch: 批量
+    pick_file_title: 选择文件
+    pick_output_title: 指定输出文件
+    pick_input_dir_title: 选择输入目录
+    pick_output_dir_title: 选择输出目录
+    execute: 转换
+    success: 转换完成
+    error: 转换失败
+    no_json_files: 未找到 JSON 文件
+    not_array: JSON 根节点不是数组
+    empty_array: JSON 数组为空
+    path_not_found: 未找到 JSON 路径
+    invalid_json: 无效的 JSON
+    no_headers: 未指定表头
+    batch_execute: 批量转换
+    batch_done: 批量转换完成
+    batch_files_suffix: 个文件已处理
+    batch_partial_errors: 部分完成但有错误
+  json_merge:
+    input_dir: 输入目录
+    no_input_dir: 请选择输入目录
+    output_file: 输出文件
+    no_output: 请指定输出文件
+    json_path: JSON 路径
+    pick_input_dir_title: 选择输入目录
+    pick_output_title: 指定输出文件
+    execute: 合并
+    success: 合并完成
+    error: 合并失败
+    no_json_files: 未找到 JSON 文件
+    not_array: JSON 根节点不是数组
+    path_not_found: 未找到 JSON 路径
+    items_suffix: 条
+    partial_errors: 部分完成但有错误
+    batch_partial_errors: 部分完成但有错误
+  api:
+    url_required: URL 不能为空
+    tab_headers: 请求头
+    tab_params: 参数
+    tab_body: 请求体
+    send: 发送
+    success_status: 成功
+    response_title: 响应
+    params_placeholder: 键值对（JSON 格式）
+    response_placeholder: 响应将在此显示...
 
-# 菜单
-menu.app.about: "关于"
-menu.app.open: "打开..."
-menu.app.appearance: "外观"
-menu.app.appearance.light: "浅色"
-menu.app.appearance.dark: "深色"
-menu.app.theme: "主题"
-menu.app.language: "语言"
-menu.app.language.english: "English"
-menu.app.language.zh_cn: "简体中文"
-menu.app.quit: "退出"
-menu.edit.title: "编辑"
-menu.edit.undo: "撤销"
-menu.edit.redo: "重做"
-menu.edit.cut: "剪切"
-menu.edit.copy: "复制"
-menu.edit.paste: "粘贴"
-menu.edit.select_all: "全选"
-menu.window.title: "窗口"
-menu.window.close: "关闭窗口"
-menu.help.title: "帮助"
-menu.help.open_website: "打开网站"
+# 
+code_editor:
+  tooltip:
+    go_to_line: 跳转到行
+    indent_guides: 缩进参考线
+    line_number: 行号
+    soft_wrap: 自动换行
 
-# 标题栏
-title_bar.font_size.label: "字体大小"
-title_bar.font_size.large: "大"
-title_bar.font_size.medium_default: "中（默认）"
-title_bar.font_size.small: "小"
+# markdown 编辑器的翻译
+markdown_editor:
+  empty:
+    title: 未打开文件
+    description: 从文件树中打开一个 markdown 文件开始编辑
 
-# 设置
-settings.general.title: "通用"
-settings.general.group.appearance: "外观"
-settings.general.appearance.dark_mode.label: "深色模式"
-settings.general.appearance.dark_mode.description: "在浅色与深色主题间切换。"
-settings.general.appearance.auto_switch.label: "自动切换主题"
-settings.general.appearance.auto_switch.description: "根据系统设置自动切换主题。"
-settings.general.appearance.resettable.label: "重置按钮"
-settings.general.appearance.resettable.description: "启用或禁用设置中的重置按钮。"
-settings.general.group.font: "字体"
-settings.general.font.family.label: "字体"
-settings.general.font.family.description: "选择界面字体。"
-settings.general.font.size.label: "字号"
-settings.general.font.size.description: "调整字号以提升可读性。"
-settings.general.font.line_height.label: "行高"
-settings.general.font.line_height.description: "调整行高以提升可读性。"
-settings.general.group.other: "其他"
-settings.general.language.label: "语言"
-settings.general.language.description: "选择界面语言。"
-settings.general.auto_switch_theme.label: "自动切换主题"
-settings.general.auto_switch_theme.description: "根据系统设置自动切换主题。"
-
-# 中心面板标签
-tab.workbench: "工作台"
-tab.config: "配置"
-tab.log: "日志"
-tab.monitor: "监控"
-
-# 配置页面
-config.page.title: "系统配置"
-config.group.appearance: "外观"
-config.appearance.dark_mode.label: "深色模式"
-config.appearance.dark_mode.description: "启用深色主题"
-config.appearance.language.label: "语言"
-config.appearance.language.description: "选择界面语言"
-config.group.font: "字体"
-config.font.label: "字体"
-config.font.description: "选择界面字体"
-config.font.size.label: "字号"
-config.font.size.description: "调整字号以提升可读性"
-config.font.line_height.label: "行高"
-config.font.line_height.description: "调整行高以提升可读性"
-config.group.other: "其他"
-config.auto_switch_theme.label: "自动切换主题"
-config.auto_switch_theme.description: "根据系统设置自动切换主题"
-
-# 软件更新
-config.group.update: "软件更新"
-config.update.current_version.label: "当前版本"
-config.update.status.up_to_date: "已是最新版本"
-config.update.status.checking: "正在检查更新..."
-config.update.status.available: "发现新版本: %{version}"
-config.update.status.error: "检查更新失败: %{error}"
-config.update.check.label: "检查更新"
-config.update.check.button: "立即检查"
-config.update.check.description: "手动检查是否有可用的软件更新"
-config.update.auto_check.label: "启动时自动检查"
-config.update.auto_check.description: "应用启动时自动检查是否有新版本"
-config.update.notifications.label: "更新通知"
-config.update.notifications.description: "当有新版本时显示通知提醒"
-config.update.auto_update.label: "自动更新"
-config.update.auto_update.description: "发现新版本时自动下载并安装更新"
-config.update.frequency.label: "检查频率"
-config.update.frequency.description: "自动检查更新的间隔天数"
-
-# 面板标题
-panel.workspace: "工作区"
-
-# 语言选项
-lang.zh_cn: "简体中文"
-lang.en: "English"
+# 凭证管理模块的翻译
+credential_manager:
+  panel_title: 凭证管理
+  panel_subtitle: 安全地管理你的凭证
+  add_button: 添加凭证
+  delete_button: 删除
+  edit_button: 编辑
+  search_placeholder: 搜索凭证...
+  search_tooltip: 按名称、平台或用户名搜索
+  empty_state: 还没有凭证
+  empty_state_desc: 点击"添加凭证"创建你的第一个凭证
+  form:
+    title_add: 添加新凭证
+    title_edit: 编辑凭证
+    name_label: 名称
+    name_placeholder: 输入凭证名称
+    platform_label: 平台
+    platform_placeholder: 例如 GitHub、AWS、Gmail
+    username_label: 用户名/邮箱
+    username_placeholder: 输入用户名或邮箱
+    password_label: 密码
+    password_placeholder: 输入密码
+    category_label: 分类
+    category_placeholder: 例如 开发、工作、个人
+    notes_label: 备注
+    notes_placeholder: 额外说明
+    tags_label: 标签
+    tags_placeholder: 逗号分隔的标签
+    expires_label: 过期日期
+    expires_hint: 留空表示无过期时间
+    submit_add: 创建
+    submit_edit: 更新
+    cancel: 取消
+    validation:
+      name_required: 名称不能为空
+      username_required: 用户名不能为空
+      password_required: 密码不能为空
+      platform_required: 平台不能为空
+  messages:
+    add_success: 凭证创建成功
+    add_error: 创建凭证失败
+    update_success: 凭证更新成功
+    update_error: 更新凭证失败
+    delete_success: 凭证删除成功
+    delete_error: 删除凭证失败
+    delete_confirm: 确认删除此凭证吗？
+    search_no_results: 未找到匹配的凭证
+  table:
+    col_name: 名称
+    col_platform: 平台
+    col_username: 用户名
+    col_category: 分类
+    col_expires: 过期日期
+    col_actions: 操作
+  actions:
+    view: 查看
+    copy_password: 复制密码
+    copy_username: 复制用户名
+    edit: 编辑
+    delete: 删除
+  filters:
+    all_platforms: 所有平台
+    all_categories: 所有分类
+    active_only: 仅活跃
+  audit:
+    title: 活动日志
+    action_create: 创建
+    action_read: 查看
+    action_update: 修改
+    action_delete: 删除
+    timestamp_label: 时间戳
+    action_label: 操作
+    result_label: 结果
+    success: 成功
+    failed: 失败
+  import_export:
+    title: 导入/导出
+    import_button: 导入
+    export_button: 导出
+    export_json: 导出为 JSON
+    export_csv: 导出为 CSV
+    import_json: 从 JSON 导入
+    import_csv: 从 CSV 导入
+    import_title: 导入凭证
+    export_title: 导出凭证
+    file_placeholder: 选择要导入的文件
+    import_success: 凭证导入成功
+    import_error: 导入凭证失败
+    export_success: 凭证导出成功
+    export_error: 导出凭证失败
+    overwrite_confirm: 某些凭证已存在，是否覆盖？
+    preview_title: 导入预览
+    preview_count: '%{count} 个凭证待导入'
+  encryption:
+    master_password_title: 主密码
+    master_password_required: 主密码不能为空
+    master_password_change: 更改主密码
+    current_password_label: 当前密码
+    new_password_label: 新密码
+    confirm_password_label: 确认密码
+    password_strength_weak: 弱
+    password_strength_medium: 中
+    password_strength_strong: 强
+    passwords_mismatch: 密码不匹配
+    change_success: 主密码更改成功
+    change_error: 主密码更改失败
+  stats:
+    total_credentials: 凭证总数
+    by_platform: 按平台统计
+    by_category: 按分类统计
+    expiring_soon: 即将过期
+    expired: 已过期
+    active: 活跃
+common:
+  buttons:
+    ok: 确定
+    cancel: 取消
+    confirm: 确认
+    save: 保存
+    delete: 删除
+    close: 关闭
+    add: 添加
+    edit: 编辑
+    remove: 移除
+    clear: 清除
+    reset: 重置
+    submit: 提交
+    back: 返回
+    next: 下一步
+    previous: 上一步
+    open: 打开
+    select: 选择
+    copy: 复制
+    paste: 粘贴
+    import: 导入
+    export: 导出
+    search: 搜索
+    filter: 筛选
+    sort: 排序
+    help: 帮助
+    about: 关于
+    settings: 设置
+  messages:
+    loading: 加载中...
+    success: 成功
+    error: 错误
+    warning: 警告
+    info: 信息
+    confirm_action: 确定要执行此操作吗？
+    operation_failed: 操作失败
+    operation_success: 操作成功
+    please_wait: 请稍候...
+    no_results: 未找到结果
+    no_data: 无可用数据
+    unsupported: 不支持的操作
+  dialogs:
+    title_confirm: 确认
+    title_error: 错误
+    title_warning: 警告
+    title_info: 信息
+    title_success: 成功
+  errors:
+    required_field: 此字段为必填项
+    invalid_input: 输入无效
+    network_error: 网络错误
+    permission_denied: 权限被拒绝
+    file_not_found: 文件未找到
+    unknown_error: 发生未知错误
+  status:
+    online: 在线
+    offline: 离线
+    connecting: 连接中...
+    disconnected: 已断开连接
+    error: 错误
+    idle: 空闲
+  time:
+    just_now: 刚刚
+    minutes_ago: '%{n} 分钟前'
+    hours_ago: '%{n} 小时前'
+    days_ago: '%{n} 天前'
+    weeks_ago: '%{n} 周前'
+    months_ago: '%{n} 个月前'
+    years_ago: '%{n} 年前'

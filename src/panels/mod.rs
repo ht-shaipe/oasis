@@ -1,6 +1,8 @@
 mod bottom_panel;
+mod browser_panel;
 mod center_panel;
 mod code_editor;
+mod credential_manager;
 mod dock_panel;
 mod left_panel;
 mod markdown_editor;
@@ -12,6 +14,7 @@ pub use crate::app_state::AppSettings;
 pub use bottom_panel::BottomPanel;
 pub use code_editor::CodeEditorPanel;
 pub use center_panel::CenterPanel;
+pub use credential_manager::CredentialManagerPanel;
 pub use dock_panel::DockPanel;
 pub use left_panel::LeftPanel;
 pub use markdown_editor::MarkdownEditorPanel;

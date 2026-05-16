@@ -216,7 +216,7 @@ impl BatchDownloadState {
             .child(
                 Button::new("batch-download-run")
                     .label("开始批量下载".to_string())
-                    .icon(Icon::new(IconName::Play).text_color(theme.primary))
+                    .icon(Icon::new(IconName::ArrowRight).text_color(theme.primary))
                     .primary()
                     .disabled(state.running)
                     .on_click(move |_, _, cx| {
@@ -497,11 +497,9 @@ impl BatchDownloadState {
                                             h_flex()
                                                 .gap_2()
                                                 .items_center()
-                                                .child(
-                                                    Button::new(format!(
-                                                        "batch-download-slot-start-{}",
-                                                        slot_id
-                                                    ))
+                                                .child({
+                                                    let slot_start_id = SharedString::from(format!("batch-download-slot-start-{}", slot_id));
+                                                    Button::new(slot_start_id)
                                                     .label("开始".to_string())
                                                     .primary()
                                                     .disabled(
@@ -514,13 +512,11 @@ impl BatchDownloadState {
                                                             this.api_batch_download
                                                                 .resume_webview_slot(slot_id, cx);
                                                         });
-                                                    }),
-                                                )
-                                                .child(
-                                                    Button::new(format!(
-                                                        "batch-download-slot-stop-{}",
-                                                        slot_id
-                                                    ))
+                                                    })
+                                                })
+                                                .child({
+                                                    let slot_stop_id = SharedString::from(format!("batch-download-slot-stop-{}", slot_id));
+                                                    Button::new(slot_stop_id)
                                                     .label("停止".to_string())
                                                     .outline()
                                                     .disabled(
@@ -534,8 +530,8 @@ impl BatchDownloadState {
                                                             this.api_batch_download
                                                                 .pause_webview_slot(slot_id, cx);
                                                         });
-                                                    }),
-                                                ),
+                                                    })
+                                                })
                                         ),
                                 )
                                 .child(
@@ -962,9 +958,10 @@ impl BatchDownloadState {
 
                             cx.update(|cx| {
                                 ent.update(cx, |this, cx| {
+                                    let json_value: serde_json::Value = raw.parse().unwrap_or(serde_json::Value::Null);
                                     this.api_batch_download.handle_webview_message(
                                         slot_id,
-                                        raw.clone(),
+                                        json_value,
                                         cx,
                                     );
                                 });

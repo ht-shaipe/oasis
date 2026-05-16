@@ -16,6 +16,7 @@ use rust_i18n::t;
 use crate::app_menus;
 use crate::app_state::AppSettings;
 use crate::core::updater::{UpdateCheckResult, UpdateManager, Version};
+use crate::panels::ToolboxPanel;
 
 const TAB_WORKBENCH: usize = 0;
 const TAB_CONFIG: usize = 1;
@@ -41,6 +42,7 @@ pub struct CenterPanel {
     update_manager: UpdateManager,
     update_status: UpdateStatus,
     open_tabs: Vec<usize>,  // Track which tabs are open
+    tool_content: Entity<ToolboxPanel>, // Tool content rendered in center
 }
 
 impl CenterPanel {
@@ -50,6 +52,7 @@ impl CenterPanel {
             update_manager: UpdateManager::default(),
             update_status: UpdateStatus::default(),
             open_tabs: vec![TAB_WORKBENCH, TAB_CONFIG, TAB_LOG, TAB_MONITOR],  // All tabs open by default
+            tool_content: cx.new(|cx| ToolboxPanel::new(_window, cx)),
         }
     }
 
@@ -77,6 +80,10 @@ impl CenterPanel {
     }
 
     fn get_selected_tab(&self, cx: &App) -> usize {
+        // Tool takes priority: if a tool is selected, show it in center
+        if AppSettings::global(cx).selected_tool.is_some() {
+            return TAB_WORKBENCH;
+        }
         // Check if settings should be shown
         if AppSettings::global(cx).show_settings {
             TAB_CONFIG
@@ -236,6 +243,7 @@ impl CenterPanel {
 
     fn render_workbench_content(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
+        let selected_tool = AppSettings::global(cx).selected_tool.clone();
         div()
             .id("workbench-content")
             .flex()
@@ -243,12 +251,34 @@ impl CenterPanel {
             .items_center()
             .justify_center()
             .bg(theme.colors.background)
-            .child(
-                div()
-                    .text_color(theme.colors.muted_foreground)
-                    .text_size(px(24.))
-                    .child(t!("tab.workbench").to_string()),
-            )
+            .children({
+                if let Some(ref tool_id) = selected_tool {
+                    self.tool_content.update(cx, |tp, cx| {
+                        let view = match tool_id.as_str() {
+                            "csv_stats" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::CsvStats),
+                            "csv_split" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::CsvSplit),
+                            "csv_convert" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::CsvExcelConvert),
+                            "batch_rename" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::BatchRename),
+                            "excel_move" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::ExcelMoveFiles),
+                            "api_request" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::ApiRequest),
+                            "api_batch_download" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::ApiBatchDownload),
+                            "json_convert" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::JsonToCsvExcel),
+                            "json_merge" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::JsonMerge),
+                            "network_scan" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::NetworkScan),
+                            _ => super::toolbox_panel::ViewState::Home,
+                        };
+                        tp.view = view;
+                        cx.notify();
+                    });
+                    vec![self.tool_content.clone().into_any_element()]
+                } else {
+                    vec![div()
+                        .text_color(theme.colors.muted_foreground)
+                        .text_size(px(24.))
+                        .child(t!("tab.workbench").to_string())
+                        .into_any_element()]
+                }
+            })
     }
 
     fn render_config_content(&self, cx: &mut Context<Self>) -> impl IntoElement {

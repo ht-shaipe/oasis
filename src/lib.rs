@@ -1,6 +1,7 @@
 mod app;
 mod assets;
 mod core;
+mod utils;
 mod i18n;
 mod panels;
 mod workspace;

@@ -264,13 +264,13 @@ impl MarkdownEditorPanel {
                                     .text_xl()
                                     .font_semibold()
                                     .text_color(theme.foreground)
-                                    .child(t!("markdown_editor.empty.title")),
+                                    .child(t!("markdown_editor.empty.title").to_string()),
                             )
                             .child(
                                 div()
                                     .text_sm()
                                     .text_color(theme.muted_foreground)
-                                    .child(t!("markdown_editor.empty.description")),
+                                    .child(t!("markdown_editor.empty.description").to_string()),
                             )
                             .child(
                                 h_flex()

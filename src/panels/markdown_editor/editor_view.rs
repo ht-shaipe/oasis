@@ -498,7 +498,7 @@ impl EditorView {
             new_offset_y = -(target_bottom - viewport_height + padding);
         }
 
-        new_offset_y = new_offset_y.clamp(-max.y, px(0.));
+        new_offset_y = new_offset_y.clamp(-max.height, px(0.));
         self.scroll_handle.set_offset(point(offset.x, new_offset_y));
         self.pending_scroll_to_byte = None;
         window.refresh();
@@ -525,7 +525,7 @@ impl Render for EditorView {
             .focus_handle
             .get_or_insert_with(|| {
                 let handle = cx.focus_handle();
-                handle.focus(window, cx);
+                handle.focus(window);
                 handle
             })
             .clone();
@@ -630,7 +630,7 @@ impl Render for EditorView {
                 let layout_for_event = text_layout.clone();
                 let projection_for_event = projection.clone();
                 move |event: &MouseDownEvent, window: &mut Window, cx_app: &mut App| {
-                    focus_handle.focus(window, cx_app);
+                    focus_handle.focus(window);
                     let _ = doc_handle.update(cx_app, |doc, cx| {
                         let byte_idx = std::panic::catch_unwind(AssertUnwindSafe(|| {
                             layout_for_event.index_for_position(event.position)
@@ -725,7 +725,7 @@ impl Render for EditorView {
                             let amount = page * 0.9;
                             let delta = if key == "pagedown" { -amount } else { amount };
                             let mut new_offset = offset;
-                            new_offset.y = (new_offset.y + delta).clamp(-max.y, px(0.));
+                            new_offset.y = (new_offset.y + delta).clamp(-max.height, px(0.));
                             this.scroll_handle
                                 .set_offset(point(new_offset.x, new_offset.y));
                             window.refresh();

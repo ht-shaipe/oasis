@@ -486,14 +486,15 @@ fn write_csv(output_path: &Path, headers: &[String], rows: &[Vec<String>]) -> Re
 fn write_excel(output_path: &Path, headers: &[String], rows: &[Vec<String>]) -> Result<(), String> {
     use rust_xlsxwriter::*;
 
-    let mut workbook = Workbook::new();
+    let path_str = output_path.to_string_lossy();
+    let mut workbook = Workbook::new(&path_str);
     let worksheet = workbook.add_worksheet();
     let header_format = Format::new().set_bold();
 
     for (col, header) in headers.iter().enumerate() {
         let col_u16 = u16::try_from(col).map_err(|_| "列数超出限制")?;
         worksheet
-            .write_string_with_format(0, col_u16, header, &header_format)
+            .write_string(0, col_u16, header, &header_format)
             .map_err(|e| e.to_string())?;
     }
 
@@ -502,12 +503,12 @@ fn write_excel(output_path: &Path, headers: &[String], rows: &[Vec<String>]) -> 
         for (col, val) in row.iter().enumerate() {
             let col_u16 = u16::try_from(col).map_err(|_| "列数超出限制")?;
             worksheet
-                .write_string(row_u32, col_u16, val)
+                .write_string(row_u32, col_u16, val, &Format::new())
                 .map_err(|e| e.to_string())?;
         }
     }
 
-    workbook.save(output_path).map_err(|e| e.to_string())?;
+    workbook.close().map_err(|e| e.to_string())?;
     Ok(())
 }
 

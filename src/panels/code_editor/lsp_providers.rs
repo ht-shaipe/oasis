@@ -1,4 +1,4 @@
-use std::{ops::Range, str::FromStr, time::Duration};
+use std::{ops::Range, time::Duration, str::FromStr};
 
 use anyhow::anyhow;
 use gpui::{App, AppContext, Context, Entity, Result, SharedString, Task, Window};
@@ -14,7 +14,7 @@ use lsp_types::{
     CodeAction, CodeActionKind, CompletionContext, CompletionResponse, TextEdit, WorkspaceEdit,
 };
 
-use crate::AppState;
+use crate::app_state::AppState;
 
 use super::lsp_store::CodeEditorPanelLspStore;
 use super::types::{RUST_DOC_URLS, completion_item};
@@ -560,14 +560,17 @@ impl TextConvertor {
     ) -> Task<Result<()>> {
         use crate::core::services::CommentStyle;
 
-        let Some(ai_service) = AppState::global(cx).ai_service() else {
-            // Show error notification if AI service is not configured
-            struct AiServiceError;
-            let note =
-                Notification::error("AI service not configured. Please check your config.json")
-                    .id::<AiServiceError>();
-            window.push_notification(note, cx);
-            return Task::ready(Err(anyhow!("AI service not configured")));
+        let ai_service = match AppState::global(cx).ai_service() {
+            Some(service) => service.clone(),
+            None => {
+                // Show error notification if AI service is not configured
+                struct AiServiceError;
+                let note =
+                    Notification::error("AI service not configured. Please check your config.json")
+                        .id::<AiServiceError>();
+                window.push_notification(note, cx);
+                return Task::ready(Err(anyhow!("AI service not configured")));
+            }
         };
 
         let ai_action = data
@@ -582,7 +585,6 @@ impl TextConvertor {
             .unwrap_or("")
             .to_string();
 
-        let ai_service = ai_service.clone();
         let state_weak = state.downgrade();
 
         match ai_action.as_str() {

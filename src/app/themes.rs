@@ -175,6 +175,12 @@ fn sync_font_size(cx: &mut App) {
     Theme::global_mut(cx).font_size = px(font_size as f32);
 }
 
+/// Check if startup is completed
+pub fn startup_completed() -> bool {
+    // Stub: always return true to allow file tree loading
+    true
+}
+
 pub(crate) fn save_state(cx: &mut App) {
     #[cfg(not(target_family = "wasm"))]
     {

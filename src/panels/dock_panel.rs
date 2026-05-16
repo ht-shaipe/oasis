@@ -1,7 +1,7 @@
 // DockPanel trait - provides a standard interface for dockable panels.
 // Implemented by ToolboxPanel, CodeEditorPanel, MarkdownEditorPanel, etc.
 
-use gpui::{App, Context, Entity, IntoElement, Pixels, Render, Window};
+use gpui::{App, Entity, IntoElement, Pixels, Render, Window};
 
 pub trait DockPanel: Render + Sized {
     fn title() -> &'static str;
@@ -13,10 +13,7 @@ pub trait DockPanel: Render + Sized {
     }
     fn new_view(window: &mut Window, cx: &mut App) -> Entity<Self>
     where
-        Self: Sized,
-    {
-        cx.new(|cx| Self::new(window, cx))
-    }
+        Self: Sized;
     fn paddings() -> Pixels {
         gpui::px(0.)
     }
@@ -24,5 +21,4 @@ pub trait DockPanel: Render + Sized {
         None
     }
     fn on_active(&mut self, _active: bool, _window: &mut Window, _cx: &mut App) {}
-    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self;
 }

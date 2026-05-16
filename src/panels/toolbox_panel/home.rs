@@ -14,8 +14,8 @@ use gpui_component::{
 };
 use rust_i18n::t;
 
-use super::ToolId;
-use super::ToolboxPanel;
+use super::{ToolId, ToolboxPanel};
+use crate::app::app_state::AppSettings;
 
 fn tool_tile(
     id: &'static str,
@@ -61,10 +61,19 @@ fn tool_tile(
                 ),
         )
         .on_click(move |_, _, cx| {
-            entity.update(cx, |this, cx| {
-                this.view = super::ViewState::Tool(tool);
-                cx.notify();
-            });
+            let tool_id = match tool {
+                super::ToolId::CsvStats => "csv_stats",
+                super::ToolId::CsvSplit => "csv_split",
+                super::ToolId::CsvExcelConvert => "csv_convert",
+                super::ToolId::BatchRename => "batch_rename",
+                super::ToolId::ExcelMoveFiles => "excel_move",
+                super::ToolId::ApiRequest => "api_request",
+                super::ToolId::ApiBatchDownload => "api_batch_download",
+                super::ToolId::JsonToCsvExcel => "json_convert",
+                super::ToolId::JsonMerge => "json_merge",
+                super::ToolId::NetworkScan => "network_scan",
+            };
+            AppSettings::global_mut(cx).selected_tool = Some(tool_id.to_string());
         })
 }
 
@@ -183,7 +192,7 @@ pub fn render_home(
 
     let card_batch_download = tool_tile(
         "tool-home-api-batch-download",
-        IconName::Play,
+        IconName::ArrowRight,
         tool_batch_download_label,
         theme.primary,
         theme.foreground,
@@ -223,7 +232,7 @@ pub fn render_home(
                     h_flex()
                         .gap_4()
                         .flex_wrap()
-                        .items_stretch()
+                        .items_start()
                         .child(card_csv_stats)
                         .child(card_csv_split)
                         .child(card_csv_convert)
@@ -252,7 +261,7 @@ pub fn render_home(
                     h_flex()
                         .gap_4()
                         .flex_wrap()
-                        .items_stretch()
+                        .items_start()
                         .child(card_batch_rename)
                         .child(card_excel_move),
                 ),
@@ -278,7 +287,7 @@ pub fn render_home(
                     h_flex()
                         .gap_4()
                         .flex_wrap()
-                        .items_stretch()
+                        .items_start()
                         .child(card_api_request)
                         .child(card_batch_download)
                         .child(card_network_scan),

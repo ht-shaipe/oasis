@@ -181,7 +181,7 @@ impl ApiRequestState {
         let entity_send = entity.clone();
         let send_btn = Button::new("api-send")
             .label(t!("toolbox.api.send").to_string())
-            .icon(Icon::new(IconName::Play).text_color(theme.primary))
+            .icon(Icon::new(IconName::ArrowRight).text_color(theme.primary))
             .primary()
             .disabled(state.loading)
             .on_click(move |_, _, cx| {

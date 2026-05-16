@@ -3,10 +3,12 @@
 use std::path::PathBuf;
 
 use gpui::{
-    App, AppContext as _, Context, Entity, FocusHandle, Focusable, InteractiveElement as _,
-    IntoElement, ParentElement as _, Render, Styled, Window, prelude::FluentBuilder as _, px,
+    App, AppContext as _, Context, Entity, EventEmitter, FocusHandle, Focusable,
+    InteractiveElement as _, IntoElement, ParentElement as _, Render, Styled, Window,
+    prelude::FluentBuilder as _, px,
 };
 use gpui_component::{
+    dock::{Panel, PanelControl, PanelEvent},
     ActiveTheme, Icon, IconName,
     button::{Button, ButtonVariants as _},
     h_flex,
@@ -1429,6 +1431,22 @@ impl Render for ToolboxPanel {
                     .overflow_hidden()
                     .child(content),
             )
+    }
+}
+
+impl EventEmitter<PanelEvent> for ToolboxPanel {}
+
+impl Panel for ToolboxPanel {
+    fn panel_name(&self) -> &'static str {
+        "ToolboxPanel"
+    }
+
+    fn title(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        t!("toolbox.title").to_string()
+    }
+
+    fn zoomable(&self, _cx: &App) -> Option<PanelControl> {
+        None
     }
 }
 

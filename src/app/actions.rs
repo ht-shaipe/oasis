@@ -14,8 +14,24 @@ actions!(
         OpenSettings,
         ToggleLeftPanel,
         ToggleRightPanel,
+        NewFile,
+        OpenFile,
+        SaveFile,
+        SaveFileAs,
     ]
 );
+
+/// Add code selection action
+#[derive(Action, Clone, PartialEq)]
+#[action(namespace = app, no_json)]
+pub struct AddCodeSelection {
+    pub file_path: SharedString,
+    pub start_line: usize,
+    pub start_column: usize,
+    pub end_line: usize,
+    pub end_column: usize,
+    pub content: SharedString,
+}
 
 // Menu editing actions
 actions!(menu, [Copy, Paste, Cut,]);
