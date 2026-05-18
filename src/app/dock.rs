@@ -20,11 +20,11 @@ impl Render for FloatingDock {
         let theme = cx.theme();
         let is_dark = theme.mode.is_dark();
 
-        // Dock 背景色：半透明
+        // Dock 背景色：半透明 (70% 不透明度，30% 透明度)
         let bg_color = if is_dark {
-            theme.colors.background
+            theme.colors.background.opacity(0.5)
         } else {
-            theme.colors.background
+            theme.colors.background.opacity(0.5)
         };
 
         // 图标占位颜色
@@ -62,7 +62,14 @@ impl Render for FloatingDock {
                         registry.plugins.iter().map(|plugin| {
                             let plugin_id = plugin.manifest.id.clone();
                             let display_name = plugin.manifest.display_name.clone();
-                            let first_char = display_name.chars().next().unwrap_or('?').to_string();
+
+                            // 使用 emoji 如果可用，否则使用首字母
+                            let display_icon = if let Some(emoji) = plugin.icon_emoji.as_ref() {
+                                emoji.clone()
+                            } else {
+                                display_name.chars().next().unwrap_or('?').to_string()
+                            };
+
                             let is_open = registry.open_windows.contains_key(&plugin_id);
                             let dot_color = if is_open {
                                 icon_fg
@@ -97,7 +104,7 @@ impl Render for FloatingDock {
                                                 .text_size(px(16.))
                                                 .text_color(icon_fg_copy)
                                                 .font_weight(gpui::FontWeight::SEMIBOLD)
-                                                .child(first_char),
+                                                .child(display_icon),
                                         ),
                                 )
                                 .child(

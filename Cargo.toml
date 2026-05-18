@@ -53,6 +53,8 @@ inventory = "0.3"
 toml = "0.8"
 tracing = "0.1"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
+wasmi = "0.34"
+thiserror = "2"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 dirs = "6"
@@ -116,6 +118,7 @@ strip = true
 members = [
     "crates/plugin-sdk",
 	"crates/network-plugin",
+	"crates/wasm-plugin",
 ]
 resolver = "2"
 

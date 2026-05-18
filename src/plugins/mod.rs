@@ -1,6 +1,13 @@
 pub mod calculator;
+pub mod dsl_counter;
 pub mod notepad;
 pub mod plugin_window;
+pub mod ui_dsl;
+pub mod wasm_content;
+pub mod wasm_example;
+pub mod wasm_host;
+pub mod wasm_loader;
+pub mod wasm_plugin_system;
 
 use std::collections::HashMap;
 
@@ -78,7 +85,9 @@ pub trait Plugin: gpui::Render + 'static {
 pub struct RegisteredPlugin {
     pub manifest: PluginManifest,
     pub icon_svg: &'static str,
+    pub icon_emoji: Option<String>,
     pub create_view: fn(&mut Window, &mut App) -> AnyView,
+    pub is_wasm: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -105,7 +114,9 @@ impl PluginRegistry {
                         plugins.push(RegisteredPlugin {
                             manifest,
                             icon_svg: entry.icon_svg,
+                            icon_emoji: None,
                             create_view: entry.create_view,
+                            is_wasm: false,
                         });
                     } else {
                         tracing::error!(
@@ -186,4 +197,57 @@ impl PluginRegistry {
     pub fn get_plugin<'a>(id: &str, cx: &'a App) -> Option<&'a RegisteredPlugin> {
         cx.global::<Self>().plugins.iter().find(|p| p.manifest.id == id)
     }
+
+    /// 注册 WASM 插件
+    pub fn register_wasm_plugin(
+        cx: &mut App,
+        id: String,
+        display_name: String,
+        icon_emoji: String,
+        description: String,
+        create_view: fn(&mut Window, &mut App) -> AnyView,
+    ) {
+        let manifest = PluginManifest {
+            id: id.clone(),
+            display_name,
+            description,
+            icon: format!("{}.svg", id),
+            window_width: 400.0,
+            window_height: 500.0,
+        };
+
+        let plugin = RegisteredPlugin {
+            manifest,
+            icon_svg: "",
+            icon_emoji: Some(icon_emoji),
+            create_view,
+            is_wasm: true,
+        };
+
+        cx.global_mut::<Self>().plugins.push(plugin);
+        tracing::info!("✅ 注册 WASM 插件: {}", id);
+    }
+}
+
+/// 注册内置 WASM 插件
+pub fn register_builtin_wasm_plugins(cx: &mut App) {
+    // 注册计数器插件（原有）
+    PluginRegistry::register_wasm_plugin(
+        cx,
+        "counter".to_string(),
+        "计数器".to_string(),
+        "🔢".to_string(),
+        "一个简单的计数器插件".to_string(),
+        crate::plugins::wasm_content::create_counter_view,
+    );
+
+    // 注册 DSL 计数器插件
+    PluginRegistry::register_wasm_plugin(
+        cx,
+        "dsl_counter".to_string(),
+        "DSL 计数器".to_string(),
+        "🎨".to_string(),
+        "声明式 UI DSL 示例插件".to_string(),
+        crate::plugins::dsl_counter::create_dsl_counter_view,
+    );
 }

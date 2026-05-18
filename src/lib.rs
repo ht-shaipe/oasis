@@ -1,7 +1,7 @@
 mod app;
 mod i18n;
 mod panels;
-mod plugins;
+pub mod plugins;
 
 rust_i18n::i18n!("locales", fallback = "en");
 
@@ -333,6 +333,7 @@ pub fn init(cx: &mut App) {
     background::init(cx);
     themes::init(cx);
     plugins::PluginRegistry::init(cx);
+    plugins::register_builtin_wasm_plugins(cx);
     i18n::init(cx);
     app_menus::init("oasis", cx);
     key_binding::init(cx);

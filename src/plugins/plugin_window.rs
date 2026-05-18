@@ -68,7 +68,7 @@ impl Render for PluginWindow {
         };
 
         // 标题栏背景
-        let titlebar_bg = if is_dark {
+        let title_bar_bg = if is_dark {
             theme.colors.muted.opacity(0.3)
         } else {
             theme.colors.muted.opacity(0.15)
@@ -92,7 +92,7 @@ impl Render for PluginWindow {
             .child(
                 div()
                     .id(SharedString::from(format!(
-                        "plugin-window-titlebar-{}",
+                        "plugin-window-title_bar-{}",
                         self.plugin_id
                     )))
                     .flex()
@@ -101,7 +101,7 @@ impl Render for PluginWindow {
                     .justify_between()
                     .px(px(12.))
                     .py(px(8.))
-                    .bg(titlebar_bg)
+                    .bg(title_bar_bg)
                     .cursor_grab()
                     // 拖拽：鼠标按下
                     .on_mouse_down(
