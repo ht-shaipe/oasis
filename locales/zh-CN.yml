@@ -123,6 +123,12 @@ credential_manager:
   search_tooltip: 按名称、平台或用户名搜索
   empty_state: 还没有凭证
   empty_state_desc: 点击"添加凭证"创建你的第一个凭证
+  all: 全部
+  categories: 分类
+  form_section:
+    basic_info: 基本信息
+    account_info: 账户信息
+    other: 其他
   form:
     title_add: 添加新凭证
     title_edit: 编辑凭证

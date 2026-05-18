@@ -16,7 +16,7 @@ pub use app::{
         About, CloseWindow, Open, OpenSettings, Quit, SelectFont, SelectLocale, SelectRadius,
         SwitchTheme, SwitchThemeMode, ToggleSearch,
     },
-    app_menus, app_state, key_binding, system_tray, themes, title_bar,
+    app_menus, app_state, key_binding, mac_title_bar, system_tray, themes, title_bar,
 };
 pub use panels::{AppSettings, SettingsPanel};
 pub use workspace::Workspace;
@@ -28,7 +28,7 @@ use gpui::{
 #[cfg(not(target_family = "wasm"))]
 use gpui::{px, size, Bounds, WindowBounds, WindowKind};
 #[cfg(not(target_family = "wasm"))]
-use gpui_component::TitleBar;
+use gpui_component::{ActiveTheme, TitleBar};
 use gpui_component::{
     dock::{register_panel, PanelInfo},
     Root,
@@ -99,7 +99,7 @@ pub fn init_web() -> Result<(), JsValue> {
 
 #[cfg(not(target_family = "wasm"))]
 struct DockRoot {
-    title_bar: Entity<title_bar::AppTitleBar>,
+    title_bar: Entity<mac_title_bar::MacTitleBar>,
     view: AnyView,
 }
 
@@ -111,7 +111,7 @@ impl DockRoot {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let title_bar = cx.new(|cx| title_bar::AppTitleBar::new(title, window, cx));
+        let title_bar = cx.new(|cx| mac_title_bar::MacTitleBar::new(title, window, cx));
         Self {
             title_bar,
             view: view.into(),
@@ -125,12 +125,16 @@ impl Render for DockRoot {
         let sheet_layer = Root::render_sheet_layer(window, cx);
         let dialog_layer = Root::render_dialog_layer(window, cx);
         let notification_layer = Root::render_notification_layer(window, cx);
+        let theme = cx.theme();
 
+        // macOS-style: full window with translucent background
         div()
             .w_full()
             .h_full()
             .flex()
             .flex_col()
+            // macOS vibrancy-style background
+            .bg(theme.colors.background)
             .child(self.title_bar.clone())
             .child(
                 div()

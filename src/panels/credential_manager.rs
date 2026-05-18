@@ -88,9 +88,10 @@ pub struct CredentialManagerPanel {
 
 impl CredentialManagerPanel {
     pub fn new(window: &mut Window, cx: &mut App) -> Self {
-        let mk = |placeholder: &'static str, window: &mut Window, cx: &mut App| {
+        let mk = |key: &'static str, window: &mut Window, cx: &mut App| {
             cx.new(|cx| {
                 let mut s = InputState::new(window, cx);
+                let placeholder = t!(format!("credential_manager.form.{}_placeholder", key)).to_string();
                 s.set_placeholder(SharedString::from(placeholder), window, cx);
                 s
             })
@@ -112,12 +113,12 @@ impl CredentialManagerPanel {
             expanded_nodes: HashSet::new(),
             selected_credential: None,
             show_add_dialog: false,
-            form_name: mk("Name / 名称", window, cx),
-            form_platform: mk("Platform / 平台", window, cx),
-            form_category: mk("Category / 分类", window, cx),
-            form_username: mk("Username / 用户名", window, cx),
-            form_password: mk("Password / 密码", window, cx),
-            form_notes: mk("Notes / 备注", window, cx),
+            form_name: mk("name", window, cx),
+            form_platform: mk("platform", window, cx),
+            form_category: mk("category", window, cx),
+            form_username: mk("username", window, cx),
+            form_password: mk("password", window, cx),
+            form_notes: mk("notes", window, cx),
         };
 
         #[cfg(not(target_family = "wasm"))]
@@ -330,7 +331,7 @@ impl CredentialManagerPanel {
                         cx.stop_propagation();
                     }
                 })
-                .child("All / 全部")
+                .child(t!("credential_manager.all").to_string())
                 .into_any_element()
         };
 
@@ -361,7 +362,7 @@ impl CredentialManagerPanel {
                     .border_b_1()
                     .font_semibold()
                     .text_color(theme.foreground)
-                    .child("📁 Categories / 分类"),
+                    .child(format!("📁 {}", t!("credential_manager.categories").to_string())),
             )
             .child(
                 div()
@@ -605,17 +606,17 @@ impl CredentialManagerPanel {
                             .gap_2()
                             .font_semibold()
                             .text_color(theme.foreground)
-                            .child("🔐 Credentials / 凭证")
+                            .child(format!("🔐 {}", t!("credential_manager.panel_title").to_string()))
                             .child(if let Some(ref cat) = self.selected_category {
                                 cat.clone()
                             } else {
-                                t!("credential.all").to_string()
+                                t!("credential_manager.all").to_string()
                             })
                     )
                     .child(
                         Button::new("add-credential-btn")
                             .small()
-                            .label("+ Add / 添加")
+                            .label(format!("+ {}", t!("credential_manager.add_button").to_string()))
                             .on_click({
                                 let panel = cx.entity().clone();
                                 move |_ev, window: &mut Window, cx: &mut App| {
@@ -637,7 +638,7 @@ impl CredentialManagerPanel {
                                         let theme = cx.theme();
                                         let panel_clone_for_save = panel_clone.clone();
                                         dialog
-                                            .title("Add New Credential / 添加新凭证")
+                                            .title(t!("credential_manager.form.title_add").to_string())
                                             .w(px(600.))
                                             .min_h(px(400.))
                                             .child(
@@ -663,7 +664,7 @@ impl CredentialManagerPanel {
                                                                             .text_sm()
                                                                             .font_semibold()
                                                                             .text_color(theme.foreground)
-                                                                            .child("Basic Information / 基本信息"),
+                                                                            .child(t!("credential_manager.form_section.basic_info").to_string()),
                                                                         div()
                                                                             .flex()
                                                                             .flex_col()
@@ -674,7 +675,7 @@ impl CredentialManagerPanel {
                                                                                     .flex_col()
                                                                                     .gap_1()
                                                                                     .children([
-                                                                                        div().text_xs().text_color(theme.muted_foreground).child("Name / 名称 *"),
+                                                                                        div().text_xs().text_color(theme.muted_foreground).child(format!("{} *", t!("credential_manager.form.name_label").to_string())),
                                                                                         div().w_full().child(Input::new(&form_name)),
                                                                                     ]),
                                                                             )
@@ -684,7 +685,7 @@ impl CredentialManagerPanel {
                                                                                     .flex_col()
                                                                                     .gap_1()
                                                                                     .children([
-                                                                                        div().text_xs().text_color(theme.muted_foreground).child("Platform / 平台"),
+                                                                                        div().text_xs().text_color(theme.muted_foreground).child(t!("credential_manager.form.platform_label").to_string()),
                                                                                         div().w_full().child(Input::new(&form_platform)),
                                                                                     ]),
                                                                             )
@@ -694,7 +695,7 @@ impl CredentialManagerPanel {
                                                                                     .flex_col()
                                                                                     .gap_1()
                                                                                     .children([
-                                                                                        div().text_xs().text_color(theme.muted_foreground).child("Category / 分类"),
+                                                                                        div().text_xs().text_color(theme.muted_foreground).child(t!("credential_manager.form.category_label").to_string()),
                                                                                         div().w_full().child(Input::new(&form_category)),
                                                                                     ]),
                                                                             )
@@ -710,7 +711,7 @@ impl CredentialManagerPanel {
                                                                             .text_sm()
                                                                             .font_semibold()
                                                                             .text_color(theme.foreground)
-                                                                            .child("Account Information / 账户信息"),
+                                                                            .child(t!("credential_manager.form_section.account_info").to_string()),
                                                                         div()
                                                                             .flex()
                                                                             .flex_col()
@@ -721,7 +722,7 @@ impl CredentialManagerPanel {
                                                                                     .flex_col()
                                                                                     .gap_1()
                                                                                     .children([
-                                                                                        div().text_xs().text_color(theme.muted_foreground).child("Username / 用户名 *"),
+                                                                                        div().text_xs().text_color(theme.muted_foreground).child(format!("{} *", t!("credential_manager.form.username_label").to_string())),
                                                                                         div().w_full().child(Input::new(&form_username)),
                                                                                     ]),
                                                                             )
@@ -731,7 +732,7 @@ impl CredentialManagerPanel {
                                                                                     .flex_col()
                                                                                     .gap_1()
                                                                                     .children([
-                                                                                        div().text_xs().text_color(theme.muted_foreground).child("Password / 密码 *"),
+                                                                                        div().text_xs().text_color(theme.muted_foreground).child(format!("{} *", t!("credential_manager.form.password_label").to_string())),
                                                                                         div().w_full().child(Input::new(&form_password)),
                                                                                     ]),
                                                                             )
@@ -747,13 +748,13 @@ impl CredentialManagerPanel {
                                                                             .text_sm()
                                                                             .font_semibold()
                                                                             .text_color(theme.foreground)
-                                                                            .child("Other / 其他"),
+                                                                            .child(t!("credential_manager.form_section.other").to_string()),
                                                                         div()
                                                                             .flex()
                                                                             .flex_col()
                                                                             .gap_1()
                                                                             .children([
-                                                                                div().text_xs().text_color(theme.muted_foreground).child("Notes / 备注"),
+                                                                                div().text_xs().text_color(theme.muted_foreground).child(t!("credential_manager.form.notes_label").to_string()),
                                                                                 div().w_full().child(Input::new(&form_notes)),
                                                                             ]),
                                                                     ])
@@ -774,7 +775,7 @@ impl CredentialManagerPanel {
                                                             .gap_2()
                                                             .child(
                                                                 Button::new("cancel-add-btn")
-                                                                    .label("Cancel / 取消")
+                                                                    .label(t!("common.buttons.cancel").to_string())
                                                                     .ghost()
                                                                     .on_click({
                                                                         let panel_clone = panel_clone.clone();
@@ -788,7 +789,7 @@ impl CredentialManagerPanel {
                                                             )
                                                             .child(
                                                                 Button::new("confirm-add-btn")
-                                                                    .label("Confirm / 确定")
+                                                                    .label(t!("common.buttons.confirm").to_string())
                                                                     .primary()
                                                                     .on_click({
                                                                         let panel_clone = panel_clone_for_save.clone();

@@ -34,7 +34,7 @@ pub struct AddCodeSelection {
 }
 
 // Menu editing actions
-actions!(menu, [Copy, Paste, Cut,]);
+actions!(menu, [Copy, Paste, Cut, Undo, Redo, SelectAll, Find, FindNext, FindPrevious,]);
 
 /// Select language
 #[derive(Action, Clone, PartialEq, Eq, Deserialize)]

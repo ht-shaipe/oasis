@@ -1,10 +1,11 @@
 #![allow(dead_code)]
+use crate::app::actions::{Copy, Cut, Find, FindNext, FindPrevious, Paste, Redo, SelectAll, Undo};
 use crate::panels::markdown_editor::model::DocumentState;
 use crate::panels::markdown_editor::syntax::{SyntaxKind, SyntaxSpan, markdown_spans};
 use crate::panels::markdown_editor::text_utils::ellipsize_chars;
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    App, Bounds, Context, Entity, FocusHandle, Focusable, FontStyle, FontWeight,
+    App, Bounds, ClipboardItem, Context, Entity, FocusHandle, Focusable, FontStyle, FontWeight,
     HighlightStyle, Hsla, InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent,
     MouseMoveEvent, ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled,
     StyledText, UnderlineStyle, Window, canvas, combine_highlights, div, fill, point, px,
@@ -171,6 +172,10 @@ impl DisplayProjection {
 pub struct InlineMarkdownState {
     pub spans: Arc<Vec<SyntaxSpan>>,
     pub source_revision: u64,
+    /// Last parse duration in milliseconds.
+    pub parse_millis: f64,
+    /// Number of coalesced (dropped) intermediate updates since last parse.
+    pub dropped_updates: u32,
 }
 
 impl InlineMarkdownState {
@@ -178,6 +183,8 @@ impl InlineMarkdownState {
         Self {
             spans: Arc::new(Vec::new()),
             source_revision: 0,
+            parse_millis: 0.0,
+            dropped_updates: 0,
         }
     }
 
@@ -186,8 +193,14 @@ impl InlineMarkdownState {
         if self.source_revision == revision {
             return;
         }
+        if self.source_revision > 0 {
+            self.dropped_updates += 1;
+        }
+        let start = std::time::Instant::now();
         self.spans = Arc::new(markdown_spans(text));
+        self.parse_millis = start.elapsed().as_secs_f64() * 1000.0;
         self.source_revision = revision;
+        self.dropped_updates = 0;
     }
 }
 
@@ -625,6 +638,106 @@ impl Render for EditorView {
             .scrollbar_width(px(10.))
             .track_scroll(&self.scroll_handle)
             .track_focus(&focus_handle)
+            .on_action({
+                let doc_handle = self.document.clone();
+                move |_: &SelectAll, _window: &mut Window, cx_app: &mut App| {
+                    let _ = doc_handle.update(cx_app, |doc, cx| {
+                        doc.select_all();
+                        cx.notify();
+                    });
+                }
+            })
+            .on_action({
+                let doc_handle = self.document.clone();
+                move |_: &Copy, _window: &mut Window, cx_app: &mut App| {
+                    if let Some(selection) =
+                        doc_handle.read_with(cx_app, |d, _| d.selection_range())
+                    {
+                        let text = doc_handle.read_with(cx_app, |d, _| d.slice_chars(selection));
+                        cx_app.write_to_clipboard(ClipboardItem::new_string(text));
+                    }
+                }
+            })
+            .on_action({
+                let doc_handle = self.document.clone();
+                move |_: &Cut, _window: &mut Window, cx_app: &mut App| {
+                    let selection = doc_handle
+                        .read_with(cx_app, |d, _| d.selection_range())
+                        .unwrap_or_else(|| 0..0);
+                    if selection.start == selection.end {
+                        return;
+                    }
+                    let text = doc_handle.read_with(cx_app, |d, _| d.slice_chars(selection.clone()));
+                    cx_app.write_to_clipboard(ClipboardItem::new_string(text));
+                    let _ = doc_handle.update(cx_app, |doc, cx| {
+                        doc.begin_edit();
+                        doc.delete_selection();
+                        doc.commit_edit();
+                        cx.notify();
+                    });
+                }
+            })
+            .on_action({
+                let doc_handle = self.document.clone();
+                move |_: &Paste, _window: &mut Window, cx_app: &mut App| {
+                    let Some(item) = cx_app.read_from_clipboard() else {
+                        return;
+                    };
+                    let Some(text) = item.text() else {
+                        return;
+                    };
+                    let _ = doc_handle.update(cx_app, |doc, cx| {
+                        doc.begin_edit();
+                        doc.delete_selection();
+                        let insert_at = doc.cursor;
+                        doc.insert(insert_at, &text);
+                        doc.cursor = insert_at.saturating_add(text.chars().count());
+                        doc.commit_edit();
+                        cx.notify();
+                    });
+                }
+            })
+            .on_action({
+                let doc_handle = self.document.clone();
+                move |_: &Undo, _window: &mut Window, cx_app: &mut App| {
+                    let _ = doc_handle.update(cx_app, |doc, cx| {
+                        if doc.undo() {
+                            cx.notify();
+                        }
+                    });
+                }
+            })
+            .on_action({
+                let doc_handle = self.document.clone();
+                move |_: &Redo, _window: &mut Window, cx_app: &mut App| {
+                    let _ = doc_handle.update(cx_app, |doc, cx| {
+                        if doc.redo() {
+                            cx.notify();
+                        }
+                    });
+                }
+            })
+            .on_action({
+                let focus_handle = focus_handle.clone();
+                cx.listener(move |this, _: &Find, window, cx| {
+                    focus_handle.focus(window);
+                    this.activate_search(cx);
+                })
+            })
+            .on_action(cx.listener(|this, _: &FindNext, _window, cx| {
+                if !this.search_active {
+                    this.activate_search(cx);
+                } else {
+                    this.jump_search(cx, true);
+                }
+            }))
+            .on_action(cx.listener(|this, _: &FindPrevious, _window, cx| {
+                if !this.search_active {
+                    this.activate_search(cx);
+                } else {
+                    this.jump_search(cx, false);
+                }
+            }))
             .on_mouse_down(MouseButton::Left, {
                 let focus_handle = focus_handle.clone();
                 let doc_handle = self.document.clone();

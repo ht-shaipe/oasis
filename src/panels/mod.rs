@@ -5,6 +5,7 @@ mod code_editor;
 mod credential_manager;
 mod dock_panel;
 mod left_panel;
+mod mac_dock;
 mod markdown_editor;
 mod right_panel;
 mod settings;
@@ -14,6 +15,7 @@ pub use crate::app_state::AppSettings;
 pub use bottom_panel::BottomPanel;
 pub use center_panel::CenterPanel;
 pub use left_panel::LeftPanel;
+pub use mac_dock::MacDockPanel;
 pub use settings::SettingsPanel;
 pub use toolbox_panel::ToolboxPanel;
 

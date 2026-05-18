@@ -123,6 +123,12 @@ credential_manager:
   search_tooltip: Search by name, platform, or username
   empty_state: No credentials yet
   empty_state_desc: Click "Add Credential" to create your first credential
+  all: All
+  categories: Categories
+  form_section:
+    basic_info: Basic Information
+    account_info: Account Information
+    other: Other
   form:
     title_add: Add New Credential
     title_edit: Edit Credential
