@@ -21,6 +21,7 @@ config.json.backup
 /dist
 
 # IDE
+.workbuddy
 .claude
 .vscode/
 .idea/

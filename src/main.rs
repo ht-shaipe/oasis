@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use gpui::{div, App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Window};
+use gpui::{div, App, AppContext, Context, IntoElement, ParentElement, Render, Styled, Window};
 use gpui_component::ActiveTheme;
 
 fn main() {
@@ -16,10 +16,9 @@ fn main() {
             });
 
             // 传入背景图片路径（本地绝对路径）；若不需要背景图则传 None
-            // 示例：Some("/Users/yourname/Pictures/bg.jpg")
             oasis::open_new(
                 "oasis",
-                None, // 暂不设置背景图，如需启用请改为 Some("/absolute/path/to/bg.jpg")
+                None,
                 |_window, cx| cx.new(|_| PlaceholderView),
                 cx,
             );

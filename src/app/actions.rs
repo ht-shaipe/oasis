@@ -8,6 +8,8 @@ actions!(
     [
         /// Quit the application
         Quit,
+        /// Open file picker to set the window background image
+        SetBackground,
     ]
 );
 

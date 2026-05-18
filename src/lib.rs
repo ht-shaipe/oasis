@@ -5,19 +5,24 @@ mod panels;
 rust_i18n::i18n!("locales", fallback = "en");
 
 pub use app::{
-    actions::{Quit, SelectLocale, SwitchTheme, SwitchThemeMode},
+    actions::{Quit, SelectLocale, SetBackground, SwitchTheme, SwitchThemeMode},
     app_menus, app_state, key_binding, system_tray, themes, title_bar,
 };
 pub use panels::SamplePanel;
 
 use gpui::{
-    div, AnyView, App, AppContext as _, Context, Entity, IntoElement, ObjectFit, ParentElement,
-    Render, SharedString, Styled, Window, WindowOptions, img,
+    div, img, AnyView, App, AppContext as _, Context, Entity, IntoElement, ObjectFit,
+    ParentElement, Render, SharedString, StyledImage, Styled, Window, WindowOptions,
 };
+#[cfg(not(target_family = "wasm"))]
+use std::path::PathBuf;
 #[cfg(not(target_family = "wasm"))]
 use gpui::{px, size, Bounds, WindowBounds, WindowKind};
 #[cfg(not(target_family = "wasm"))]
-use gpui_component::{ActiveTheme, TitleBar};
+use gpui_component::{
+    menu::{ContextMenuExt, PopupMenuItem},
+    ActiveTheme, TitleBar,
+};
 use gpui_component::{dock::register_panel, Root};
 
 #[cfg(target_family = "wasm")]
@@ -82,9 +87,9 @@ pub fn init_web() -> Result<(), JsValue> {
 struct DockRoot {
     title_bar: Entity<title_bar::AppTitleBar>,
     view: AnyView,
-    /// 背景图片路径，可以是本地绝对路径或嵌入资源路径。
-    /// 示例：`Some("/path/to/bg.jpg".into())` 或 `None`（不显示背景图）
-    background_image: Option<SharedString>,
+    /// 背景图片路径（本地文件系统路径），None 表示无背景图
+    /// 必须使用 PathBuf 而非 SharedString，否则 img() 会走 AssetSource 而非 fs::read
+    background_image: Option<PathBuf>,
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -103,10 +108,49 @@ impl DockRoot {
         }
     }
 
-    /// 设置背景图片路径（本地文件绝对路径 或 http/https URL）。
-    pub fn with_background_image(mut self, path: impl Into<SharedString>) -> Self {
+    /// 设置初始背景图片路径
+    pub fn with_background_image(mut self, path: impl Into<PathBuf>) -> Self {
         self.background_image = Some(path.into());
         self
+    }
+
+    /// 弹出文件选择器，选取后更新背景图
+    fn pick_background_image(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let entity = cx.entity().downgrade();
+        window
+            .spawn(cx, async move |cx| {
+                // rfd::FileDialog 在 macOS/Windows 上需在主线程运行；
+                // smol::unblock 会把任务提交到线程池，rfd 内部自动回调主线程。
+                let path = smol::unblock(|| {
+                    rfd::FileDialog::new()
+                        .set_title("选择背景图片")
+                        .add_filter(
+                            "图片",
+                            &["png", "jpg", "jpeg", "webp", "gif", "bmp", "tiff"],
+                        )
+                        .pick_file()
+                })
+                .await;
+
+                if let Some(path) = path {
+                    cx.update(|_, cx| {
+                        if let Some(e) = entity.upgrade() {
+                            e.update(cx, |this, cx| {
+                                this.background_image = Some(path);
+                                cx.notify();
+                            });
+                        }
+                    })
+                    .ok();
+                }
+            })
+            .detach();
+    }
+
+    /// 清除背景图片
+    fn clear_background_image(&mut self, cx: &mut Context<Self>) {
+        self.background_image = None;
+        cx.notify();
     }
 }
 
@@ -118,7 +162,7 @@ impl Render for DockRoot {
         let notification_layer = Root::render_notification_layer(window, cx);
         let theme = cx.theme();
 
-        // 外层容器：相对定位，用于背景图片绝对定位参照
+        // 外层容器
         let mut root = div()
             .w_full()
             .h_full()
@@ -126,7 +170,8 @@ impl Render for DockRoot {
             .flex_col()
             .relative();
 
-        // 背景图片层：绝对定位，铺满整个窗体，位于所有内容之下
+        // 背景图片层（绝对定位，铺满，cover 模式）
+        // 必须传 PathBuf 给 img()，传字符串会走 AssetSource 导致加载失败
         if let Some(bg_path) = self.background_image.clone() {
             root = root.child(
                 img(bg_path)
@@ -137,18 +182,46 @@ impl Render for DockRoot {
                     .object_fit(ObjectFit::Cover),
             );
         } else {
-            // 无背景图时沿用主题纯色背景
             root = root.bg(theme.colors.background);
         }
 
+        // 内容区 + 右键菜单
+        let entity = cx.entity().downgrade();
+        let entity2 = cx.entity().downgrade();
+        let content = div()
+            .flex_1()
+            .w_full()
+            .overflow_hidden()
+            .child(self.view.clone())
+            .context_menu(move |menu, _window, _cx| {
+                menu.item(
+                    PopupMenuItem::new("设置背景图片").on_click({
+                        let entity = entity.clone();
+                        move |_ev, window, cx| {
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |this, cx| {
+                                    this.pick_background_image(window, cx);
+                                });
+                            }
+                        }
+                    }),
+                )
+                .item(
+                    PopupMenuItem::new("清除背景图片").on_click({
+                        let entity = entity2.clone();
+                        move |_ev, _window, cx| {
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |this, cx| {
+                                    this.clear_background_image(cx);
+                                });
+                            }
+                        }
+                    }),
+                )
+            });
+
         root.child(self.title_bar.clone())
-            .child(
-                div()
-                    .flex_1()
-                    .w_full()
-                    .overflow_hidden()
-                    .child(self.view.clone()),
-            )
+            .child(content)
             .children(sheet_layer)
             .children(dialog_layer)
             .children(notification_layer)
@@ -174,13 +247,13 @@ impl Render for Workspace {
 }
 
 #[cfg(not(target_family = "wasm"))]
-pub fn open_new<F, E>(title: &str, background_image: Option<&str>, crate_view_fn: F, cx: &mut App)
+pub fn open_new<F, E>(title: &str, background_image: Option<&PathBuf>, crate_view_fn: F, cx: &mut App)
 where
     E: Into<AnyView>,
     F: FnOnce(&mut Window, &mut App) -> E + 'static,
 {
     let title = SharedString::from(title.to_string());
-    let bg_image: Option<SharedString> = background_image.map(|s| SharedString::from(s.to_string()));
+    let bg_image: Option<PathBuf> = background_image.cloned();
 
     let mut window_size = size(px(800.0), px(600.0));
     if let Some(display) = cx.primary_display() {
@@ -217,6 +290,7 @@ where
     .update(cx, |_, window, _| {
         window.activate_window();
         window.set_window_title(&title);
+        window.toggle_fullscreen();
     })
     .expect("failed to update window");
 }

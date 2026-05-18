@@ -1,8 +1,0 @@
-_version: 1
-
-markdown_editor:
-  empty:
-    title: "No File Open"
-    description: "Open a markdown file from the file tree to start editing"
-  find: FIND
-  title: "Markdown Editor"
