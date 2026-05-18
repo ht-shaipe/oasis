@@ -12,7 +12,6 @@ mod settings;
 mod toolbox_panel;
 
 pub use crate::app_state::AppSettings;
-pub use bottom_panel::BottomPanel;
 pub use center_panel::CenterPanel;
 pub use left_panel::LeftPanel;
 pub use mac_dock::MacDockPanel;

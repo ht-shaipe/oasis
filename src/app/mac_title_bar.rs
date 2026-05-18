@@ -1,16 +1,13 @@
 //! macOS-style title bar and menu bar
 
-use gpui::{
-    div, prelude::FluentBuilder, App, AppContext, Context, Entity, FocusHandle,
-    InteractiveElement as _, IntoElement, MouseButton, ParentElement as _, Render,
-    SharedString, Styled as _, Window, px,
-};
+use gpui::prelude::FluentBuilder;
+use gpui::*;
 use gpui_component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, Theme, ThemeMode,
     button::{Button, ButtonVariants as _},
-    menu::{AppMenuBar, DropdownMenu as _},
-    TitleBar, h_flex,
+    h_flex,
 };
+use gpui_component::menu::AppMenuBar;
 use rust_i18n::t;
 
 use crate::app_state::AppState;
@@ -33,9 +30,7 @@ impl MacTitleBar {
 
         let app_menu_bar = AppMenuBar::new(window, cx);
 
-        Self {
-            app_menu_bar,
-        }
+        Self { app_menu_bar }
     }
 }
 
@@ -44,19 +39,17 @@ impl Render for MacTitleBar {
         let theme = cx.theme();
         let is_dark = theme.mode.is_dark();
 
-        TitleBar::new()
-            // macOS style: left side has menu bar (traffic lights + app menus)
+        gpui_component::TitleBar::new()
+            // Left: app menu bar (on macOS, traffic lights are automatic)
             .child(
                 h_flex()
                     .flex()
                     .items_center()
                     .gap_2()
-                    // On macOS, traffic lights are automatic, only show menus on non-macOS
                     .when(
                         !cfg!(target_os = "macos"),
                         |this| this.child(self.app_menu_bar.clone()),
                     )
-                    // App icon + name (centered on macOS)
                     .when(
                         cfg!(target_os = "macos"),
                         |this| {
@@ -82,7 +75,7 @@ impl Render for MacTitleBar {
                         }
                     )
             )
-            // Right side: utility buttons
+            // Right: utility buttons
             .child(
                 h_flex()
                     .flex()
