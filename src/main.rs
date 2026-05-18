@@ -32,8 +32,8 @@ impl Render for PlaceholderView {
             .flex()
             .items_center()
             .justify_center()
-            .bg(theme.colors.background)
             .size_full()
             .child("Oasis")
+            .text_color(theme.colors.foreground)
     }
 }

@@ -1,6 +1,7 @@
 mod app;
 mod i18n;
 mod panels;
+mod plugins;
 
 rust_i18n::i18n!("locales", fallback = "en");
 
@@ -13,7 +14,7 @@ pub use panels::SamplePanel;
 
 use gpui::{
     div, img, AnyView, App, AppContext as _, BorrowAppContext, Context, Entity, IntoElement,
-    ObjectFit, ParentElement, Render, SharedString, StyledImage, Styled, Window, WindowOptions,
+    ObjectFit, ParentElement, Render, SharedString, Styled, StyledImage, Window, WindowOptions,
 };
 #[cfg(not(target_family = "wasm"))]
 use gpui::{px, size, Bounds, WindowBounds, WindowKind};
@@ -86,7 +87,6 @@ pub fn init_web() -> Result<(), JsValue> {
 struct DockRoot {
     title_bar: Entity<title_bar::AppTitleBar>,
     dock: Entity<app::dock::FloatingDock>,
-    floating_window: Entity<app::floating_window::FloatingWindow>,
     view: AnyView,
 }
 
@@ -100,12 +100,9 @@ impl DockRoot {
     ) -> Self {
         let title_bar = cx.new(|cx| title_bar::AppTitleBar::new(title, window, cx));
         let dock = cx.new(|cx| app::dock::FloatingDock::new(window, cx));
-        let floating_window =
-            cx.new(|cx| app::floating_window::FloatingWindow::new(window, cx));
         Self {
             title_bar,
             dock,
-            floating_window,
             view: view.into(),
         }
     }
@@ -161,11 +158,8 @@ impl DockRoot {
 
 #[cfg(not(target_family = "wasm"))]
 impl Render for DockRoot {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let sheet_layer = Root::render_sheet_layer(window, cx);
-        let dialog_layer = Root::render_dialog_layer(window, cx);
-        let notification_layer = Root::render_notification_layer(window, cx);
-        let _theme = cx.theme();
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme();
 
         // 外层容器
         let mut root = div()
@@ -175,39 +169,23 @@ impl Render for DockRoot {
             .flex_col()
             .relative();
 
-        // 测试：先使用红色背景来确认渲染是否正常工作
-        tracing::info!("🎨 设置红色测试背景");
-        root = root.child(
-            div()
-                .absolute()
-                .inset_0()
-                .w_full()
-                .h_full()
-                .bg(gpui::rgb(0xff0000u32)) // 红色背景
-        );
+        // 背景图片层（从全局 BackgroundSettings 读取）
+        let bg_settings = app::background::BackgroundSettings::global(cx);
+        let bg_path = bg_settings.get_path_buf();
+        if let Some(bg_path) = bg_path {
+            root = root.child(
+                img(bg_path)
+                    .absolute()
+                    .inset_0()
+                    .w_full()
+                    .h_full()
+                    .object_fit(ObjectFit::Cover),
+            );
+        } else {
+            root = root.bg(theme.colors.background);
+        }
 
-        // 背景图片层（暂时注释掉，先测试纯色背景）
-        /*
-        let bg_path_str = "/Users/shaipe/workspace/rust/tools/oasis/assets/backgroud/deault.jpg";
-        let bg_path = std::path::PathBuf::from(bg_path_str);
-        tracing::info!("🖼️ 背景图片路径: {:?}", bg_path);
-        tracing::info!("🖼️ 文件是否存在: {:?}", bg_path.exists());
-
-        // 使用 SharedString 加载图片
-        let bg_shared = SharedString::from(bg_path_str);
-        tracing::info!("🖼️ SharedString: {:?}", bg_shared);
-
-        root = root.child(
-            img(bg_shared.clone())
-                .absolute()
-                .inset_0()
-                .w_full()
-                .h_full()
-                .object_fit(ObjectFit::Cover),
-        );
-        */
-
-        // 内容区 + 右键菜单
+        // 内容区 + 右键菜单（透明背景，让背景图片显示）
         let entity = cx.entity().downgrade();
         let entity2 = cx.entity().downgrade();
         let content = div()
@@ -243,13 +221,37 @@ impl Render for DockRoot {
                 )
             });
 
-        root.child(self.title_bar.clone())
-            .child(content)
-            .child(self.dock.clone())
-            .child(self.floating_window.clone())
-            .children(sheet_layer)
-            .children(dialog_layer)
-            .children(notification_layer)
+        // 添加标题栏（必须在 content 之前，这样才会显示在顶部）
+        root = root.child(self.title_bar.clone());
+
+        // 添加内容区
+        root = root.child(content);
+
+        // 添加浮动 Dock
+        root = root.child(self.dock.clone());
+
+        // 渲染所有打开的插件窗口
+        let open_windows = cx
+            .global::<plugins::PluginRegistry>()
+            .open_windows
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+
+        for win in open_windows {
+            root = root.child(win);
+        }
+
+        // 添加全局层
+        let sheet_layer = Root::render_sheet_layer(_window, cx);
+        let dialog_layer = Root::render_dialog_layer(_window, cx);
+        let notification_layer = Root::render_notification_layer(_window, cx);
+
+        root = root.children(sheet_layer);
+        root = root.children(dialog_layer);
+        root = root.children(notification_layer);
+
+        root
     }
 }
 
@@ -300,10 +302,8 @@ where
         },
         |window, cx| {
             let view = crate_view_fn(window, cx);
-            let root = cx.new(|cx| {
-                DockRoot::new(title.clone(), view, window, cx)
-            });
-            cx.new(|cx| Root::new(root, window, cx))
+            // 直接使用 DockRoot，不包装在 Root 中
+            cx.new(|cx| DockRoot::new(title.clone(), view, window, cx))
         },
     )
     .expect("failed to open window")
@@ -332,6 +332,7 @@ pub fn init(cx: &mut App) {
     app_state::AppState::init(cx);
     background::init(cx);
     themes::init(cx);
+    plugins::PluginRegistry::init(cx);
     i18n::init(cx);
     app_menus::init("oasis", cx);
     key_binding::init(cx);

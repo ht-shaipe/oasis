@@ -17,7 +17,10 @@ pub struct BackgroundSettings {
 impl Default for BackgroundSettings {
     fn default() -> Self {
         tracing::info!("🆕 BackgroundSettings::default() 创建");
-        Self { background_image: None }
+        // 设置默认背景图片
+        Self {
+            background_image: Some("/Users/shaipe/workspace/rust/tools/oasis/assets/backgroud/deault.jpg".to_string()),
+        }
     }
 }
 

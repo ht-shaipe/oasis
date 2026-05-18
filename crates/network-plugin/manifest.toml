@@ -1,0 +1,7 @@
+[plugin]
+id = "calculator"
+display_name = "计算器"
+description = "一个简易计算器插件"
+icon = "icon.svg"
+window_width = 320.0
+window_height = 480.0

@@ -1,0 +1,7 @@
+[plugin]
+id = "notepad"
+display_name = "记事本"
+description = "一个简易文本编辑器插件"
+icon = "icon.svg"
+window_width = 400.0
+window_height = 350.0
