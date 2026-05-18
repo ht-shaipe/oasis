@@ -15,10 +15,8 @@ fn main() {
                 cx.quit();
             });
 
-            // 传入背景图片路径（本地绝对路径）；若不需要背景图则传 None
             oasis::open_new(
                 "oasis",
-                None,
                 |_window, cx| cx.new(|_| PlaceholderView),
                 cx,
             );

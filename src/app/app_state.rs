@@ -1,6 +1,8 @@
 use gpui::{App, Global, SharedString};
 use serde::{Deserialize, Serialize};
 
+pub use crate::app::background::{BackgroundManager, BackgroundSettings};
+
 /// Application settings persisted to state file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -40,7 +42,7 @@ fn detect_system_locale() -> Option<SharedString> {
 fn normalize_locale(locale: &str) -> Option<&'static str> {
     let lower = locale.to_lowercase();
     if lower.starts_with("zh") {
-        return Some("zh-CN");
+        return Some("zh_cn");
     }
     if lower.starts_with("en") {
         return Some("en");
@@ -55,9 +57,17 @@ pub struct AppState {
 
 impl AppState {
     pub fn init(cx: &mut App) {
+        tracing::info!("🚀 AppState::init() 开始初始化");
         cx.set_global::<AppState>(Self {
             app_title: SharedString::from(""),
         });
+
+        // Initialize background settings
+        tracing::info!("📋 设置 BackgroundSettings 全局状态");
+        cx.set_global::<BackgroundSettings>(BackgroundSettings::default());
+        tracing::info!("🎨 初始化 BackgroundManager");
+        crate::app::background::init(cx);
+        tracing::info!("✅ AppState::init() 完成");
     }
 
     pub fn global(cx: &App) -> &Self {

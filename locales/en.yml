@@ -7,7 +7,7 @@ menu.app.appearance.dark: Dark
 menu.app.theme: Theme
 menu.app.language: Language
 menu.app.language.english: English
-menu.app.language.zh_cn: 简体中文
+menu.app.language.zh_cn: Simplified Chinese
 menu.app.quit: Quit
 menu.edit.title: Edit
 menu.edit.undo: Undo
@@ -269,8 +269,8 @@ settings.general.group.other: Other
 settings.general.language.label: Language
 settings.general.language.description: Select the interface language.
 settings.general.auto_switch_theme.label: Auto Switch Theme
-settings.general.auto_switch_theme.description: Automatically switch theme based on
-  system settings.
+settings.general.auto_switch_theme.description: Automatically switch theme based
+  on system settings.
 config.page.title: System Settings
 config.group.appearance: Appearance
 config.appearance.dark_mode.label: Dark Mode

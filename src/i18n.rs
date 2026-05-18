@@ -7,7 +7,12 @@ use crate::app_state::AppSettings;
 /// Initialize i18n
 pub fn init(cx: &mut App) {
     let locale = AppSettings::global(cx).locale.clone();
-    rust_i18n::set_locale(locale.as_ref());
+    // 兼容旧版 locale 名：zh-CN → zh_cn
+    let locale = match locale.as_ref() {
+        "zh-CN" | "zh_cn" => "zh_cn",
+        other => other,
+    };
+    rust_i18n::set_locale(locale);
 
     cx.on_action(|action: &SelectLocale, cx| {
         change_locale(action.locale.as_ref());

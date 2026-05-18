@@ -1,6 +1,9 @@
 pub mod actions;
 pub mod app_menus;
 pub mod app_state;
+pub mod background;
+pub mod dock;
+pub mod floating_window;
 #[cfg(target_family = "wasm")]
 pub mod embedded_themes;
 pub mod key_binding;

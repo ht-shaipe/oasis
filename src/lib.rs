@@ -5,17 +5,16 @@ mod panels;
 rust_i18n::i18n!("locales", fallback = "en");
 
 pub use app::{
-    actions::{Quit, SelectLocale, SetBackground, SwitchTheme, SwitchThemeMode},
-    app_menus, app_state, key_binding, system_tray, themes, title_bar,
+    actions::{Quit, SelectLocale, SwitchTheme, SwitchThemeMode},
+    app_menus, app_state, background, dock, floating_window, key_binding, system_tray, themes,
+    title_bar,
 };
 pub use panels::SamplePanel;
 
 use gpui::{
-    div, img, AnyView, App, AppContext as _, Context, Entity, IntoElement, ObjectFit,
-    ParentElement, Render, SharedString, StyledImage, Styled, Window, WindowOptions,
+    div, img, AnyView, App, AppContext as _, BorrowAppContext, Context, Entity, IntoElement,
+    ObjectFit, ParentElement, Render, SharedString, StyledImage, Styled, Window, WindowOptions,
 };
-#[cfg(not(target_family = "wasm"))]
-use std::path::PathBuf;
 #[cfg(not(target_family = "wasm"))]
 use gpui::{px, size, Bounds, WindowBounds, WindowKind};
 #[cfg(not(target_family = "wasm"))]
@@ -86,10 +85,9 @@ pub fn init_web() -> Result<(), JsValue> {
 #[cfg(not(target_family = "wasm"))]
 struct DockRoot {
     title_bar: Entity<title_bar::AppTitleBar>,
+    dock: Entity<app::dock::FloatingDock>,
+    floating_window: Entity<app::floating_window::FloatingWindow>,
     view: AnyView,
-    /// 背景图片路径（本地文件系统路径），None 表示无背景图
-    /// 必须使用 PathBuf 而非 SharedString，否则 img() 会走 AssetSource 而非 fs::read
-    background_image: Option<PathBuf>,
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -101,17 +99,15 @@ impl DockRoot {
         cx: &mut Context<Self>,
     ) -> Self {
         let title_bar = cx.new(|cx| title_bar::AppTitleBar::new(title, window, cx));
+        let dock = cx.new(|cx| app::dock::FloatingDock::new(window, cx));
+        let floating_window =
+            cx.new(|cx| app::floating_window::FloatingWindow::new(window, cx));
         Self {
             title_bar,
+            dock,
+            floating_window,
             view: view.into(),
-            background_image: None,
         }
-    }
-
-    /// 设置初始背景图片路径
-    pub fn with_background_image(mut self, path: impl Into<PathBuf>) -> Self {
-        self.background_image = Some(path.into());
-        self
     }
 
     /// 弹出文件选择器，选取后更新背景图
@@ -119,8 +115,6 @@ impl DockRoot {
         let entity = cx.entity().downgrade();
         window
             .spawn(cx, async move |cx| {
-                // rfd::FileDialog 在 macOS/Windows 上需在主线程运行；
-                // smol::unblock 会把任务提交到线程池，rfd 内部自动回调主线程。
                 let path = smol::unblock(|| {
                     rfd::FileDialog::new()
                         .set_title("选择背景图片")
@@ -133,15 +127,23 @@ impl DockRoot {
                 .await;
 
                 if let Some(path) = path {
+                    tracing::info!("📸 用户选择了背景图片: {:?}", path);
+                    let path_str = path.to_str().map(|s| s.to_string());
                     cx.update(|_, cx| {
-                        if let Some(e) = entity.upgrade() {
-                            e.update(cx, |this, cx| {
-                                this.background_image = Some(path);
-                                cx.notify();
-                            });
-                        }
+                        cx.update_default_global::<app::background::BackgroundSettings, _>(|settings, _cx| {
+                            settings.set_background_image(path_str);
+                        });
                     })
                     .ok();
+
+                    if let Some(e) = entity.upgrade() {
+                        e.update(cx, |_this, cx| {
+                            cx.notify();
+                        })
+                        .ok();
+                    }
+                } else {
+                    tracing::info!("❌ 用户取消了背景图片选择");
                 }
             })
             .detach();
@@ -149,7 +151,10 @@ impl DockRoot {
 
     /// 清除背景图片
     fn clear_background_image(&mut self, cx: &mut Context<Self>) {
-        self.background_image = None;
+        tracing::info!("🗑️ 清除背景图片");
+        cx.update_default_global::<app::background::BackgroundSettings, _>(|settings, _cx| {
+            settings.set_background_image(None);
+        });
         cx.notify();
     }
 }
@@ -160,7 +165,7 @@ impl Render for DockRoot {
         let sheet_layer = Root::render_sheet_layer(window, cx);
         let dialog_layer = Root::render_dialog_layer(window, cx);
         let notification_layer = Root::render_notification_layer(window, cx);
-        let theme = cx.theme();
+        let _theme = cx.theme();
 
         // 外层容器
         let mut root = div()
@@ -170,20 +175,37 @@ impl Render for DockRoot {
             .flex_col()
             .relative();
 
-        // 背景图片层（绝对定位，铺满，cover 模式）
-        // 必须传 PathBuf 给 img()，传字符串会走 AssetSource 导致加载失败
-        if let Some(bg_path) = self.background_image.clone() {
-            root = root.child(
-                img(bg_path)
-                    .absolute()
-                    .inset_0()
-                    .w_full()
-                    .h_full()
-                    .object_fit(ObjectFit::Cover),
-            );
-        } else {
-            root = root.bg(theme.colors.background);
-        }
+        // 测试：先使用红色背景来确认渲染是否正常工作
+        tracing::info!("🎨 设置红色测试背景");
+        root = root.child(
+            div()
+                .absolute()
+                .inset_0()
+                .w_full()
+                .h_full()
+                .bg(gpui::rgb(0xff0000u32)) // 红色背景
+        );
+
+        // 背景图片层（暂时注释掉，先测试纯色背景）
+        /*
+        let bg_path_str = "/Users/shaipe/workspace/rust/tools/oasis/assets/backgroud/deault.jpg";
+        let bg_path = std::path::PathBuf::from(bg_path_str);
+        tracing::info!("🖼️ 背景图片路径: {:?}", bg_path);
+        tracing::info!("🖼️ 文件是否存在: {:?}", bg_path.exists());
+
+        // 使用 SharedString 加载图片
+        let bg_shared = SharedString::from(bg_path_str);
+        tracing::info!("🖼️ SharedString: {:?}", bg_shared);
+
+        root = root.child(
+            img(bg_shared.clone())
+                .absolute()
+                .inset_0()
+                .w_full()
+                .h_full()
+                .object_fit(ObjectFit::Cover),
+        );
+        */
 
         // 内容区 + 右键菜单
         let entity = cx.entity().downgrade();
@@ -192,6 +214,7 @@ impl Render for DockRoot {
             .flex_1()
             .w_full()
             .overflow_hidden()
+            .bg(gpui::rgba(0x00000000)) // 透明背景
             .child(self.view.clone())
             .context_menu(move |menu, _window, _cx| {
                 menu.item(
@@ -222,6 +245,8 @@ impl Render for DockRoot {
 
         root.child(self.title_bar.clone())
             .child(content)
+            .child(self.dock.clone())
+            .child(self.floating_window.clone())
             .children(sheet_layer)
             .children(dialog_layer)
             .children(notification_layer)
@@ -247,13 +272,12 @@ impl Render for Workspace {
 }
 
 #[cfg(not(target_family = "wasm"))]
-pub fn open_new<F, E>(title: &str, background_image: Option<&PathBuf>, crate_view_fn: F, cx: &mut App)
+pub fn open_new<F, E>(title: &str, crate_view_fn: F, cx: &mut App)
 where
     E: Into<AnyView>,
     F: FnOnce(&mut Window, &mut App) -> E + 'static,
 {
     let title = SharedString::from(title.to_string());
-    let bg_image: Option<PathBuf> = background_image.cloned();
 
     let mut window_size = size(px(800.0), px(600.0));
     if let Some(display) = cx.primary_display() {
@@ -277,11 +301,7 @@ where
         |window, cx| {
             let view = crate_view_fn(window, cx);
             let root = cx.new(|cx| {
-                let mut dock = DockRoot::new(title.clone(), view, window, cx);
-                if let Some(bg) = bg_image.clone() {
-                    dock = dock.with_background_image(bg);
-                }
-                dock
+                DockRoot::new(title.clone(), view, window, cx)
             });
             cx.new(|cx| Root::new(root, window, cx))
         },
@@ -310,6 +330,7 @@ pub fn init(cx: &mut App) {
 
     gpui_component::init(cx);
     app_state::AppState::init(cx);
+    background::init(cx);
     themes::init(cx);
     i18n::init(cx);
     app_menus::init("oasis", cx);

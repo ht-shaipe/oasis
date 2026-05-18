@@ -91,7 +91,7 @@ fn language_menu(_cx: &App) -> MenuItem {
             ),
             MenuItem::action(
                 t!("menu.app.language.zh_cn").to_string(),
-                SelectLocale { locale: "zh-CN".into() },
+                SelectLocale { locale: "zh_cn".into() },
             ),
         ],
     })
