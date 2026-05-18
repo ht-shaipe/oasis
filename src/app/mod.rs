@@ -4,7 +4,6 @@ pub mod app_state;
 #[cfg(target_family = "wasm")]
 pub mod embedded_themes;
 pub mod key_binding;
-pub mod mac_title_bar;
 pub mod system_tray;
 pub mod themes;
 pub mod title_bar;

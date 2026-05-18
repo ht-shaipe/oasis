@@ -2,7 +2,7 @@ use gpui::App;
 
 use crate::app::actions::SelectLocale;
 use crate::app_menus;
-use crate::panels::AppSettings;
+use crate::app_state::AppSettings;
 
 /// Initialize i18n
 pub fn init(cx: &mut App) {
@@ -10,8 +10,9 @@ pub fn init(cx: &mut App) {
     rust_i18n::set_locale(locale.as_ref());
 
     cx.on_action(|action: &SelectLocale, cx| {
-        change_locale(action.0.as_ref());
-        AppSettings::global_mut(cx).locale = action.0.clone();
+        change_locale(action.locale.as_ref());
+        AppSettings::global_mut(cx).locale = action.locale.clone();
+        crate::app::themes::save_state(cx);
         app_menus::refresh(cx);
         cx.refresh_windows();
     });

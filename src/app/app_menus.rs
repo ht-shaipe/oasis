@@ -7,7 +7,7 @@ use gpui_component::{ActiveTheme as _, ThemeMode, ThemeRegistry};
 use rust_i18n::t;
 
 #[cfg(not(target_family = "wasm"))]
-use crate::app::actions::{About, CloseWindow, Open, Quit, SelectLocale, SwitchTheme, SwitchThemeMode};
+use crate::app::actions::{Quit, SelectLocale, SwitchTheme, SwitchThemeMode};
 #[cfg(not(target_family = "wasm"))]
 use crate::app_state::AppState;
 
@@ -27,7 +27,7 @@ pub fn init(title: impl Into<SharedString>, cx: &mut App) {
     }
 }
 
-/// Rebuild menus from current `rust_i18n` locale (e.g. after `SelectLocale`).
+/// Rebuild menus from current locale
 #[cfg(not(target_family = "wasm"))]
 pub fn refresh(cx: &mut App) {
     let title = {
@@ -50,20 +50,16 @@ pub fn build_menus(title: SharedString, cx: &App) -> Vec<Menu> {
         Menu {
             name: title,
             items: vec![
-                MenuItem::action(t!("menu.app.about").to_string(), About),
-                MenuItem::Separator,
-                MenuItem::action(t!("menu.app.open").to_string(), Open),
-                MenuItem::Separator,
                 MenuItem::Submenu(Menu {
                     name: t!("menu.app.appearance").to_string().into(),
                     items: vec![
                         MenuItem::action(
                             t!("menu.app.appearance.light").to_string(),
-                            SwitchThemeMode(ThemeMode::Light),
+                            SwitchThemeMode { mode: ThemeMode::Light },
                         ),
                         MenuItem::action(
                             t!("menu.app.appearance.dark").to_string(),
-                            SwitchThemeMode(ThemeMode::Dark),
+                            SwitchThemeMode { mode: ThemeMode::Dark },
                         ),
                     ],
                 }),
@@ -74,30 +70,12 @@ pub fn build_menus(title: SharedString, cx: &App) -> Vec<Menu> {
             ],
         },
         Menu {
-            name: t!("menu.edit.title").to_string().into(),
-            items: vec![
-                MenuItem::action(t!("menu.edit.undo").to_string(), gpui_component::input::Undo),
-                MenuItem::action(t!("menu.edit.redo").to_string(), gpui_component::input::Redo),
-                MenuItem::separator(),
-                MenuItem::action(t!("menu.edit.cut").to_string(), gpui_component::input::Cut),
-                MenuItem::action(t!("menu.edit.copy").to_string(), gpui_component::input::Copy),
-                MenuItem::action(t!("menu.edit.paste").to_string(), gpui_component::input::Paste),
-                MenuItem::separator(),
-                MenuItem::action(t!("menu.edit.select_all").to_string(), gpui_component::input::SelectAll),
-            ],
-        },
-        Menu {
             name: t!("menu.window.title").to_string().into(),
-            items: vec![
-                MenuItem::action(t!("menu.window.close").to_string(), CloseWindow),
-            ],
+            items: vec![],
         },
         Menu {
             name: t!("menu.help.title").to_string().into(),
-            items: vec![MenuItem::action(
-                t!("menu.help.open_website").to_string(),
-                Open,
-            )],
+            items: vec![],
         },
     ]
 }
@@ -109,11 +87,11 @@ fn language_menu(_cx: &App) -> MenuItem {
         items: vec![
             MenuItem::action(
                 t!("menu.app.language.english").to_string(),
-                SelectLocale("en".into()),
+                SelectLocale { locale: "en".into() },
             ),
             MenuItem::action(
                 t!("menu.app.language.zh_cn").to_string(),
-                SelectLocale("zh-CN".into()),
+                SelectLocale { locale: "zh-CN".into() },
             ),
         ],
     })
@@ -134,7 +112,7 @@ fn theme_menu(cx: &App) -> MenuItem {
                 } else {
                     name.to_string()
                 };
-                MenuItem::action(label, SwitchTheme(name))
+                MenuItem::action(label, SwitchTheme { name })
             })
             .collect(),
     })

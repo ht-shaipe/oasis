@@ -1,16 +1,10 @@
 use gpui::{App, KeyBinding};
 
-use crate::app::actions::{Quit, ToggleSearch};
+use crate::app::actions::Quit;
 
-// 快捷键绑定初始化
+/// Key binding initialization
 pub fn init(cx: &mut App) {
     cx.bind_keys([
-        // 全局快捷键
-        KeyBinding::new("/", ToggleSearch, None),
-        #[cfg(target_os = "macos")]
-        KeyBinding::new("cmd-o", crate::app::actions::Open, None),
-        #[cfg(not(target_os = "macos"))]
-        KeyBinding::new("ctrl-o", crate::app::actions::Open, None),
         #[cfg(target_os = "macos")]
         KeyBinding::new("cmd-q", Quit, None),
         #[cfg(not(target_os = "macos"))]

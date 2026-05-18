@@ -1,43 +1,17 @@
-mod bottom_panel;
-mod browser_panel;
-mod center_panel;
-mod code_editor;
-mod credential_manager;
-mod dock_panel;
-mod left_panel;
-mod mac_dock;
-mod markdown_editor;
-mod right_panel;
-mod settings;
-mod toolbox_panel;
-
-pub use crate::app_state::AppSettings;
-pub use center_panel::CenterPanel;
-pub use left_panel::LeftPanel;
-pub use mac_dock::MacDockPanel;
-pub use settings::SettingsPanel;
-pub use toolbox_panel::ToolboxPanel;
-
 use gpui::*;
 use gpui_component::dock::{Panel, PanelControl, PanelEvent};
 use gpui_component::ActiveTheme as _;
-use serde::{Deserialize, Serialize};
+use rust_i18n::t;
 
-/// A minimal sample panel kept for reference and legacy panel registration
+/// Simple sample panel
 pub struct SamplePanel {
     focus_handle: FocusHandle,
-    name: SharedString,
 }
 
 impl SamplePanel {
     pub fn new(_window: &mut Window, cx: &mut App) -> Self {
-        Self::with_name("Sample Panel", cx)
-    }
-
-    pub fn with_name(name: impl Into<SharedString>, cx: &mut App) -> Self {
         Self {
             focus_handle: cx.focus_handle(),
-            name: name.into(),
         }
     }
 }
@@ -73,26 +47,22 @@ impl Render for SamplePanel {
             .flex_col()
             .w_full()
             .h_full()
-            .bg(theme.colors.background)
-            .p(px(12.))
+            .items_center()
+            .justify_center()
+            // 不设置背景色，保持透明，使窗体背景图透过
             .child(
                 div()
+                    .text_color(theme.colors.foreground)
+                    .text_size(px(18.))
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .child(t!("app.title").to_string())
+            )
+            .child(
+                div()
+                    .mt(px(8.))
                     .text_color(theme.colors.muted_foreground)
                     .text_size(px(13.))
-                    .child(self.name.clone())
+                    .child(t!("welcome.message").to_string())
             )
-    }
-}
-
-/// Dock panel state for persistence
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct DockPanelState {
-    #[serde(default)]
-    pub panel_name: String,
-}
-
-impl DockPanelState {
-    pub fn from_value(value: serde_json::Value) -> Self {
-        serde_json::from_value(value).unwrap_or_default()
     }
 }

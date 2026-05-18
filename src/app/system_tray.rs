@@ -95,6 +95,17 @@ fn load_icon() -> Result<tray_icon::Icon> {
     tray_icon::Icon::from_rgba(rgba_data, width, height).context("Failed to create tray icon")
 }
 
+/// Initialize system tray
+#[cfg(not(target_family = "wasm"))]
+pub fn init(cx: &mut gpui::App) {
+    if let Ok(tray) = SystemTray::new() {
+        setup_tray_event_handler(tray, cx);
+    }
+}
+
+#[cfg(target_family = "wasm")]
+pub fn init(_cx: &mut gpui::App) {}
+
 /// Setup tray event handler
 #[cfg(not(target_family = "wasm"))]
 pub fn setup_tray_event_handler(tray: SystemTray, cx: &mut gpui::App) {

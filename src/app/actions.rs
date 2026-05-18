@@ -1,62 +1,33 @@
-use gpui::{actions, Action, SharedString};
+use gpui::actions;
+use gpui::Action;
+use gpui::SharedString;
 use gpui_component::ThemeMode;
-use serde::Deserialize;
 
-// General application actions
 actions!(
     app,
     [
-        About,
-        Open,
+        /// Quit the application
         Quit,
-        CloseWindow,
-        ToggleSearch,
-        OpenSettings,
-        ToggleLeftPanel,
-        ToggleRightPanel,
-        NewFile,
-        OpenFile,
-        SaveFile,
-        SaveFileAs,
     ]
 );
 
-/// Add code selection action
-#[derive(Action, Clone, PartialEq)]
+/// Switch theme mode (Light/Dark)
+#[derive(Clone, PartialEq, Action)]
 #[action(namespace = app, no_json)]
-pub struct AddCodeSelection {
-    pub file_path: SharedString,
-    pub start_line: usize,
-    pub start_column: usize,
-    pub end_line: usize,
-    pub end_column: usize,
-    pub content: SharedString,
+pub struct SwitchThemeMode {
+    pub mode: ThemeMode,
 }
 
-// Menu editing actions
-actions!(menu, [Copy, Paste, Cut, Undo, Redo, SelectAll, Find, FindNext, FindPrevious,]);
-
-/// Select language
-#[derive(Action, Clone, PartialEq, Eq, Deserialize)]
+/// Switch to a named theme
+#[derive(Clone, PartialEq, Action)]
 #[action(namespace = app, no_json)]
-pub struct SelectLocale(pub SharedString);
+pub struct SwitchTheme {
+    pub name: SharedString,
+}
 
-/// Select font size
-#[derive(Action, Clone, PartialEq, Eq, Deserialize)]
+/// Select a locale
+#[derive(Clone, PartialEq, Action)]
 #[action(namespace = app, no_json)]
-pub struct SelectFont(pub usize);
-
-/// Select border radius
-#[derive(Action, Clone, PartialEq, Eq, Deserialize)]
-#[action(namespace = app, no_json)]
-pub struct SelectRadius(pub usize);
-
-/// Switch theme
-#[derive(Action, Clone, PartialEq)]
-#[action(namespace = themes, no_json)]
-pub struct SwitchTheme(pub SharedString);
-
-/// Switch theme mode (light/dark)
-#[derive(Action, Clone, PartialEq)]
-#[action(namespace = themes, no_json)]
-pub struct SwitchThemeMode(pub ThemeMode);
+pub struct SelectLocale {
+    pub locale: SharedString,
+}

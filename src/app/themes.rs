@@ -1,14 +1,14 @@
 #[cfg(not(target_family = "wasm"))]
 use std::path::PathBuf;
 
-use gpui::{App, SharedString, px};
+use gpui::{App, SharedString};
 #[cfg(not(target_family = "wasm"))]
 use gpui_component::ActiveTheme as _;
 use gpui_component::{Theme, ThemeRegistry};
 use serde::{Deserialize, Serialize};
 
-use crate::app::actions::{SwitchTheme, SwitchThemeMode, ToggleLeftPanel, ToggleRightPanel};
-use crate::panels::AppSettings;
+use crate::app::actions::{SelectLocale, SwitchTheme, SwitchThemeMode};
+use crate::app_state::AppSettings;
 
 #[cfg(target_family = "wasm")]
 use crate::app::embedded_themes;
@@ -108,7 +108,6 @@ pub fn init(cx: &mut App) {
                 .cloned()
             {
                 Theme::global_mut(cx).apply_config(&theme);
-                sync_font_size(cx);
                 cx.refresh_windows();
             }
         }) {
@@ -116,8 +115,6 @@ pub fn init(cx: &mut App) {
         }
     }
 
-    // Sync font size
-    Theme::global_mut(cx).font_size = px(app_settings.font_size as f32);
     cx.refresh_windows();
     save_state(cx);
 
@@ -130,19 +127,10 @@ pub fn init(cx: &mut App) {
         .detach();
     }
 
-    // Observe settings changes → sync font_size
-    cx.observe_global::<AppSettings>(|cx| {
-        let font_size = AppSettings::global(cx).font_size;
-        Theme::global_mut(cx).font_size = px(font_size as f32);
-        save_state(cx);
-    })
-    .detach();
-
     // Theme switch action
     cx.on_action(|switch: &SwitchTheme, cx| {
-        if let Some(theme_config) = ThemeRegistry::global(cx).themes().get(&switch.0).cloned() {
+        if let Some(theme_config) = ThemeRegistry::global(cx).themes().get(&switch.name).cloned() {
             Theme::global_mut(cx).apply_config(&theme_config);
-            sync_font_size(cx);
         }
         cx.refresh_windows();
         save_state(cx);
@@ -150,35 +138,20 @@ pub fn init(cx: &mut App) {
 
     // Theme mode switch action
     cx.on_action(|switch: &SwitchThemeMode, cx| {
-        Theme::change(switch.0, None, cx);
+        Theme::change(switch.mode.clone(), None, cx);
         cx.refresh_windows();
         save_state(cx);
     });
 
-    // Toggle left panel action
-    cx.on_action(|_: &ToggleLeftPanel, cx| {
-        let settings = AppSettings::global_mut(cx);
-        settings.show_left_panel = !settings.show_left_panel;
+    // Locale switch action
+    cx.on_action(|select: &SelectLocale, cx| {
+        let locale = select.locale.clone();
+        AppSettings::global_mut(cx).locale = locale.clone();
+        rust_i18n::set_locale(&locale);
+        crate::app_menus::init(crate::app_state::AppState::global(cx).app_title().clone(), cx);
         cx.refresh_windows();
+        save_state(cx);
     });
-
-    // Toggle right panel action
-    cx.on_action(|_: &ToggleRightPanel, cx| {
-        let settings = AppSettings::global_mut(cx);
-        settings.show_right_panel = !settings.show_right_panel;
-        cx.refresh_windows();
-    });
-}
-
-fn sync_font_size(cx: &mut App) {
-    let font_size = AppSettings::global(cx).font_size;
-    Theme::global_mut(cx).font_size = px(font_size as f32);
-}
-
-/// Check if startup is completed
-pub fn startup_completed() -> bool {
-    // Stub: always return true to allow file tree loading
-    true
 }
 
 pub(crate) fn save_state(cx: &mut App) {

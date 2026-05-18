@@ -1,43 +1,29 @@
 mod app;
-mod assets;
-mod components;
-mod core;
-mod utils;
 mod i18n;
 mod panels;
-mod workspace;
 
 rust_i18n::i18n!("locales", fallback = "en");
 
-pub use assets::Assets;
-
 pub use app::{
-    actions::{
-        About, CloseWindow, Open, OpenSettings, Quit, SelectFont, SelectLocale, SelectRadius,
-        SwitchTheme, SwitchThemeMode, ToggleSearch,
-    },
-    app_menus, app_state, key_binding, mac_title_bar, system_tray, themes, title_bar,
+    actions::{Quit, SelectLocale, SwitchTheme, SwitchThemeMode},
+    app_menus, app_state, key_binding, system_tray, themes, title_bar,
 };
-pub use panels::{AppSettings, SettingsPanel};
-pub use workspace::Workspace;
+pub use panels::SamplePanel;
 
 use gpui::{
-    div, AnyView, App, AppContext as _, Context, Entity, IntoElement, ParentElement, Render,
-    SharedString, Styled, Window, WindowOptions,
+    div, AnyView, App, AppContext as _, Context, Entity, IntoElement, ObjectFit, ParentElement,
+    Render, SharedString, Styled, Window, WindowOptions, img,
 };
 #[cfg(not(target_family = "wasm"))]
 use gpui::{px, size, Bounds, WindowBounds, WindowKind};
 #[cfg(not(target_family = "wasm"))]
 use gpui_component::{ActiveTheme, TitleBar};
-use gpui_component::{
-    dock::{register_panel, PanelInfo},
-    Root,
-};
+use gpui_component::{dock::register_panel, Root};
 
 #[cfg(target_family = "wasm")]
 use wasm_bindgen::prelude::*;
 
-const PANEL_NAME: &str = "DockPanelContainer";
+const PANEL_NAME: &str = "SamplePanel";
 
 #[cfg(target_family = "wasm")]
 const GPUI_COMPONENT_ASSETS_BASE: &str = "/gpui-component/gallery/";
@@ -69,13 +55,8 @@ pub fn init_web() -> Result<(), JsValue> {
         i18n::init(cx);
         key_binding::init(cx);
 
-        register_panel(cx, PANEL_NAME, |_dock_area, _state, info, window, cx| {
-            let _state = match info {
-                PanelInfo::Panel(value) => panels::DockPanelState::from_value(value.clone()),
-                _ => panels::DockPanelState::default(),
-            };
-            let panel: gpui::Entity<panels::SamplePanel> =
-                cx.new(|cx| panels::SamplePanel::new(window, cx));
+        register_panel(cx, PANEL_NAME, |_dock_area, _state, _info, window, cx| {
+            let panel: gpui::Entity<SamplePanel> = cx.new(|cx| SamplePanel::new(window, cx));
             Box::new(panel) as Box<dyn gpui_component::dock::PanelView>
         });
 
@@ -99,8 +80,11 @@ pub fn init_web() -> Result<(), JsValue> {
 
 #[cfg(not(target_family = "wasm"))]
 struct DockRoot {
-    title_bar: Entity<mac_title_bar::MacTitleBar>,
+    title_bar: Entity<title_bar::AppTitleBar>,
     view: AnyView,
+    /// 背景图片路径，可以是本地绝对路径或嵌入资源路径。
+    /// 示例：`Some("/path/to/bg.jpg".into())` 或 `None`（不显示背景图）
+    background_image: Option<SharedString>,
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -111,11 +95,18 @@ impl DockRoot {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let title_bar = cx.new(|cx| mac_title_bar::MacTitleBar::new(title, window, cx));
+        let title_bar = cx.new(|cx| title_bar::AppTitleBar::new(title, window, cx));
         Self {
             title_bar,
             view: view.into(),
+            background_image: None,
         }
+    }
+
+    /// 设置背景图片路径（本地文件绝对路径 或 http/https URL）。
+    pub fn with_background_image(mut self, path: impl Into<SharedString>) -> Self {
+        self.background_image = Some(path.into());
+        self
     }
 }
 
@@ -127,15 +118,30 @@ impl Render for DockRoot {
         let notification_layer = Root::render_notification_layer(window, cx);
         let theme = cx.theme();
 
-        // macOS-style: full window with translucent background
-        div()
+        // 外层容器：相对定位，用于背景图片绝对定位参照
+        let mut root = div()
             .w_full()
             .h_full()
             .flex()
             .flex_col()
-            // macOS vibrancy-style background
-            .bg(theme.colors.background)
-            .child(self.title_bar.clone())
+            .relative();
+
+        // 背景图片层：绝对定位，铺满整个窗体，位于所有内容之下
+        if let Some(bg_path) = self.background_image.clone() {
+            root = root.child(
+                img(bg_path)
+                    .absolute()
+                    .inset_0()
+                    .w_full()
+                    .h_full()
+                    .object_fit(ObjectFit::Cover),
+            );
+        } else {
+            // 无背景图时沿用主题纯色背景
+            root = root.bg(theme.colors.background);
+        }
+
+        root.child(self.title_bar.clone())
             .child(
                 div()
                     .flex_1()
@@ -149,15 +155,34 @@ impl Render for DockRoot {
     }
 }
 
+/// Minimal workspace
+struct Workspace {
+    content: Entity<SamplePanel>,
+}
+
+impl Workspace {
+    pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
+        let content = cx.new(|cx| SamplePanel::new(window, cx));
+        cx.new(|_| Self { content })
+    }
+}
+
+impl Render for Workspace {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        self.content.clone()
+    }
+}
+
 #[cfg(not(target_family = "wasm"))]
-pub fn open_new<F, E>(title: &str, crate_view_fn: F, cx: &mut App)
+pub fn open_new<F, E>(title: &str, background_image: Option<&str>, crate_view_fn: F, cx: &mut App)
 where
     E: Into<AnyView>,
     F: FnOnce(&mut Window, &mut App) -> E + 'static,
 {
     let title = SharedString::from(title.to_string());
+    let bg_image: Option<SharedString> = background_image.map(|s| SharedString::from(s.to_string()));
 
-    let mut window_size = size(px(1200.0), px(800.0));
+    let mut window_size = size(px(800.0), px(600.0));
     if let Some(display) = cx.primary_display() {
         let display_size = display.bounds().size;
         window_size.width = window_size.width.min(display_size.width * 0.85);
@@ -178,7 +203,13 @@ where
         },
         |window, cx| {
             let view = crate_view_fn(window, cx);
-            let root = cx.new(|cx| DockRoot::new(title.clone(), view, window, cx));
+            let root = cx.new(|cx| {
+                let mut dock = DockRoot::new(title.clone(), view, window, cx);
+                if let Some(bg) = bg_image.clone() {
+                    dock = dock.with_background_image(bg);
+                }
+                dock
+            });
             cx.new(|cx| Root::new(root, window, cx))
         },
     )
@@ -210,15 +241,11 @@ pub fn init(cx: &mut App) {
     app_menus::init("oasis", cx);
     key_binding::init(cx);
 
-    register_panel(cx, PANEL_NAME, |_dock_area, _state, info, window, cx| {
-        let _state = match info {
-            PanelInfo::Panel(value) => panels::DockPanelState::from_value(value.clone()),
-            _ => panels::DockPanelState::default(),
-        };
-        let panel: gpui::Entity<panels::SamplePanel> =
-            cx.new(|cx| panels::SamplePanel::new(window, cx));
+    register_panel(cx, PANEL_NAME, |_dock_area, _state, _info, window, cx| {
+        let panel: gpui::Entity<SamplePanel> = cx.new(|cx| SamplePanel::new(window, cx));
         Box::new(panel) as Box<dyn gpui_component::dock::PanelView>
     });
 
+    system_tray::init(cx);
     cx.activate(true);
 }
