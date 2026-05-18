@@ -1,13 +1,12 @@
 pub mod calculator;
-pub mod dsl_counter;
 pub mod notepad;
 pub mod plugin_window;
-pub mod ui_dsl;
-pub mod wasm_content;
 pub mod wasm_example;
 pub mod wasm_host;
 pub mod wasm_loader;
 pub mod wasm_plugin_system;
+pub mod wasm_plugin_view;
+pub mod wasm_runtime;
 
 use std::collections::HashMap;
 
@@ -231,23 +230,13 @@ impl PluginRegistry {
 
 /// 注册内置 WASM 插件
 pub fn register_builtin_wasm_plugins(cx: &mut App) {
-    // 注册计数器插件（原有）
-    PluginRegistry::register_wasm_plugin(
-        cx,
-        "counter".to_string(),
-        "计数器".to_string(),
-        "🔢".to_string(),
-        "一个简单的计数器插件".to_string(),
-        crate::plugins::wasm_content::create_counter_view,
-    );
-
-    // 注册 DSL 计数器插件
+    // DSL 计数器 — 通用 WASM 加载，宿主无插件特定代码
     PluginRegistry::register_wasm_plugin(
         cx,
         "dsl_counter".to_string(),
         "DSL 计数器".to_string(),
-        "🎨".to_string(),
-        "声明式 UI DSL 示例插件".to_string(),
-        crate::plugins::dsl_counter::create_dsl_counter_view,
+        "🔢".to_string(),
+        "WASM 插件：声明式 DSL 计数器".to_string(),
+        crate::plugins::wasm_plugin_view::WasmPluginView::create_view,
     );
 }

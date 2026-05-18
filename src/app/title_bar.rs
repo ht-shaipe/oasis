@@ -40,7 +40,9 @@ impl Render for AppTitleBar {
         let theme = cx.theme();
         let is_dark = theme.mode.is_dark();
 
-        TitleBar::new()
+		TitleBar::new()
+			.bg(cx.theme().transparent)
+			.child(div().child("child"))
             .child(
                 div()
                     .flex()

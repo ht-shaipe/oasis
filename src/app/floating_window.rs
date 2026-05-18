@@ -1,6 +1,6 @@
 use gpui::{
     div, px, App, ClickEvent, Context, InteractiveElement as _, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Point, Render,
+    MouseMoveEvent, ParentElement, Pixels, Point, Render,
     StatefulInteractiveElement as _, Styled as _, Window,
 };
 use gpui_component::ActiveTheme as _;
@@ -96,10 +96,6 @@ impl FloatingWindow {
         self.visible = false;
     }
 
-    fn restore(&mut self) {
-        self.visible = true;
-    }
-
     fn close(&mut self) {
         self.visible = false;
     }
@@ -168,10 +164,8 @@ impl Render for FloatingWindow {
             .rounded_lg()
             .bg(bg_color)
             .shadow_lg()
-            .border_1()
-            .border_color(border_color)
             .overflow_hidden()
-            .cursor_pointer()
+            // .cursor_pointer()
             // ── 全局鼠标移动/抬起 ────────────────────────────────────────
             .on_mouse_move(move |event: &MouseMoveEvent, _window, cx| {
                 if let Some(e) = e_move.upgrade() {
@@ -212,7 +206,7 @@ impl Render for FloatingWindow {
                             .size(px(12.))
                             .rounded_full()
                             .bg(close_bg)
-                            .cursor_pointer()
+                            // .cursor_pointer()
                             .on_click(move |_ev: &ClickEvent, _window, cx| {
                                 if let Some(e) = e_close.upgrade() {
                                     e.update(cx, |this, _cx| {
@@ -229,7 +223,7 @@ impl Render for FloatingWindow {
                             .rounded_full()
                             .mx(px(4.))
                             .bg(min_bg)
-                            .cursor_pointer()
+                            // .cursor_pointer()
                             .on_click(move |_ev: &ClickEvent, _window, cx| {
                                 if let Some(e) = e_restore.upgrade() {
                                     e.update(cx, |this, _cx| {
@@ -245,7 +239,7 @@ impl Render for FloatingWindow {
                             .size(px(12.))
                             .rounded_full()
                             .bg(max_bg)
-                            .cursor_pointer()
+                            // .cursor_pointer()
                             .on_click(move |_ev: &ClickEvent, _window, cx| {
                                 if let Some(e) = e_max.upgrade() {
                                     e.update(cx, |this, _cx| {
@@ -367,7 +361,7 @@ impl Render for FloatingWindow {
                     .bottom(px(0.))
                     .w(px(22.))
                     .h(px(22.))
-                    .cursor_pointer()
+                    .cursor_nwse_resize()
                     .on_mouse_down(MouseButton::Left, move |event: &MouseDownEvent, _window, cx| {
                         if let Some(e) = e_resize.upgrade() {
                             e.update(cx, |this, _cx| {
