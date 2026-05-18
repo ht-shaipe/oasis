@@ -1,81 +1,38 @@
-//! Left panel - VS Code style file explorer
+//! Left panel - Sidebar with project features
 
 use gpui::prelude::*;
 use gpui::InteractiveElement;
 use gpui::*;
 use gpui_component::dock::{Panel, PanelControl};
-use gpui_component::ActiveTheme as _;
-use gpui_component::scroll::ScrollableElement;
-use std::collections::HashSet;
+use gpui_component::{ActiveTheme as _, Icon, IconName};
+use rust_i18n::t;
+use crate::components::sidebar::{Sidebar, SidebarMenuItem};
+use crate::app_state::AppSettings;
 
-/// File tree node representation
-#[derive(Debug, Clone)]
-pub struct FileNode {
-    pub name: SharedString,
-    pub is_dir: bool,
-    pub children: Vec<FileNode>,
-    pub path: SharedString,
-}
-
-impl FileNode {
-    pub fn new(name: impl Into<SharedString>, is_dir: bool, path: impl Into<SharedString>) -> Self {
-        Self {
-            name: name.into(),
-            is_dir,
-            children: Vec::new(),
-            path: path.into(),
-        }
-    }
-}
-
-/// Left panel with file explorer
+/// 左侧面板 - 功能导航
 pub struct LeftPanel {
     focus_handle: FocusHandle,
-    root_nodes: Vec<FileNode>,
-    collapsed_dirs: HashSet<SharedString>,
+    collapsed: bool,
 }
 
 impl LeftPanel {
     pub fn new(_window: &mut Window, cx: &mut App) -> Self {
-        // Build sample file tree
-        let mut src_folder = FileNode::new("src", true, "src/");
-        src_folder.children.push(FileNode::new("main.rs", false, "src/main.rs"));
-        src_folder.children.push(FileNode::new("lib.rs", false, "src/lib.rs"));
-        
-        let mut app_folder = FileNode::new("app", true, "src/app/");
-        app_folder.children.push(FileNode::new("mod.rs", false, "src/app/mod.rs"));
-        src_folder.children.push(app_folder);
-        
-        let mut components_folder = FileNode::new("components", true, "src/components/");
-        components_folder.children.push(FileNode::new("button.rs", false, "src/components/button.rs"));
-        src_folder.children.push(components_folder);
-        
-        let mut root_nodes = Vec::new();
-        root_nodes.push(src_folder);
-        root_nodes.push(FileNode::new("Cargo.toml", false, "Cargo.toml"));
-        root_nodes.push(FileNode::new("README.md", false, "README.md"));
-        root_nodes.push(FileNode::new("LICENSE", false, "LICENSE"));
-
         Self {
             focus_handle: cx.focus_handle(),
-            root_nodes,
-            collapsed_dirs: HashSet::new(),
+            collapsed: false,
         }
     }
-    
-    fn toggle_dir(&mut self, path: SharedString, cx: &mut Context<Self>) {
-        if self.collapsed_dirs.contains(&path) {
-            self.collapsed_dirs.remove(&path);
-        } else {
-            self.collapsed_dirs.insert(path);
-        }
-        cx.notify();
+
+    /// 打开工具标签
+    fn open_tool(&self, tool_id: &str, window: &mut Window, cx: &mut Context<Self>) {
+        AppSettings::global_mut(cx).open_tool_tab(tool_id.to_string());
+        window.refresh();
     }
 }
 
 impl Panel for LeftPanel {
     fn panel_name(&self) -> &'static str {
-        "Explorer"
+        "功能导航"
     }
 
     fn title(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
@@ -97,209 +54,197 @@ impl Focusable for LeftPanel {
 
 impl Render for LeftPanel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-        
+        let collapsed = self.collapsed;
+        let this_panel = cx.entity().clone();
+
+        // 创建工具箱子菜单（带子菜单）
+        let toolbox_menu = SidebarMenuItem::new("工具箱")
+            .icon(Icon::new(IconName::Settings).size_4())
+            .default_open(true)
+            .click_to_open(true)
+            .children(vec![
+                // CSV 工具子菜单
+                SidebarMenuItem::new("CSV 工具")
+                    .icon(Icon::new(IconName::File).size_3())
+                    .default_open(true)
+                    .click_to_open(true)
+                    .children(vec![
+                        SidebarMenuItem::new("CSV 统计")
+                            .icon(Icon::new(IconName::File).size_3())
+                            .on_click({
+                                let this_panel = this_panel.clone();
+                                move |_ev, window, cx| {
+                                    this_panel.update(cx, |this, cx| {
+                                        this.open_tool("csv_stats", window, cx);
+                                    });
+                                }
+                            }),
+                        SidebarMenuItem::new("CSV 拆分")
+                            .icon(Icon::new(IconName::File).size_3())
+                            .on_click({
+                                let this_panel = this_panel.clone();
+                                move |_ev, window, cx| {
+                                    this_panel.update(cx, |this, cx| {
+                                        this.open_tool("csv_split", window, cx);
+                                    });
+                                }
+                            }),
+                        SidebarMenuItem::new("CSV 转换")
+                            .icon(Icon::new(IconName::File).size_3())
+                            .on_click({
+                                let this_panel = this_panel.clone();
+                                move |_ev, window, cx| {
+                                    this_panel.update(cx, |this, cx| {
+                                        this.open_tool("csv_convert", window, cx);
+                                    });
+                                }
+                            }),
+                    ]),
+                // JSON 工具子菜单
+                SidebarMenuItem::new("JSON 工具")
+                    .icon(Icon::new(IconName::File).size_3())
+                    .default_open(true)
+                    .click_to_open(true)
+                    .children(vec![
+                        SidebarMenuItem::new("JSON 转换")
+                            .icon(Icon::new(IconName::File).size_3())
+                            .on_click({
+                                let this_panel = this_panel.clone();
+                                move |_ev, window, cx| {
+                                    this_panel.update(cx, |this, cx| {
+                                        this.open_tool("json_convert", window, cx);
+                                    });
+                                }
+                            }),
+                        SidebarMenuItem::new("JSON 合并")
+                            .icon(Icon::new(IconName::File).size_3())
+                            .on_click({
+                                let this_panel = this_panel.clone();
+                                move |_ev, window, cx| {
+                                    this_panel.update(cx, |this, cx| {
+                                        this.open_tool("json_merge", window, cx);
+                                    });
+                                }
+                            }),
+                    ]),
+                // API 工具子菜单
+                SidebarMenuItem::new("API 工具")
+                    .icon(Icon::new(IconName::Globe).size_3())
+                    .default_open(true)
+                    .click_to_open(true)
+                    .children(vec![
+                        SidebarMenuItem::new("API 请求")
+                            .icon(Icon::new(IconName::Globe).size_3())
+                            .on_click({
+                                let this_panel = this_panel.clone();
+                                move |_ev, window, cx| {
+                                    this_panel.update(cx, |this, cx| {
+                                        this.open_tool("api_request", window, cx);
+                                    });
+                                }
+                            }),
+                        SidebarMenuItem::new("API 批量下载")
+                            .icon(Icon::new(IconName::ArrowRight).size_3())
+                            .on_click({
+                                let this_panel = this_panel.clone();
+                                move |_ev, window, cx| {
+                                    this_panel.update(cx, |this, cx| {
+                                        this.open_tool("api_batch_download", window, cx);
+                                    });
+                                }
+                            }),
+                    ]),
+                // 文件工具子菜单
+                SidebarMenuItem::new("文件工具")
+                    .icon(Icon::new(IconName::Folder).size_3())
+                    .default_open(true)
+                    .click_to_open(true)
+                    .children(vec![
+                        SidebarMenuItem::new("批量重命名")
+                            .icon(Icon::new(IconName::File).size_3())
+                            .on_click({
+                                let this_panel = this_panel.clone();
+                                move |_ev, window, cx| {
+                                    this_panel.update(cx, |this, cx| {
+                                        this.open_tool("batch_rename", window, cx);
+                                    });
+                                }
+                            }),
+                        SidebarMenuItem::new("Excel 移动文件")
+                            .icon(Icon::new(IconName::Folder).size_3())
+                            .on_click({
+                                let this_panel = this_panel.clone();
+                                move |_ev, window, cx| {
+                                    this_panel.update(cx, |this, cx| {
+                                        this.open_tool("excel_move", window, cx);
+                                    });
+                                }
+                            }),
+                    ]),
+                // 网络工具
+                SidebarMenuItem::new("网络扫描")
+                    .icon(Icon::new(IconName::Globe).size_3())
+                    .on_click({
+                        let this_panel = this_panel.clone();
+                        move |_ev, window, cx| {
+                            this_panel.update(cx, |this, cx| {
+                                this.open_tool("network_scan", window, cx);
+                            });
+                        }
+                    }),
+            ]);
+
+        // 创建主菜单
+        let main_menu_items = vec![
+            // 代码编辑
+            SidebarMenuItem::new(t!("code_editor.title"))
+                .icon(Icon::new(IconName::File).size_4())
+                .on_click({
+                    let this_panel = this_panel.clone();
+                    move |_ev, window, cx| {
+                        this_panel.update(cx, |this, cx| {
+                            this.open_tool("code_editor", window, cx);
+                        });
+                    }
+                }),
+            // Markdown 编辑
+            SidebarMenuItem::new(t!("markdown_editor.title"))
+                .icon(Icon::new(IconName::File).size_4())
+                .on_click({
+                    let this_panel = this_panel.clone();
+                    move |_ev, window, cx| {
+                        this_panel.update(cx, |this, cx| {
+                            this.open_tool("markdown_editor", window, cx);
+                        });
+                    }
+                }),
+            // 凭据管理
+            SidebarMenuItem::new("凭据管理")
+                .icon(Icon::new(IconName::Settings).size_4())
+                .on_click({
+                    let this_panel = this_panel.clone();
+                    move |_ev, window, cx| {
+                        this_panel.update(cx, |this, cx| {
+                            this.open_tool("credential_manager", window, cx);
+                        });
+                    }
+                }),
+            // 工具箱（带子菜单）
+            toolbox_menu,
+        ];
+
         div()
             .id("left-panel")
             .flex()
             .flex_col()
             .w_full()
             .h_full()
-            .bg(theme.colors.background)
-            .child(self.render_header(cx))
-            .child(self.render_search(cx))
-            .child(self.render_file_tree(cx))
-    }
-}
-
-impl LeftPanel {
-    fn render_header(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-        div()
-            .flex()
-            .flex_row()
-            .items_center()
-            .h(px(35.))
-            .px(px(12.))
+            .bg(cx.theme().colors.background)
             .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap(px(8.))
-                    .child(
-                        div()
-                            .id("more-menu")
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .w(px(22.))
-                            .h(px(22.))
-                            .rounded(px(4.))
-                            .cursor_pointer()
-                            .text_color(theme.colors.muted_foreground)
-                            .text_size(px(14.))
-                            .child("⋯")
-                    )
-                    .child(
-                        div()
-                            .text_size(px(11.))
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(theme.colors.foreground)
-                            .child("EXPLORER")
-                    )
+                // 使用 Sidebar 组件
+                Sidebar::new("main-sidebar")
+                    .collapsed(collapsed)
+                    .children(main_menu_items)
             )
-            .child(div().flex_1())
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap(px(2.))
-                    .child(
-                        div()
-                            .id("collapse-all")
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .w(px(22.))
-                            .h(px(22.))
-                            .rounded(px(4.))
-                            .cursor_pointer()
-                            .hover(|s| s.bg(theme.colors.accent))
-                            .text_color(theme.colors.muted_foreground)
-                            .text_size(px(14.))
-                            .child("⏷")
-                    )
-                    .child(
-                        div()
-                            .id("add-file")
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .w(px(22.))
-                            .h(px(22.))
-                            .rounded(px(4.))
-                            .cursor_pointer()
-                            .hover(|s| s.bg(theme.colors.accent))
-                            .text_color(theme.colors.muted_foreground)
-                            .text_size(px(14.))
-                            .child("+")
-                    )
-            )
-    }
-    
-    fn render_search(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-        
-        div()
-            .flex()
-            .flex_row()
-            .items_center()
-            .h(px(28.))
-            .mx(px(8.))
-            .mb(px(4.))
-            .px(px(8.))
-            .rounded(px(6.))
-            .bg(theme.colors.input)
-            .border(px(1.))
-            .border_color(theme.colors.border)
-            .child(
-                div()
-                    .text_color(theme.colors.muted_foreground)
-                    .text_size(px(13.))
-                    .mr(px(6.))
-                    .child("🔍")
-            )
-            .child(
-                div()
-                    .text_size(px(13.))
-                    .text_color(theme.colors.muted_foreground)
-                    .child("Search")
-            )
-    }
-    
-    fn render_file_tree(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .flex()
-            .flex_col()
-            .flex_1()
-            .overflow_y_scrollbar()
-            .children(self.root_nodes.iter().map(|node| {
-                self.render_node(node, 0, cx)
-            }))
-    }
-    
-    fn render_node(&self, node: &FileNode, depth: usize, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.theme();
-        let indent = depth * 12;
-        let is_collapsed = self.collapsed_dirs.contains(&node.path);
-        
-        if node.is_dir {
-            div()
-                .flex()
-                .flex_col()
-                .child(
-                    div()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .pl(px(indent as f32))
-                        .h(px(22.))
-                        .cursor_pointer()
-                        .hover(|s| s.bg(theme.colors.accent))
-                        .child(
-                            div()
-                                .text_size(px(14.))
-                                .text_color(theme.colors.muted_foreground)
-                                .child(if is_collapsed { "▶" } else { "▼" })
-                        )
-                        .child(
-                            div()
-                                .text_size(px(14.))
-                                .ml(px(4.))
-                                .text_color(theme.colors.primary)
-                                .child(if is_collapsed { "📁" } else { "📂" })
-                        )
-                        .child(
-                            div()
-                                .flex_1()
-                                .ml(px(4.))
-                                .text_size(px(13.))
-                                .text_color(theme.colors.foreground)
-                                .child(node.name.clone())
-                        )
-                )
-                .when(!is_collapsed, |el| {
-                    el.children(node.children.iter().map(|child| {
-                        self.render_node(child, depth + 1, cx)
-                    }))
-                })
-                .into_any_element()
-        } else {
-            div()
-                .flex()
-                .flex_row()
-                .items_center()
-                .pl(px(indent as f32))
-                .h(px(22.))
-                .cursor_pointer()
-                .hover(|s| s.bg(theme.colors.accent))
-                .child(
-                    div()
-                        .text_size(px(14.))
-                        .text_color(theme.colors.muted_foreground)
-                        .mr(px(4.))
-                        .child("📄")
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .text_size(px(13.))
-                        .text_color(theme.colors.foreground)
-                        .child(node.name.clone())
-                )
-                .into_any_element()
-        }
     }
 }

@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use gpui::{
-    prelude::FluentBuilder as _, px, AppContext as _, Context, Entity, InteractiveElement as _,
+    prelude::FluentBuilder as _, px, AppContext as _, Context, Entity,
     IntoElement, ParentElement as _, Styled, Window,
 };
 use gpui_component::{

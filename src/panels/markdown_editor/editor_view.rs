@@ -1,12 +1,13 @@
-use crate::panels::markdown_editor::model::{DocumentState, EditDelta};
+#![allow(dead_code)]
+use crate::panels::markdown_editor::model::DocumentState;
 use crate::panels::markdown_editor::syntax::{SyntaxKind, SyntaxSpan, markdown_spans};
 use crate::panels::markdown_editor::text_utils::ellipsize_chars;
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    App, Bounds, ClipboardItem, Context, Entity, FocusHandle, Focusable, FontStyle, FontWeight,
+    App, Bounds, Context, Entity, FocusHandle, Focusable, FontStyle, FontWeight,
     HighlightStyle, Hsla, InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent,
     MouseMoveEvent, ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled,
-    StyledText, UnderlineStyle, Window, canvas, combine_highlights, div, fill, point, px, rgba,
+    StyledText, UnderlineStyle, Window, canvas, combine_highlights, div, fill, point, px,
     rgb, size,
 };
 use gpui_component::ActiveTheme;

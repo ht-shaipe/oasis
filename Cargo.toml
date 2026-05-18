@@ -16,6 +16,9 @@ available-locales = ["en", "zh-CN"]
 default-locale = "en"
 load-path = "locales"
 
+[build-dependencies]
+rust-i18n = "3"
+
 [features]
 default = ["native-app"]
 # Desktop binary (system tray, etc.). Omit for `wasm32` builds: `--no-default-features --lib`.

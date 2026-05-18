@@ -1,4 +1,6 @@
 use gpui::{App, Global, SharedString};
+use gpui_component::IconName;
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -6,7 +8,7 @@ use std::sync::Arc;
 #[cfg(not(target_family = "wasm"))]
 use crate::core::credential_manager::CredentialService;
 #[cfg(not(target_family = "wasm"))]
-use crate::core::event_bus::{EventHub, CodeSelectionEvent, ToolSelectedEvent};
+use crate::core::event_bus::EventHub;
 #[cfg(not(target_family = "wasm"))]
 use crate::core::services::CommentStyle;
 #[cfg(not(target_family = "wasm"))]
@@ -45,7 +47,13 @@ pub struct AppSettings {
     // Tool state (not persisted)
     #[serde(skip)]
     pub selected_tool: Option<String>,
-    
+
+    // Tool tabs (not persisted)
+    #[serde(skip)]
+    pub tool_tabs: HashMap<usize, ToolTabState>,
+    #[serde(skip)]
+    pub active_tool_tab_id: Option<usize>,
+
     // Terminal state for bottom panel (not persisted)
     #[serde(skip)]
     pub terminal_tabs: HashMap<usize, TerminalTabState>,
@@ -61,6 +69,60 @@ pub struct TerminalTabState {
     pub id: usize,
     pub title: SharedString,
     pub output: Vec<SharedString>,
+}
+
+/// State for a tool tab (kept in memory, not persisted)
+#[derive(Clone)]
+pub struct ToolTabState {
+    pub id: usize,              // 标签 ID (>= 1000)
+    pub tool_id: String,        // 工具标识符
+    pub title: SharedString,    // 标签标题
+    pub icon: IconName,         // 标签图标
+}
+
+impl std::fmt::Debug for ToolTabState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ToolTabState")
+            .field("id", &self.id)
+            .field("tool_id", &self.tool_id)
+            .field("title", &self.title)
+            .field("icon", &"<icon>")  // IconName doesn't implement Debug
+            .finish()
+    }
+}
+
+/// Tool metadata for creating tabs
+pub struct ToolMetadata {
+    pub id: &'static str,
+    pub name_key: &'static str,
+    pub icon: IconName,
+    pub tab_id: usize,
+}
+
+pub const TOOL_METADATA: &[ToolMetadata] = &[
+    ToolMetadata { id: "csv_stats", name_key: "toolbox.tools.csv_stats", icon: IconName::Folder, tab_id: 1001 },
+    ToolMetadata { id: "csv_split", name_key: "toolbox.tools.csv_split", icon: IconName::File, tab_id: 1002 },
+    ToolMetadata { id: "csv_convert", name_key: "toolbox.tools.csv_convert", icon: IconName::File, tab_id: 1003 },
+    ToolMetadata { id: "batch_rename", name_key: "toolbox.tools.batch_rename", icon: IconName::File, tab_id: 1004 },
+    ToolMetadata { id: "excel_move", name_key: "toolbox.tools.excel_move_files", icon: IconName::Folder, tab_id: 1005 },
+    ToolMetadata { id: "api_request", name_key: "toolbox.tools.api_request", icon: IconName::Globe, tab_id: 1006 },
+    ToolMetadata { id: "api_batch_download", name_key: "toolbox.tools.api_batch_download", icon: IconName::ArrowRight, tab_id: 1007 },
+    ToolMetadata { id: "json_convert", name_key: "toolbox.tools.json_convert", icon: IconName::File, tab_id: 1008 },
+    ToolMetadata { id: "json_merge", name_key: "toolbox.tools.json_merge", icon: IconName::File, tab_id: 1009 },
+    ToolMetadata { id: "network_scan", name_key: "toolbox.tools.network_scan", icon: IconName::Globe, tab_id: 1010 },
+    ToolMetadata { id: "credential_manager", name_key: "credential.manager", icon: IconName::Settings, tab_id: 1011 },
+    ToolMetadata { id: "code_editor", name_key: "code_editor.title", icon: IconName::File, tab_id: 1012 },
+    ToolMetadata { id: "markdown_editor", name_key: "markdown_editor.title", icon: IconName::File, tab_id: 1013 },
+];
+
+/// Get tool metadata by tool ID
+pub fn get_tool_metadata(tool_id: &str) -> Option<&'static ToolMetadata> {
+    TOOL_METADATA.iter().find(|m| m.id == tool_id)
+}
+
+/// Get tool ID from tab ID
+pub fn tool_id_from_tab(tab_id: usize) -> Option<&'static str> {
+    TOOL_METADATA.iter().find(|m| m.tab_id == tab_id).map(|m| m.id)
 }
 
 impl Default for AppSettings {
@@ -82,6 +144,8 @@ impl Default for AppSettings {
             auto_update: false,
             check_frequency_days: 7.0,
             selected_tool: None,
+            tool_tabs: HashMap::new(),
+            active_tool_tab_id: None,
             terminal_tabs: HashMap::new(),
             active_terminal_tab_id: 0,
             next_terminal_tab_id: 1,
@@ -134,7 +198,66 @@ impl AppSettings {
     pub fn set_selected_tool(&mut self, tool: Option<String>) {
         self.selected_tool = tool;
     }
-    
+
+    /// 打开或切换到工具标签
+    pub fn open_tool_tab(&mut self, tool_id: String) -> usize {
+        let metadata = get_tool_metadata(&tool_id);
+        let tab_id = metadata.map(|m| m.tab_id).unwrap_or(1000 + tool_id.len());
+
+        // 如果标签已存在，切换到它
+        if self.tool_tabs.contains_key(&tab_id) {
+            self.active_tool_tab_id = Some(tab_id);
+            return tab_id;
+        }
+
+        // 创建新标签
+        let title = metadata.map(|m| t!(m.name_key).to_string())
+            .unwrap_or_else(|| tool_id.clone());
+        let icon = metadata.map(|m| m.icon.clone()).unwrap_or(IconName::File);
+
+        self.tool_tabs.insert(tab_id, ToolTabState {
+            id: tab_id,
+            tool_id: tool_id.clone(),
+            title: title.into(),
+            icon,
+        });
+
+        self.active_tool_tab_id = Some(tab_id);
+        tab_id
+    }
+
+    /// 关闭工具标签
+    pub fn close_tool_tab(&mut self, tab_id: usize) {
+        if tab_id < 1000 {
+            return; // 不是工具标签
+        }
+        self.tool_tabs.remove(&tab_id);
+        if self.active_tool_tab_id == Some(tab_id) {
+            self.active_tool_tab_id = None;
+        }
+    }
+
+    /// 切换到指定工具标签
+    pub fn set_active_tool_tab(&mut self, tab_id: usize) {
+        if self.tool_tabs.contains_key(&tab_id) {
+            self.active_tool_tab_id = Some(tab_id);
+        }
+    }
+
+    /// 获取当前活动的工具ID
+    pub fn get_active_tool_id(&self) -> Option<&str> {
+        self.active_tool_tab_id
+            .and_then(|id| self.tool_tabs.get(&id))
+            .map(|state| state.tool_id.as_str())
+    }
+
+    /// 获取所有工具标签
+    pub fn get_all_tool_tabs(&self) -> Vec<&ToolTabState> {
+        let mut tabs: Vec<_> = self.tool_tabs.values().collect();
+        tabs.sort_by_key(|t| t.id);
+        tabs
+    }
+
     pub fn get_active_terminal_tab(&self) -> Option<&TerminalTabState> {
         self.terminal_tabs.get(&self.active_terminal_tab_id)
     }

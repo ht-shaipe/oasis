@@ -1,5 +1,4 @@
 mod document;
 mod undo;
 
-pub use document::{DocumentState, EditDelta};
-pub use undo::UndoHistory;
+pub use document::DocumentState;

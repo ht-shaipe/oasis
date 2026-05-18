@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use aes_gcm::{
     aead::{Aead, KeyInit, Payload},
     Aes256Gcm, Nonce,
@@ -22,7 +23,7 @@ impl EncryptionService {
         let mut salt = vec![0u8; SALT_LEN];
         rand::thread_rng().fill_bytes(&mut salt);
 
-        let key = Self::derive_key(password, &salt, PBKDF2_ITERATIONS)?;
+        let _key = Self::derive_key(password, &salt, PBKDF2_ITERATIONS)?;
         let mut iv = vec![0u8; IV_LEN];
         rand::thread_rng().fill_bytes(&mut iv);
 

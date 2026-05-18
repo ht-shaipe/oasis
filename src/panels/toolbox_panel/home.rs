@@ -1,12 +1,12 @@
+#![allow(dead_code)]
 //! 工具箱首页：按分组展示工具入口。
 
 use gpui::{
-    Context, Entity, InteractiveElement as _, IntoElement, ParentElement as _, Styled, Window,
-    prelude::FluentBuilder as _, px,
+    Context, Entity, IntoElement, ParentElement as _, Styled, Window, px,
 };
+use gpui_component::button::{Button};
 use gpui_component::{
     ActiveTheme, Icon, IconName, Sizable,
-    button::{Button, ButtonVariants as _},
     h_flex,
     label::Label,
     scroll::ScrollableElement,
@@ -28,7 +28,7 @@ fn tool_tile(
     tool: ToolId,
 ) -> Button {
     let label = label.into();
-    let entity = entity.clone();
+    let _entity = entity.clone();
     Button::new(id)
         .large()
         .outline()
@@ -73,7 +73,7 @@ fn tool_tile(
                 super::ToolId::JsonMerge => "json_merge",
                 super::ToolId::NetworkScan => "network_scan",
             };
-            AppSettings::global_mut(cx).selected_tool = Some(tool_id.to_string());
+            AppSettings::global_mut(cx).open_tool_tab(tool_id.to_string());
         })
 }
 
@@ -176,8 +176,8 @@ pub fn render_home(
 
     let group_title_api = t!("toolbox.groups.api").to_string();
     let tool_api_request_label = t!("toolbox.tools.api_request").to_string();
-    let tool_batch_download_label = "批量下载".to_string();
-    let tool_network_scan_label = "网络扫描".to_string();
+    let tool_batch_download_label = t!("toolbox.tools.api_batch_download").to_string();
+    let tool_network_scan_label = t!("toolbox.tools.network_scan").to_string();
 
     let card_api_request = tool_tile(
         "tool-home-api-request",

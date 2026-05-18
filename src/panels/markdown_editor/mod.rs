@@ -1,11 +1,11 @@
+#![allow(dead_code)]
 mod editor_view;
 mod model;
 mod syntax;
 mod text_utils;
 
 pub use editor_view::{EditorView, InlineMarkdownState};
-pub use model::{DocumentState, EditDelta, UndoHistory};
-pub use syntax::{SyntaxKind, SyntaxSpan, markdown_spans};
+pub use model::DocumentState;
 
 use gpui::{prelude::FluentBuilder, *};
 use gpui_component::{
@@ -61,7 +61,7 @@ impl MarkdownEditorPanel {
         cx.new(|cx| Self::new(window, cx))
     }
 
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
         let document = cx.new(|_cx| DocumentState::new_empty());
         let inline_markdown = cx.new(|_cx| InlineMarkdownState::new());
         let editor = cx.new(|_cx| EditorView::new(document.clone(), inline_markdown.clone()));
@@ -88,7 +88,7 @@ impl MarkdownEditorPanel {
 
         // Update the document - this will trigger editor re-render automatically
         // since EditorView observes DocumentState changes
-        self.document.update(cx, |doc, cx| {
+        self.document.update(cx, |doc, _cx| {
             doc.set_text(&content);
             doc.clear_undo_history();
             doc.save_snapshot();
@@ -146,48 +146,63 @@ impl MarkdownEditorPanel {
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "untitled.md".to_string());
 
-        // Use synchronous file dialog on macOS for better compatibility
-        let path = rfd::FileDialog::new()
-            .set_title("Save Markdown File")
-            .set_file_name(&suggested_name)
-            .add_filter("Markdown", &["md", "markdown"])
-            .save_file();
+        let entity = cx.entity().clone();
+        let text = self.document.read(cx).text();
+        let _current_path = self.current_file_path.clone();
+        cx.spawn(async move |_entity, cx| {
+            let path = rfd::AsyncFileDialog::new()
+                .set_title("Save Markdown File")
+                .set_file_name(&suggested_name)
+                .add_filter("Markdown", &["md", "markdown"])
+                .save_file()
+                .await;
 
-        if let Some(path) = path {
-            let text = self.document.read(cx).text();
-            match std::fs::write(&path, &text) {
-                Ok(()) => {
-                    self.current_file_path = Some(path);
-                    self.document.update(cx, |doc, cx| {
-                        doc.save_snapshot();
-                        cx.notify();
-                    });
-                }
-                Err(e) => {
-                    log::error!("Failed to save file: {}", e);
+            if let Some(file_handle) = path {
+                let path = file_handle.path().to_path_buf();
+                match std::fs::write(&path, &text) {
+                    Ok(()) => {
+                        let path_clone = path.clone();
+                        _ = entity.update(cx, |this, cx| {
+                            this.current_file_path = Some(path_clone);
+                            this.document.update(cx, |doc, cx| {
+                                doc.save_snapshot();
+                                cx.notify();
+                            });
+                        });
+                    }
+                    Err(e) => {
+                        log::error!("Failed to save file: {}", e);
+                    }
                 }
             }
-        }
+        }).detach();
     }
 
     /// Show file picker to open a markdown file
-    pub fn show_open_file_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn show_open_file_dialog(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         log::info!("Opening file dialog");
 
-        // Use synchronous file dialog on macOS for better compatibility
-        let path = rfd::FileDialog::new()
-            .set_title("Open Markdown File")
-            .add_filter("Markdown", &["md", "markdown"])
-            .pick_file();
+        // Run rfd async to avoid blocking GPUI's main loop
+        let entity = cx.entity().clone();
+        cx.spawn(async move |_this, cx| {
+            let path = rfd::AsyncFileDialog::new()
+                .set_title("Open Markdown File")
+                .add_filter("Markdown", &["md", "markdown"])
+                .pick_file()
+                .await;
 
-        if let Some(path) = path {
-            log::info!("File selected: {:?}", path);
-            if let Err(e) = self.open_file(path, cx) {
-                log::error!("Failed to open file: {}", e);
+            if let Some(file_handle) = path {
+                log::info!("File selected: {:?}", file_handle.path());
+                let path = file_handle.path().to_path_buf();
+                _ = entity.update(cx, |this, cx| {
+                    if let Err(e) = this.open_file(path, cx) {
+                        log::error!("Failed to open file: {}", e);
+                    }
+                });
+            } else {
+                log::info!("No file selected");
             }
-        } else {
-            log::info!("No file selected");
-        }
+        }).detach();
     }
 
     fn render_toolbar(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {

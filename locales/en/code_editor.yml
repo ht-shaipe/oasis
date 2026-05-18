@@ -1,0 +1,20 @@
+_version: 1
+
+code_editor:
+  tooltip:
+    go_to_line: "Go to Line"
+    indent_guides: "Indent Guides"
+    line_number: "Line Numbers"
+    soft_wrap: "Soft Wrap"
+  no_selection: "No selection"
+  no_file_opened: "No File Opened"
+  no_file_hint: "Select a file from the file tree to start editing"
+  auto_correct: "AutoCorrect"
+  change_to: "Change to '%{suggestion}'"
+  add_doc_comment: "Add Documentation Comment (AI)"
+  add_inline_comment: "Add Inline Comment (AI)"
+  explain_code: "Explain Code (AI)"
+  suggest_improvements: "Suggest Improvements (AI)"
+  explain_failed: "Failed to explain code: %{error}"
+  suggest_failed: "Failed to generate suggestions: %{error}"
+  title: "Code Editor"

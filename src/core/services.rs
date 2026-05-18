@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // Core services module
 
 /// Comment style for code documentation

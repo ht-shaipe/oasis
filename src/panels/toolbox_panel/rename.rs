@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use gpui::{
-    AppContext as _, Context, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
+    AppContext as _, Context, Entity, IntoElement, ParentElement as _,
     SharedString, Styled, Window, px,
 };
 use gpui_component::{

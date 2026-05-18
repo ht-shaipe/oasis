@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::core::credential_manager::models::AuditLog;
 use anyhow::Result;
 use rusqlite::params;

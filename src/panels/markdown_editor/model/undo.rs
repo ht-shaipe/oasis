@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::ops::Range;
 
 /// Represents a single edit operation that can be undone/redone

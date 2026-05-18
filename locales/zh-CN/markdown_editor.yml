@@ -1,0 +1,8 @@
+_version: 1
+
+markdown_editor:
+  empty:
+    title: 未打开文件
+    description: 从文件树中打开一个 markdown 文件开始编辑
+  find: 查找
+  title: Markdown 编辑器

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{ops::Range, time::Duration, str::FromStr};
 
 use anyhow::anyhow;
@@ -11,7 +12,7 @@ use gpui_component::{
     notification::Notification,
 };
 use lsp_types::{
-    CodeAction, CodeActionKind, CompletionContext, CompletionResponse, TextEdit, WorkspaceEdit,
+    CodeAction, CodeActionKind, CompletionContext, CompletionResponse, TextEdit,
 };
 
 use crate::app_state::AppState;
@@ -318,7 +319,7 @@ impl CodeActionProvider for TextConvertor {
         }
 
         let state = state.read(cx);
-        let document_uri = lsp_types::Uri::from_str("file://CodeEditorPanel").unwrap();
+        let _document_uri = lsp_types::Uri::from_str("file://CodeEditorPanel").unwrap();
 
         let old_text = state.text().slice(range.clone()).to_string();
         let start = state.text().offset_to_position(range.start);

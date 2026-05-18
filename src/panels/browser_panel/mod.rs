@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // Browser/WebView panel - stub implementation
 // TODO: Implement actual webview functionality
 

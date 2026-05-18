@@ -1,9 +1,11 @@
+#![allow(dead_code)]
 mod lsp_providers;
 mod lsp_store;
 mod panel;
 mod types;
 
 pub use panel::CodeEditorPanel;
+
 
 use gpui_component::highlighter::{LanguageConfig, LanguageRegistry};
 

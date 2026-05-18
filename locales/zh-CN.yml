@@ -1,4 +1,3 @@
-_version: 1
 app.title: oasis
 menu.app.about: 关于
 menu.app.open: 打开...
@@ -25,261 +24,95 @@ title_bar.font_size.label: 字体大小
 title_bar.font_size.large: 大
 title_bar.font_size.medium_default: 中（默认）
 title_bar.font_size.small: 小
-settings.general.title: 通用
-settings.general.group.appearance: 外观
-settings.general.appearance.dark_mode.label: 深色模式
-settings.general.appearance.dark_mode.description: 在浅色与深色主题间切换。
-settings.general.appearance.auto_switch.label: 自动切换主题
-settings.general.appearance.auto_switch.description: 根据系统设置自动切换主题。
-settings.general.appearance.resettable.label: 重置按钮
-settings.general.appearance.resettable.description: 启用或禁用设置中的重置按钮。
-settings.general.group.font: 字体
-settings.general.font.family.label: 字体
-settings.general.font.family.description: 选择界面字体。
-settings.general.font.size.label: 字号
-settings.general.font.size.description: 调整字号以提升可读性。
-settings.general.font.line_height.label: 行高
-settings.general.font.line_height.description: 调整行高以提升可读性。
-settings.general.group.other: 其他
-settings.general.language.label: 语言
-settings.general.language.description: 选择界面语言。
-settings.general.auto_switch_theme.label: 自动切换主题
-settings.general.auto_switch_theme.description: 根据系统设置自动切换主题。
-tab.workbench: 工作台
-tab.config: 配置
-tab.log: 日志
-tab.monitor: 监控
-config.page.title: 系统配置
-config.group.appearance: 外观
-config.appearance.dark_mode.label: 深色模式
-config.appearance.dark_mode.description: 启用深色主题
-config.appearance.language.label: 语言
-config.appearance.language.description: 选择界面语言
-config.group.font: 字体
-config.font.label: 字体
-config.font.description: 选择界面字体
-config.font.size.label: 字号
-config.font.size.description: 调整字号以提升可读性
-config.font.line_height.label: 行高
-config.font.line_height.description: 调整行高以提升可读性
-config.group.other: 其他
-config.auto_switch_theme.label: 自动切换主题
-config.auto_switch_theme.description: 根据系统设置自动切换主题
-config.group.update: 软件更新
-config.update.current_version.label: 当前版本
-config.update.status.up_to_date: 已是最新版本
-config.update.status.checking: 正在检查更新...
-config.update.status.available: '发现新版本: %{version}'
-config.update.status.error: '检查更新失败: %{error}'
-config.update.check.label: 检查更新
-config.update.check.button: 立即检查
-config.update.check.description: 手动检查是否有可用的软件更新
-config.update.auto_check.label: 启动时自动检查
-config.update.auto_check.description: 应用启动时自动检查是否有新版本
-config.update.notifications.label: 更新通知
-config.update.notifications.description: 当有新版本时显示通知提醒
-config.update.auto_update.label: 自动更新
-config.update.auto_update.description: 发现新版本时自动下载并安装更新
-config.update.frequency.label: 检查频率
-config.update.frequency.description: 自动检查更新的间隔天数
-panel.workspace: 工作区
 lang.zh_cn: 简体中文
 lang.en: English
-
-# 
-toolbox:
-  title: 工具箱
-  groups:
-    csv: CSV 工具
-    api: API 工具
-    files: 文件工具
-  home:
-    title: 工具箱
-    subtitle: 选择一个工具开始使用
-    card_hint: 点击打开
-  tools:
-    csv_stats: CSV 统计
-    csv_split: CSV 分割器
-    csv_convert: CSV 转换器
-    batch_rename: 批量重命名
-    excel_move_files: Excel 文件移动
-    api_request: API 请求
-    json_convert: JSON 转换器
-    json_merge: JSON 合并
-  back: 返回
-  csv:
-    section_title: CSV 统计
-    select_dir: 选择目录
-    no_dir: 请先选择目录
-    no_csv: 未找到 CSV 文件
-    loading: 加载中...
-    pick_folder: 选择文件夹
-    col_name: 列
-    col_lines: 行数
-    lines_suffix: 行
-    total: 总计
-  csv_split:
-    select_file: 选择 CSV 文件
-    no_file: 请选择 CSV 文件
-    output_dir: 输出目录
-    no_output_dir: 请选择输出目录
-    num_parts: 分割份数
-    total_lines: 总行数
-    estimated_per_file: 每份预估行数
-    pick_file_title: 选择 CSV 文件
-    pick_output_title: 选择输出目录
-    execute: 分割
-    success: 分割完成
-    error: 分割失败
-  csv_convert:
-    select_file: 选择文件
-    no_file: 请选择文件
-    output_file: 输出文件
-    no_output: 请指定输出文件
-    output_format: 输出格式
-    pick_file_title: 选择文件
-    pick_output_title: 指定输出文件
-    execute: 转换
-    success: 转换完成
-    error: 转换失败
-  rename:
-    select_dir: 选择目录
-    no_dir: 请选择目录
-    field_needle: 查找
-    field_replace: 替换为
-    placeholder_needle: 输入搜索文本...
-    placeholder_replace: 输入替换文本...
-    recursive: 递归
-    hint: 支持 * 和 ? 通配符
-    preview: 预览
-    preview_title: 重命名预览
-    preview_count_prefix: '重命名 '
-    preview_ok: 个匹配
-    preview_dup_prefix: '重复: '
-    preview_found_prefix: '已找到: '
-    preview_missing_prefix: '缺失: '
-    preview_total_prefix: '总计: '
-    no_matches: 未找到匹配文件
-    target_exists: 目标文件已存在
-    duplicate_target: 目标文件名重复
-    empty_needle: 搜索文本不能为空
-    scan_error: 目录扫描错误
-    done_renamed: 已重命名
-    done_files_suffix: 个文件
-    done_partial_errors: 部分完成但有错误
-    pick_dir_title: 选择目录
-    execute: 重命名
-  excel_move:
-    select_excel: 选择 Excel 文件
-    no_excel: 请选择 Excel 文件
-    select_input_dir: 选择源目录
-    no_input_dir: 请选择源目录
-    select_output_dir: 选择输出目录
-    no_output_dir: 请选择输出目录
-    placeholder_header: 表头列（如 A, B, C）
-    placeholder_index: 索引序号（从1开始）
-    placeholder_suffixes: 后缀（逗号分隔）
-    suffixes: 后缀
-    col_header: 表头列
-    col_index: 索引列
-    no_headers: 未找到表头
-    header_not_found: 未找到表头列
-    index_out_of_range: 索引超出范围
-    unsupported_format: 不支持的文件格式
-    no_suffixes: 未指定后缀
-    source_missing: 源文件缺失
-    output_exists: 输出文件已存在
-    duplicate_output: 输出文件名重复
-    preview: 预览
-    preview_title: 预览
-    preview_ok: 就绪
-    preview_found_prefix: '已找到: '
-    preview_missing_prefix: '缺失: '
-    preview_dup_prefix: '重复: '
-    preview_total_prefix: '总计: '
-    headers_click_hint: 点击列标题进行选择
-    done_moved: 已移动
-    done_files_suffix: 个文件
-    done_partial_errors: 部分完成但有错误
-    pick_excel_title: 选择 Excel 文件
-    pick_input_title: 选择源目录
-    pick_output_title: 选择输出目录
-    execute: 移动文件
-  json_convert:
-    select_file: 选择文件
-    no_file: 请选择文件
-    input_dir: 输入目录
-    no_input_dir: 请选择输入目录
-    output_dir: 输出目录
-    no_output_dir: 请选择输出目录
-    output_file: 输出文件
-    no_output: 请指定输出文件
-    output_format: 输出格式
-    json_path: JSON 路径
-    fields: 字段
-    mode: 模式
-    mode_single: 单个文件
-    mode_batch: 批量
-    pick_file_title: 选择文件
-    pick_output_title: 指定输出文件
-    pick_input_dir_title: 选择输入目录
-    pick_output_dir_title: 选择输出目录
-    execute: 转换
-    success: 转换完成
-    error: 转换失败
-    no_json_files: 未找到 JSON 文件
-    not_array: JSON 根节点不是数组
-    empty_array: JSON 数组为空
-    path_not_found: 未找到 JSON 路径
-    invalid_json: 无效的 JSON
-    no_headers: 未指定表头
-    batch_execute: 批量转换
-    batch_done: 批量转换完成
-    batch_files_suffix: 个文件已处理
-    batch_partial_errors: 部分完成但有错误
-  json_merge:
-    input_dir: 输入目录
-    no_input_dir: 请选择输入目录
-    output_file: 输出文件
-    no_output: 请指定输出文件
-    json_path: JSON 路径
-    pick_input_dir_title: 选择输入目录
-    pick_output_title: 指定输出文件
-    execute: 合并
-    success: 合并完成
-    error: 合并失败
-    no_json_files: 未找到 JSON 文件
-    not_array: JSON 根节点不是数组
-    path_not_found: 未找到 JSON 路径
-    items_suffix: 条
-    partial_errors: 部分完成但有错误
-    batch_partial_errors: 部分完成但有错误
-  api:
-    url_required: URL 不能为空
-    tab_headers: 请求头
-    tab_params: 参数
-    tab_body: 请求体
-    send: 发送
-    success_status: 成功
-    response_title: 响应
-    params_placeholder: 键值对（JSON 格式）
-    response_placeholder: 响应将在此显示...
-
-# 
 code_editor:
   tooltip:
     go_to_line: 跳转到行
     indent_guides: 缩进参考线
     line_number: 行号
     soft_wrap: 自动换行
-
-# markdown 编辑器的翻译
-markdown_editor:
-  empty:
-    title: 未打开文件
-    description: 从文件树中打开一个 markdown 文件开始编辑
-
-# 凭证管理模块的翻译
+  no_selection: 无选中内容
+  no_file_opened: 未打开文件
+  no_file_hint: 从文件树中选择一个文件开始编辑
+  auto_correct: 自动纠正
+  change_to: 更改为 '%{suggestion}'
+  add_doc_comment: 添加文档注释 (AI)
+  add_inline_comment: 添加行内注释 (AI)
+  explain_code: 解释代码 (AI)
+  suggest_improvements: 改进建议 (AI)
+  explain_failed: '解释代码失败: %{error}'
+  suggest_failed: '生成建议失败: %{error}'
+common:
+  buttons:
+    ok: 确定
+    cancel: 取消
+    confirm: 确认
+    save: 保存
+    delete: 删除
+    close: 关闭
+    add: 添加
+    edit: 编辑
+    remove: 移除
+    clear: 清除
+    reset: 重置
+    submit: 提交
+    back: 返回
+    next: 下一步
+    previous: 上一步
+    open: 打开
+    select: 选择
+    copy: 复制
+    paste: 粘贴
+    import: 导入
+    export: 导出
+    search: 搜索
+    filter: 筛选
+    sort: 排序
+    help: 帮助
+    about: 关于
+    settings: 设置
+  messages:
+    loading: 加载中...
+    success: 成功
+    error: 错误
+    warning: 警告
+    info: 信息
+    confirm_action: 确定要执行此操作吗？
+    operation_failed: 操作失败
+    operation_success: 操作成功
+    please_wait: 请稍候...
+    no_results: 未找到结果
+    no_data: 无可用数据
+    unsupported: 不支持的操作
+  dialogs:
+    title_confirm: 确认
+    title_error: 错误
+    title_warning: 警告
+    title_info: 信息
+    title_success: 成功
+  errors:
+    required_field: 此字段为必填项
+    invalid_input: 输入无效
+    network_error: 网络错误
+    permission_denied: 权限被拒绝
+    file_not_found: 文件未找到
+    unknown_error: 发生未知错误
+  status:
+    online: 在线
+    offline: 离线
+    connecting: 连接中...
+    disconnected: 已断开连接
+    error: 错误
+    idle: 空闲
+  time:
+    just_now: 刚刚
+    minutes_ago: '%{n} 分钟前'
+    hours_ago: '%{n} 小时前'
+    days_ago: '%{n} 天前'
+    weeks_ago: '%{n} 周前'
+    months_ago: '%{n} 个月前'
+    years_ago: '%{n} 年前'
 credential_manager:
   panel_title: 凭证管理
   panel_subtitle: 安全地管理你的凭证
@@ -392,73 +225,363 @@ credential_manager:
     expiring_soon: 即将过期
     expired: 已过期
     active: 活跃
-common:
-  buttons:
-    ok: 确定
-    cancel: 取消
-    confirm: 确认
-    save: 保存
-    delete: 删除
-    close: 关闭
-    add: 添加
-    edit: 编辑
-    remove: 移除
-    clear: 清除
-    reset: 重置
-    submit: 提交
-    back: 返回
-    next: 下一步
-    previous: 上一步
-    open: 打开
-    select: 选择
-    copy: 复制
-    paste: 粘贴
-    import: 导入
-    export: 导出
-    search: 搜索
-    filter: 筛选
-    sort: 排序
-    help: 帮助
-    about: 关于
-    settings: 设置
-  messages:
+markdown_editor:
+  empty:
+    title: 未打开文件
+    description: 从文件树中打开一个 markdown 文件开始编辑
+  find: 查找
+tab.workbench: 工作台
+tab.config: 配置
+tab.log: 日志
+tab.monitor: 监控
+panel.workspace: 工作区
+left_panel.explorer: 资源管理器
+left_panel.outline: 大纲
+left_panel.search: 搜索
+left_panel.git: Git
+left_panel.extensions: 扩展
+left_panel.settings: 设置
+left_panel.no_symbols: 未找到符号
+settings.general.title: 通用
+settings.general.group.appearance: 外观
+settings.general.appearance.dark_mode.label: 深色模式
+settings.general.appearance.dark_mode.description: 在浅色与深色主题间切换。
+settings.general.appearance.auto_switch.label: 自动切换主题
+settings.general.appearance.auto_switch.description: 根据系统设置自动切换主题。
+settings.general.appearance.resettable.label: 重置按钮
+settings.general.appearance.resettable.description: 启用或禁用设置中的重置按钮。
+settings.general.group.font: 字体
+settings.general.font.family.label: 字体
+settings.general.font.family.description: 选择界面字体。
+settings.general.font.size.label: 字号
+settings.general.font.size.description: 调整字号以提升可读性。
+settings.general.font.line_height.label: 行高
+settings.general.font.line_height.description: 调整行高以提升可读性。
+settings.general.group.other: 其他
+settings.general.language.label: 语言
+settings.general.language.description: 选择界面语言。
+settings.general.auto_switch_theme.label: 自动切换主题
+settings.general.auto_switch_theme.description: 根据系统设置自动切换主题。
+config.page.title: 系统配置
+config.group.appearance: 外观
+config.appearance.dark_mode.label: 深色模式
+config.appearance.dark_mode.description: 启用深色主题
+config.appearance.language.label: 语言
+config.appearance.language.description: 选择界面语言
+config.group.font: 字体
+config.font.label: 字体
+config.font.description: 选择界面字体
+config.font.size.label: 字号
+config.font.size.description: 调整字号以提升可读性
+config.font.line_height.label: 行高
+config.font.line_height.description: 调整行高以提升可读性
+config.group.other: 其他
+config.auto_switch_theme.label: 自动切换主题
+config.auto_switch_theme.description: 根据系统设置自动切换主题
+config.group.update: 软件更新
+config.update.current_version.label: 当前版本
+config.update.status.up_to_date: 已是最新版本
+config.update.status.checking: 正在检查更新...
+config.update.status.available: '发现新版本: %{version}'
+config.update.status.error: '检查更新失败: %{error}'
+config.update.check.label: 检查更新
+config.update.check.button: 立即检查
+config.update.check.description: 手动检查是否有可用的软件更新
+config.update.auto_check.label: 启动时自动检查
+config.update.auto_check.description: 应用启动时自动检查是否有新版本
+config.update.notifications.label: 更新通知
+config.update.notifications.description: 当有新版本时显示通知提醒
+config.update.auto_update.label: 自动更新
+config.update.auto_update.description: 发现新版本时自动下载并安装更新
+config.update.frequency.label: 检查频率
+config.update.frequency.description: 自动检查更新的间隔天数
+toolbox:
+  title: 工具箱
+  groups:
+    csv: CSV 工具
+    api: API 工具
+    files: 文件工具
+  home:
+    title: 工具箱
+    subtitle: 选择一个工具开始使用
+    card_hint: 点击打开
+  tools:
+    csv_stats: CSV 统计
+    csv_split: CSV 分割器
+    csv_convert: CSV 转换器
+    batch_rename: 批量重命名
+    excel_move_files: Excel 文件移动
+    api_request: API 请求
+    api_batch_download: 批量下载
+    network_scan: 网络扫描
+    json_convert: JSON 转换器
+    json_merge: JSON 合并
+  back: 返回
+  csv:
+    section_title: CSV 统计
+    select_dir: 选择目录
+    no_dir: 请先选择目录
+    no_csv: 未找到 "CSV 文件"
     loading: 加载中...
-    success: 成功
-    error: 错误
-    warning: 警告
-    info: 信息
-    confirm_action: 确定要执行此操作吗？
-    operation_failed: 操作失败
-    operation_success: 操作成功
-    please_wait: 请稍候...
-    no_results: 未找到结果
-    no_data: 无可用数据
-    unsupported: 不支持的操作
-  dialogs:
-    title_confirm: 确认
-    title_error: 错误
-    title_warning: 警告
-    title_info: 信息
-    title_success: 成功
-  errors:
-    required_field: 此字段为必填项
-    invalid_input: 输入无效
-    network_error: 网络错误
-    permission_denied: 权限被拒绝
-    file_not_found: 文件未找到
-    unknown_error: 发生未知错误
-  status:
-    online: 在线
-    offline: 离线
-    connecting: 连接中...
-    disconnected: 已断开连接
-    error: 错误
-    idle: 空闲
-  time:
-    just_now: 刚刚
-    minutes_ago: '%{n} 分钟前'
-    hours_ago: '%{n} 小时前'
-    days_ago: '%{n} 天前'
-    weeks_ago: '%{n} 周前'
-    months_ago: '%{n} 个月前'
-    years_ago: '%{n} 年前'
+    pick_folder: 选择文件夹
+    col_name: 列
+    col_lines: 行数
+    lines_suffix: 行
+    total: 总计
+  csv_split:
+    select_file: 选择 "CSV 文件"
+    no_file: 请选择 "CSV 文件"
+    output_dir: 输出目录
+    no_output_dir: 请选择输出目录
+    num_parts: 分割份数
+    total_lines: 总行数
+    estimated_per_file: 每份预估行数
+    pick_file_title: 选择 "CSV 文件"
+    pick_output_title: 选择输出目录
+    execute: 分割
+    success: 分割完成
+    error: 分割失败
+  csv_convert:
+    select_file: 选择文件
+    no_file: 请选择文件
+    output_file: 输出文件
+    no_output: 请指定输出文件
+    output_format: 输出格式
+    pick_file_title: 选择文件
+    pick_output_title: 指定输出文件
+    execute: 转换
+    success: 转换完成
+    error: 转换失败
+  rename:
+    select_dir: 选择目录
+    no_dir: 请选择目录
+    field_needle: 查找
+    field_replace: 替换为
+    placeholder_needle: 输入搜索文本...
+    placeholder_replace: 输入替换文本...
+    recursive: 递归
+    hint: 支持 * 和 ? 通配符
+    preview: 预览
+    preview_title: 重命名预览
+    preview_count_prefix: '重命名 '
+    preview_ok: 个匹配
+    preview_dup_prefix: '重复: '
+    preview_found_prefix: '已找到: '
+    preview_missing_prefix: '缺失: '
+    preview_total_prefix: '总计: '
+    no_matches: 未找到匹配文件
+    target_exists: 目标文件已存在
+    duplicate_target: 目标文件名重复
+    empty_needle: 搜索文本不能为空
+    scan_error: 目录扫描错误
+    done_renamed: 已重命名
+    done_files_suffix: 个文件
+    done_partial_errors: 部分完成但有错误
+    pick_dir_title: 选择目录
+    execute: 重命名
+    more_omitted: 条已省略
+  excel_move:
+    select_excel: 选择 "Excel 文件"
+    no_excel: 请选择 "Excel 文件"
+    select_input_dir: 选择源目录
+    no_input_dir: 请选择源目录
+    select_output_dir: 选择输出目录
+    no_output_dir: 请选择输出目录
+    placeholder_header: 表头列（如 A, B, C）
+    placeholder_index: 索引序号（从1开始）
+    placeholder_suffixes: 后缀（逗号分隔）
+    suffixes: 后缀
+    col_header: 表头列
+    col_index: 索引列
+    no_headers: 未找到表头
+    header_not_found: 未找到表头列
+    index_out_of_range: 索引超出范围
+    unsupported_format: 不支持的文件格式
+    no_suffixes: 未指定后缀
+    source_missing: 源文件缺失
+    output_exists: 输出文件已存在
+    duplicate_output: 输出文件名重复
+    preview: 预览
+    preview_title: 预览
+    preview_ok: 就绪
+    preview_found_prefix: '已找到: '
+    preview_missing_prefix: '缺失: '
+    preview_dup_prefix: '重复: '
+    preview_total_prefix: '总计: '
+    headers_click_hint: 点击列标题进行选择
+    done_moved: 已移动
+    done_files_suffix: 个文件
+    done_partial_errors: 部分完成但有错误
+    pick_excel_title: 选择 "Excel 文件"
+    pick_input_title: 选择源目录
+    pick_output_title: 选择输出目录
+    execute: 移动文件
+  json_convert:
+    select_file: 选择文件
+    no_file: 请选择文件
+    input_dir: 输入目录
+    no_input_dir: 请选择输入目录
+    output_dir: 输出目录
+    no_output_dir: 请选择输出目录
+    output_file: 输出文件
+    no_output: 请指定输出文件
+    output_format: 输出格式
+    json_path: JSON 路径
+    fields: 字段
+    mode: 模式
+    mode_single: 单个文件
+    mode_batch: 批量
+    pick_file_title: 选择文件
+    pick_output_title: 指定输出文件
+    pick_input_dir_title: 选择输入目录
+    pick_output_dir_title: 选择输出目录
+    execute: 转换
+    success: 转换完成
+    error: 转换失败
+    no_json_files: 未找到 "JSON 文件"
+    not_array: JSON 根节点不是数组
+    empty_array: JSON 数组为空
+    path_not_found: 未找到 JSON 路径
+    invalid_json: 无效的 "JSON"
+    no_headers: 未指定表头
+    batch_execute: 批量转换
+    batch_done: 批量转换完成
+    batch_files_suffix: 个文件已处理
+    batch_partial_errors: 部分完成但有错误
+  json_merge:
+    input_dir: 输入目录
+    no_input_dir: 请选择输入目录
+    output_file: 输出文件
+    no_output: 请指定输出文件
+    json_path: JSON 路径
+    pick_input_dir_title: 选择输入目录
+    pick_output_title: 指定输出文件
+    execute: 合并
+    success: 合并完成
+    error: 合并失败
+    no_json_files: 未找到 "JSON 文件"
+    not_array: JSON 根节点不是数组
+    path_not_found: 未找到 JSON 路径
+    items_suffix: 条
+    partial_errors: 部分完成但有错误
+    batch_partial_errors: 部分完成但有错误
+  api:
+    url_required: URL 不能为空
+    tab_headers: 请求头
+    tab_params: 参数
+    tab_body: 请求体
+    send: 发送
+    success_status: 成功
+    response_title: 响应
+    params_placeholder: 键值对（JSON 格式）
+    response_placeholder: 响应将在此显示...
+  network_scan:
+    title: 网络扫描
+    placeholder_timeout: 超时时间(毫秒)
+    scan_button: 开始扫描
+    label_clear: 清空结果
+    table_ip: IP地址
+    table_port: 端口
+    table_status: 状态
+    table_latency: 延迟
+    label_ip_range: IP 范围
+    ip_range_placeholder: 如 192.168.1.1-254
+    label_ports: 端口
+    ports_format_hint: '支持格式: 80,443,22 或 80-100'
+    label_timeout_ms: 超时(毫秒)
+    ip_range: IP 范围
+    ports: 端口
+    timeout: 超时
+    scanning: 扫描中...
+    scan: 扫描
+    stop: 停止
+    open_ports_count: 开放端口 (%{count})
+    scanning_progress: 扫描中... %{scanned}/%{total} (%{open}个开放)
+    scan_complete_message: 扫描完成! 共扫描 %{scanned} 个目标, %{open} 个端口开放
+    no_results: 未发现开放端口
+    please_input_ip_port: 请输入IP范围和端口
+    timeout_must_be_positive: 超时时间必须是大于0的数字
+    open_in_browser: 在浏览器打开
+    cleared_results: 已清空结果
+    col_index: '#'
+    col_ip: IP
+    col_port: 端口
+    col_status: 状态
+    col_latency: 延迟
+    col_protocol: 协议
+    status_open: 开放
+    status_closed: 关闭
+    status_filtered: 已过滤
+    cidr_not_supported: 暂不支持CIDR格式,请使用范围格式如 192.168.1.1-254
+    invalid_range_format: 无效的范围格式
+    invalid_start_ip: 无效的起始IP
+    invalid_end_ip_segment: 无效的结束段
+    ip_out_of_range: IP超出范围
+    invalid_start_port: 无效的起始端口
+    invalid_end_port: 无效的结束端口
+    start_port_gt_end_port: 起始端口不能大于结束端口
+    invalid_port: 无效的端口
+    port_invalid_range: '无效的端口范围: %{port}'
+    port_range_order: 起始端口不能大于结束端口
+    at_least_one_port: 至少需要一个端口
+    ip_parse_failed: 'IP范围解析失败: %{error}'
+    port_parse_failed: '端口解析失败: %{error}'
+    timeout_status: 超时
+  batch_download:
+    title: 批量下载
+    add_url: 添加地址
+    start: 开始
+    pause: 暂停
+    stop: 停止
+    resume: 继续 WebView 下载
+    refresh_webview: 刷新 "WebView"
+    url_label: 地址
+    save_path_label: 保存路径
+    webview_standby: WebView 待命中
+    start_batch_download: 开始批量下载
+    open_current_download: 打开当前下载地址
+    url_template_placeholder: 下载地址模板（使用 {0} 作为占位）
+    url_template_example: '示例: https://onlinelibrary.wiley.com/doi/pdfdirect/{0}'
+    no_save_dir: 未选择下载目录
+    select_save_dir: 选择下载目录
+    select_batch_download_dir: 选择批量下载目录
+    replace_path_list: 待替换路径列表（每行一个）
+    replace_path_example: '示例: 10.1002/smsc.202000067'
+    max_concurrency: 最大并发数
+    concurrency_hint: （建议 1–10，默认 3）
+    webview_count_layout: '当前 WebView 数量: %{count}，当前布局: 一行 %{per_row} 个'
+    download_area_desc: 上方为下载设置区域，下方为可视化 WebView 下载区域。设置区固定两列，下载区按数量自动分列。
+    wiley_session_window: Wiley 会话下载窗口
+    checking_pdf: 'WebView #%{id} 已加载目标页面，准备检查是否为有效 PDF'
+    slot_downloading: 槽位 %{slot} 正在下载 %{url}
+    slot_downloading_from_session: '已通过 WebView #%{id} 会话发起下载: %{url}'
+    webview_native_failed: WebView 原生下载未成功完成
+    webview_download_failed: WebView 下载失败
+    webview_not_enabled: 当前平台未启用 WebView
+    webview_not_enabled_session: 当前平台未启用 WebView，无法使用会话下载
+    no_open_download_url: 当前没有可打开的下载地址
+    not_webview_mode: 当前批次未处于 WebView 下载模式
+    no_pending_tasks: 当前没有待处理的 WebView 下载任务
+    webview_switched_domain: 'WebView #%{id} 已切换下载域名，页面加载完成后会自动继续'
+    slot_initiated_download: '槽位 %{slot} 已发起下载: %{url} <- %{referrer}'
+    session_initiated_download: '已通过 WebView #%{id} 会话发起下载: %{url}'
+    webview_intercepted: 'WebView #%{id} 当前请求被拦截：%{reason}。请在该窗口完成验证后继续。'
+    next_url_loading: 'WebView #%{id} 正在加载下一个任务地址: %{url}'
+    download_complete_total: WebView 下载完成，共 %{total} 个，成功 %{success}，失败 %{failed}
+    batch_download_ended: 当前批次的 WebView 下载已结束
+    still_downloading: 当前仍在执行下载，停止后才能返回下载设置页。
+    returned_to_settings: 已返回下载设置页
+    stopped: 已停止
+    cf_blocked: HTTP 403（Cloudflare challenge，浏览器里能打开但脚本下载被拦截）
+    url_template_must_have_placeholder: URL 模板必须包含 {0} 占位符
+    select_dir_first: 请先选择下载目录
+    enter_replace_paths_first: 请先输入至少一个待替换路径
+    preparing_download: '准备下载 %{count} 个文件，最大并发 %{concurrency}，目录: %{dir}'
+    downloading: 下载中
+    requesting_stop: 已请求停止，正在结束当前批次…
+    stopping_batch: 已请求停止当前 WebView/网络下载批次
+    destroying_webviews: 已销毁批量下载页面创建的 WebView
+    closed_and_released: 已关闭批量下载页面并释放 WebView 资源
+    invalid_split_count: 分割数量请设为 1–1000
+    config_will_create_webviews: 配置完成后，开始下载会按当前线程数创建对应数量的 WebView 执行窗口。当前将创建 %{count}
+      个。

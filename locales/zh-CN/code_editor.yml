@@ -1,0 +1,20 @@
+_version: 1
+
+code_editor:
+  tooltip:
+    go_to_line: 跳转到行
+    indent_guides: 缩进参考线
+    line_number: 行号
+    soft_wrap: 自动换行
+  no_selection: 无选中内容
+  no_file_opened: 未打开文件
+  no_file_hint: 从文件树中选择一个文件开始编辑
+  auto_correct: 自动纠正
+  change_to: "更改为 '%{suggestion}'"
+  add_doc_comment: 添加文档注释 (AI)
+  add_inline_comment: 添加行内注释 (AI)
+  explain_code: 解释代码 (AI)
+  suggest_improvements: 改进建议 (AI)
+  explain_failed: "解释代码失败: %{error}"
+  suggest_failed: "生成建议失败: %{error}"
+  title: 代码编辑器

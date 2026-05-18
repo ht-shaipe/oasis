@@ -1,6 +1,5 @@
 // Utility functions module
 
-use gpui::{App, AppContext, Task};
 use std::path::PathBuf;
 
 /// Pick a file using native file dialog

@@ -1,9 +1,10 @@
+#![allow(dead_code)]
 //! CSV/Excel 转 JSON 或 SQL：选择文件、选择输出格式、选择输出路径后转换。
 
 use std::path::{Path, PathBuf};
 
 use gpui::{
-    AppContext as _, Context, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
+    AppContext as _, Context, Entity, IntoElement, ParentElement as _,
     Styled, Window, prelude::FluentBuilder as _, px,
 };
 use gpui_component::{

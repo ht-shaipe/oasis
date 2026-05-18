@@ -1,7 +1,8 @@
+#![allow(dead_code)]
 // DockPanel trait - provides a standard interface for dockable panels.
 // Implemented by ToolboxPanel, CodeEditorPanel, MarkdownEditorPanel, etc.
 
-use gpui::{App, Entity, IntoElement, Pixels, Render, Window};
+use gpui::{App, Entity, Pixels, Render, Window};
 
 pub trait DockPanel: Render + Sized {
     fn title() -> &'static str;

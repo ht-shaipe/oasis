@@ -1,3 +1,3 @@
 pub mod scanner;
 
-pub use scanner::{NetworkScanState, ScanResult};
+pub use scanner::NetworkScanState;

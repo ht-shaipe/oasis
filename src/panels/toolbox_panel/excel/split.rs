@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use gpui::{
-    AppContext as _, Context, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
+    AppContext as _, Context, Entity, IntoElement, ParentElement as _,
     SharedString, Styled, Subscription, Window, prelude::FluentBuilder as _, px,
 };
 use gpui_component::{
@@ -11,7 +11,7 @@ use gpui_component::{
     button::{Button, ButtonVariants as _},
     group_box::{GroupBox, GroupBoxVariant, GroupBoxVariants as _},
     h_flex,
-    input::{Input, NumberInput, NumberInputEvent, StepAction},
+    input::{NumberInput, NumberInputEvent, StepAction},
     label::Label,
     v_flex,
 };

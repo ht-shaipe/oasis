@@ -1,11 +1,11 @@
 //! 局域网设备扫描工具:扫描指定IP段和端口的在线设备
 
 use gpui::{
-    AppContext as _, Context, Entity, InteractiveElement as _, IntoElement,
-    ParentElement as _, Styled, Window, prelude::FluentBuilder as _, px,
+    AppContext as _, Context, Entity, IntoElement,
+    ParentElement as _, Styled, Window,  px,
 };
 use gpui_component::{
-    ActiveTheme, checkbox::Checkbox, Disableable, Icon, IconName,
+    ActiveTheme, checkbox::Checkbox, Disableable,
     button::{Button, ButtonVariants as _},
     h_flex,
     input::Input,
@@ -16,6 +16,8 @@ use gpui_component::{
 use rust_i18n::t;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream as StdTcpStream};
 use std::sync::Mutex;
+use std::sync::mpsc;
+use std::thread;
 use std::time::Duration;
 
 use super::super::ToolboxPanel;
@@ -79,7 +81,7 @@ impl NetworkScanState {
         });
         let timeout_input = cx.new(|cx| {
             let mut s = gpui_component::input::InputState::new(window, cx);
-            s.set_placeholder("超时时间(毫秒)".to_string(), window, cx);
+            s.set_placeholder(t!("toolbox.network_scan.placeholder_timeout").to_string(), window, cx);
             s.set_value(gpui::SharedString::from("500"), window, cx);
             s
         });
@@ -117,11 +119,11 @@ impl NetworkScanState {
             } else {
                 0
             };
-            format!("扫描中... {}/{} ({}%)", state.scanned, state.total, pct)
+            format!("{} {}/{}({}%)", t!("toolbox.network_scan.scanning"), state.scanned, state.total, pct)
         } else if state.loading {
-            "扫描中...".to_string()
+            t!("toolbox.network_scan.scanning").to_string()
         } else {
-            "开始扫描".to_string()
+            t!("toolbox.network_scan.scan_button").to_string()
         };
 
         let start_entity = entity.clone();
@@ -138,7 +140,7 @@ impl NetworkScanState {
         let clear_entity = entity.clone();
         let results_is_empty = state.results.lock().unwrap().is_empty();
         let clear_btn = Button::new("network-scan-clear")
-            .label("清空结果")
+            .label(t!("toolbox.network_scan.label_clear"))
             .outline()
             .disabled(state.loading || results_is_empty)
             .on_click(move |_, _, cx| {
@@ -149,20 +151,26 @@ impl NetworkScanState {
 
         // 渲染结果表格
         let results_guard = state.results.lock().unwrap();
-        let results_rows: Vec<gpui::AnyElement> = results_guard
-            .iter()
-            .enumerate()
-            .map(|(idx, result)| {
-                let status_color = if result.status == "开放" {
-                    theme.green
-                } else {
-                    theme.muted_foreground
-                };
+        let results_data: Vec<_> = results_guard.iter().enumerate().map(|(idx, result)| {
+            let status_key = result.status.clone();
+            let status_color = if result.status == "开放" {
+                theme.green
+            } else {
+                theme.muted_foreground
+            };
+            let row_entity = entity.clone();
+            let checked = result.selected;
+            let row_idx = idx;
+            let ip = result.ip.clone();
+            let port = result.port;
+            let latency_ms = result.latency_ms;
+            (idx, status_key, status_color, row_entity, checked, row_idx, ip, port, latency_ms)
+        }).collect();
+        drop(results_guard); // Release the lock before building UI
 
-                let row_entity = entity.clone();
-                let checked = result.selected;
-                let row_idx = idx;
-
+        let results_rows: Vec<gpui::AnyElement> = results_data
+            .into_iter()
+            .map(|(idx, status_key, status_color, row_entity, checked, row_idx, ip, port, latency_ms)| {
                 v_flex()
                     .w_full()
                     .child(
@@ -195,19 +203,19 @@ impl NetworkScanState {
                                             .text_color(theme.muted_foreground),
                                     )
                                     .child(
-                                        Label::new(&result.ip)
+                                        Label::new(&ip)
                                             .text_xs()
                                             .flex_1()
                                             .font_weight(gpui::FontWeight::MEDIUM),
                                     )
                                     .child(
-                                        Label::new(format!("{}", result.port))
+                                        Label::new(format!("{}", port))
                                             .text_xs()
                                             .w(px(60.))
                                             .text_color(theme.muted_foreground),
                                     )
                                     .child(
-                                        Label::new(&result.status)
+                                        Label::new(if status_key == "toolbox.network_scan.status_open" { t!("toolbox.network_scan.status_open") } else { t!("toolbox.network_scan.status_closed") })
                                             .text_xs()
                                             .w(px(50.))
                                             .text_color(status_color)
@@ -215,8 +223,7 @@ impl NetworkScanState {
                                     )
                                     .child(
                                         Label::new(
-                                            result
-                                                .latency_ms
+                                            latency_ms
                                                 .map(|ms| format!("{}ms", ms))
                                                 .unwrap_or_else(|| "-".to_string()),
                                         )
@@ -229,12 +236,11 @@ impl NetworkScanState {
                     .into_any_element()
             })
             .collect();
-        drop(results_guard); // Release the lock before accessing results again
 
         let select_all_entity = entity.clone();
         let results_for_select_all = state.results.lock().unwrap();
         let select_all_checked = state.select_all || (!results_for_select_all.is_empty() && results_for_select_all.iter().all(|r| r.selected));
-        let has_any_selected = results_for_select_all.iter().any(|r| r.selected);
+        let _has_any_selected = results_for_select_all.iter().any(|r| r.selected);
         drop(results_for_select_all);
 
         let results_header = h_flex()
@@ -267,25 +273,25 @@ impl NetworkScanState {
                             .text_color(theme.muted_foreground),
                     )
                     .child(
-                        Label::new("IP地址")
+                        Label::new(t!("toolbox.network_scan.table_ip"))
                             .text_xs()
                             .flex_1()
                             .font_weight(gpui::FontWeight::MEDIUM),
                     )
                     .child(
-                        Label::new("端口")
+                        Label::new(t!("toolbox.network_scan.table_port"))
                             .text_xs()
                             .w(px(60.))
                             .text_color(theme.muted_foreground),
                     )
                     .child(
-                        Label::new("状态")
+                        Label::new(t!("toolbox.network_scan.table_status"))
                             .text_xs()
                             .w(px(50.))
                             .text_color(theme.muted_foreground),
                     )
                     .child(
-                        Label::new("延迟")
+                        Label::new(t!("toolbox.network_scan.table_latency"))
                             .text_xs()
                             .flex_1()
                             .text_color(theme.muted_foreground),
@@ -313,10 +319,10 @@ impl NetworkScanState {
         drop(results_for_buttons); // Release the lock
 
         let open_btn = Button::new("network-scan-open-browser")
-            .label(format!("在浏览器打开 ({})", selected_count))
+            .label(format!("{} ({})", t!("toolbox.network_scan.open_in_browser"), selected_count))
             .outline()
             .disabled(is_loading || !has_any_selected)
-            .on_click(move |_, _, cx| {
+            .on_click(move |_, _, _cx| {
                 for url in &open_urls {
                     if let Err(e) = open::that(url) {
                         log::error!("Failed to open URL {}: {}", url, e);
@@ -331,7 +337,7 @@ impl NetworkScanState {
                 v_flex()
                     .gap_2()
                     .child(
-                        Label::new("IP范围")
+                        Label::new(t!("toolbox.network_scan.label_ip_range"))
                             .text_sm()
                             .font_weight(gpui::FontWeight::MEDIUM)
                             .text_color(theme.foreground),
@@ -344,7 +350,7 @@ impl NetworkScanState {
                         ),
                     )
                     .child(
-                        Label::new("支持格式: 192.168.1.1-10, 192.168.1.1-254, 192.168.1.1,192.168.1.2")
+                        Label::new(t!("toolbox.network_scan.ip_range_placeholder"))
                             .text_xs()
                             .text_color(theme.muted_foreground),
                     ),
@@ -353,7 +359,7 @@ impl NetworkScanState {
                 v_flex()
                     .gap_2()
                     .child(
-                        Label::new("端口")
+                        Label::new(t!("toolbox.network_scan.label_ports"))
                             .text_sm()
                             .font_weight(gpui::FontWeight::MEDIUM)
                             .text_color(theme.foreground),
@@ -366,7 +372,7 @@ impl NetworkScanState {
                         ),
                     )
                     .child(
-                        Label::new("支持格式: 80,443,22 或 80-100")
+                        Label::new(t!("toolbox.network_scan.ports_format_hint"))
                             .text_xs()
                             .text_color(theme.muted_foreground),
                     ),
@@ -375,7 +381,7 @@ impl NetworkScanState {
                 v_flex()
                     .gap_2()
                     .child(
-                        Label::new("超时(毫秒)")
+                        Label::new(t!("toolbox.network_scan.label_timeout_ms"))
                             .text_sm()
                             .font_weight(gpui::FontWeight::MEDIUM)
                             .text_color(theme.foreground),
@@ -418,7 +424,8 @@ impl NetworkScanState {
                             .gap_2()
                             .child(
                                 Label::new(format!(
-                                    "开放端口 ({})",
+                                    "{} {}",
+                                    t!("toolbox.network_scan.open_ports_count", count = state.results.lock().unwrap().len()),
                                     state.results.lock().unwrap().len()
                                 ))
                                 .text_sm()
@@ -480,7 +487,7 @@ impl ToolboxPanel {
             .to_string();
 
         if ip_range.is_empty() || ports_str.is_empty() {
-            self.network_scan.message = Some("请输入IP范围和端口".to_string());
+            self.network_scan.message = Some(t!("toolbox.network_scan.please_input_ip_port").to_string());
             self.network_scan.message_ok = false;
             cx.notify();
             return;
@@ -490,7 +497,7 @@ impl ToolboxPanel {
             Ok(t) if t > 0 => t,
             _ => {
                 self.network_scan.message =
-                    Some("超时时间必须是大于0的数字".to_string());
+                    Some(t!("toolbox.network_scan.timeout_must_be_positive").to_string());
                 self.network_scan.message_ok = false;
                 cx.notify();
                 return;
@@ -500,7 +507,7 @@ impl ToolboxPanel {
         let ips = match parse_ip_range(&ip_range) {
             Ok(ips) => ips,
             Err(e) => {
-                self.network_scan.message = Some(format!("IP范围解析失败: {}", e));
+                self.network_scan.message = Some(t!("toolbox.network_scan.ip_parse_failed", error = e.as_str()).to_string());
                 self.network_scan.message_ok = false;
                 cx.notify();
                 return;
@@ -510,7 +517,7 @@ impl ToolboxPanel {
         let ports = match parse_ports(&ports_str) {
             Ok(ports) => ports,
             Err(e) => {
-                self.network_scan.message = Some(format!("端口解析失败: {}", e));
+                self.network_scan.message = Some(t!("toolbox.network_scan.port_parse_failed", error = e.as_str()).to_string());
                 self.network_scan.message_ok = false;
                 cx.notify();
                 return;
@@ -523,18 +530,18 @@ impl ToolboxPanel {
         self.network_scan.scanned = 0;
         self.network_scan.total = total;
         self.network_scan.message = Some(
-            format!("开始扫描 {} 个目标...", total)
+            format!("{} {} 个目标...", t!("toolbox.network_scan.scan_button"), total)
         );
         self.network_scan.message_ok = true;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
 
-        // 使用tokio channel进行跨线程通信
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<ScanMsg>();
+        // 使用标准库channel进行跨线程通信
+        let (tx, rx) = mpsc::channel::<ScanMsg>();
 
         // 启动后台扫描线程
-        std::thread::spawn(move || {
+        thread::spawn(move || {
             let mut scanned = 0usize;
 
             for ip in &ips {
@@ -550,7 +557,7 @@ impl ToolboxPanel {
                         let result = ScanResult {
                             ip: ip.to_string(),
                             port,
-                            status,
+                            status: status.to_string(),
                             hostname: None,
                             latency_ms: Some(latency),
                             selected: false,
@@ -573,14 +580,9 @@ impl ToolboxPanel {
             let mut done = false;
 
             while !done {
-                // 等待下一条消息，使用tokio::time::timeout进行定期检查
-                let msg_result = tokio::time::timeout(
-                    Duration::from_millis(200),
-                    rx.recv()
-                ).await;
-
-                match msg_result {
-                    Ok(Some(msg)) => {
+                // 尝试接收消息，使用短超时避免阻塞
+                match rx.recv_timeout(Duration::from_millis(200)) {
+                    Ok(msg) => {
                         match msg {
                             ScanMsg::Found(result) => {
                                 // 直接在当前线程更新实体，避免嵌套cx.update()
@@ -589,7 +591,8 @@ impl ToolboxPanel {
                                         this.network_scan.results.lock().unwrap().push(result);
                                         this.network_scan.message = Some(
                                             format!(
-                                                "扫描中... {}/{} ({}个开放)",
+                                                "{} {}/{}({}个开放)",
+                                                t!("toolbox.network_scan.scanning"),
                                                 this.network_scan.scanned,
                                                 this.network_scan.total,
                                                 this.network_scan.results.lock().unwrap().len()
@@ -605,7 +608,8 @@ impl ToolboxPanel {
                                         this.network_scan.scanned = scanned;
                                         this.network_scan.message = Some(
                                             format!(
-                                                "扫描中... {}/{} ({}个开放)",
+                                                "{} {}/{}({}个开放)",
+                                                t!("toolbox.network_scan.scanning"),
                                                 this.network_scan.scanned,
                                                 this.network_scan.total,
                                                 this.network_scan.results.lock().unwrap().len()
@@ -623,10 +627,11 @@ impl ToolboxPanel {
                                         this.network_scan.scanned = this.network_scan.total;
                                         let open_count = this.network_scan.results.lock().unwrap().len();
                                         this.network_scan.message = Some(
-                                            format!(
-                                                "扫描完成! 共扫描 {} 个目标, {} 个端口开放",
-                                                this.network_scan.total, open_count
-                                            )
+                                            t!(
+                                                "toolbox.network_scan.scan_complete_message",
+                                                scanned = this.network_scan.total,
+                                                open = open_count
+                                            ).to_string()
                                         );
                                         this.network_scan.message_ok = true;
                                         cx.notify();
@@ -635,13 +640,13 @@ impl ToolboxPanel {
                             }
                         }
                     }
-                    Ok(None) => {
-                        // Channel closed
-                        done = true;
-                    }
-                    Err(_) => {
+                    Err(mpsc::RecvTimeoutError::Timeout) => {
                         // Timeout, continue loop
                         continue;
+                    }
+                    Err(mpsc::RecvTimeoutError::Disconnected) => {
+                        // Channel closed
+                        done = true;
                     }
                 }
             }
@@ -653,7 +658,7 @@ impl ToolboxPanel {
         self.network_scan.results.lock().unwrap().clear();
         self.network_scan.scanned = 0;
         self.network_scan.total = 0;
-        self.network_scan.message = Some("已清空结果".to_string());
+        self.network_scan.message = Some(t!("toolbox.network_scan.cleared_results").to_string());
         self.network_scan.message_ok = true;
         cx.notify();
     }
@@ -664,21 +669,21 @@ fn parse_ip_range(range: &str) -> Result<Vec<IpAddr>, String> {
     let mut ips = vec![];
 
     if range.contains('/') {
-        return Err("暂不支持CIDR格式,请使用范围格式如 192.168.1.1-254".to_string());
+        return Err(t!("toolbox.network_scan.cidr_not_supported").to_string());
     }
 
     if range.contains('-') {
         let parts: Vec<&str> = range.split('-').collect();
         if parts.len() != 2 {
-            return Err("无效的范围格式".to_string());
+            return Err(t!("toolbox.network_scan.invalid_range_format").to_string());
         }
         let start: Ipv4Addr = parts[0]
             .parse()
-            .map_err(|_| "无效的起始IP".to_string())?;
+            .map_err(|_| t!("toolbox.network_scan.invalid_start_ip").to_string())?;
         let end_octet: u8 = parts[1]
             .trim()
             .parse()
-            .map_err(|_| "无效的结束段".to_string())?;
+            .map_err(|_| t!("toolbox.network_scan.invalid_end_ip_segment").to_string())?;
         let mut current = start;
         loop {
             ips.push(IpAddr::V4(current));
@@ -687,7 +692,7 @@ fn parse_ip_range(range: &str) -> Result<Vec<IpAddr>, String> {
                 break;
             }
             if octets[3] == 255 {
-                return Err("IP超出范围".to_string());
+                return Err(t!("toolbox.network_scan.ip_out_of_range").to_string());
             }
             current = Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3] + 1);
         }
@@ -699,7 +704,7 @@ fn parse_ip_range(range: &str) -> Result<Vec<IpAddr>, String> {
         let ip: IpAddr = part
             .trim()
             .parse()
-            .map_err(|e| format!("无效的IP地址 {}: {}", part, e))?;
+            .map_err(|e| format!("{} {}: {}", t!("toolbox.network_scan.invalid_start_ip"), part, e))?;
         ips.push(ip);
     }
 
@@ -719,39 +724,40 @@ fn parse_ports(ports_str: &str) -> Result<Vec<u16>, String> {
         if part.contains('-') {
             let range: Vec<&str> = part.split('-').collect();
             if range.len() != 2 {
-                return Err(format!("无效的端口范围: {}", part));
+                return Err(t!("toolbox.network_scan.port_invalid_range", port = part).to_string());
             }
             let start: u16 = range[0]
                 .parse()
-                .map_err(|_| "无效的起始端口".to_string())?;
+                .map_err(|_| t!("toolbox.network_scan.invalid_start_port").to_string())?;
             let end: u16 = range[1]
                 .trim()
                 .parse()
-                .map_err(|_| "无效的结束端口".to_string())?;
+                .map_err(|_| t!("toolbox.network_scan.invalid_end_port").to_string())?;
             if start > end {
-                return Err("起始端口不能大于结束端口".to_string());
+                return Err(t!("toolbox.network_scan.port_range_order").to_string());
             }
             for port in start..=end {
                 ports.push(port);
             }
         } else {
-            let port: u16 = part.parse().map_err(|_| "无效的端口".to_string())?;
+            let port: u16 = part.parse().map_err(|_| t!("toolbox.network_scan.invalid_port").to_string())?;
             ports.push(port);
         }
     }
 
     if ports.is_empty() {
-        return Err("至少需要一个端口".to_string());
+        return Err(t!("toolbox.network_scan.at_least_one_port").to_string());
     }
 
     Ok(ports)
 }
 
 /// 扫描单个端口
-fn scan_port(addr: &SocketAddr, timeout_ms: u64) -> String {
-    match StdTcpStream::connect_timeout(addr, Duration::from_millis(timeout_ms)) {
-        Ok(_) => "开放".to_string(),
-        Err(_) => "关闭".to_string(),
+fn scan_port(addr: &SocketAddr, timeout_ms: u64) -> &'static str {
+    if StdTcpStream::connect_timeout(addr, Duration::from_millis(timeout_ms)).is_ok() {
+        "toolbox.network_scan.status_open"
+    } else {
+        "toolbox.network_scan.status_closed"
     }
 }
 

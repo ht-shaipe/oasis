@@ -1,18 +1,16 @@
+#![allow(dead_code)]
 //! 工具箱面板：工具入口首页与各子工具（CSV 统计、CSV 分割等）。
 
-use std::path::PathBuf;
 
 use gpui::{
     App, AppContext as _, Context, Entity, EventEmitter, FocusHandle, Focusable,
     InteractiveElement as _, IntoElement, ParentElement as _, Render, Styled, Window,
-    prelude::FluentBuilder as _, px,
+     px,
 };
 use gpui_component::{
+    button::Button,
     dock::{Panel, PanelControl, PanelEvent},
     ActiveTheme, Icon, IconName,
-    button::{Button, ButtonVariants as _},
-    h_flex,
-    label::Label,
     v_flex,
 };
 use rust_i18n::t;
@@ -29,11 +27,6 @@ mod json_merge;
 mod network_scan;
 mod rename;
 
-pub use excel::{
-    ConvertFormat, CsvConvertState, CsvEntry, CsvSplitState, CsvStatsState, CsvTableDelegate,
-    do_convert, do_split,
-};
-pub use network_scan::{NetworkScanState, ScanResult};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ToolId {
@@ -119,7 +112,7 @@ impl ToolboxPanel {
         if self.excel_move.loading {
             return;
         }
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.excel_move.pick_excel_title").to_string();
             let path = utils::pick_file(
@@ -157,7 +150,7 @@ impl ToolboxPanel {
         if self.excel_move.loading {
             return;
         }
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.excel_move.pick_input_title").to_string();
             let dir = utils::pick_folder(&title).await;
@@ -180,7 +173,7 @@ impl ToolboxPanel {
         if self.excel_move.loading {
             return;
         }
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.excel_move.pick_output_title").to_string();
             let dir = utils::pick_folder(&title).await;
@@ -313,7 +306,7 @@ impl ToolboxPanel {
         self.excel_move.message = None;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let (ok, errs) = excel_move::apply_move(&statuses, &output_dir, &suffixes);
             let _ = cx.update(|cx| {
@@ -355,7 +348,7 @@ impl ToolboxPanel {
         self.csv_stats.loading = true;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.csv.pick_folder").to_string();
             let dir = utils::pick_folder(&title).await;
@@ -368,10 +361,7 @@ impl ToolboxPanel {
                             let (entries, total) = excel::scan_csv_in_dir(&path);
                             this.csv_stats.csv_entries = entries.clone();
                             this.csv_stats.total_lines = total;
-                            this.csv_stats.table_state.update(cx, |state, cx| {
-                                state.delegate_mut().set_entries(entries);
-                                state.refresh(cx);
-                            });
+                            // TODO: Update table state when table UI is implemented
                         }
                         cx.notify();
                     });
@@ -383,7 +373,7 @@ impl ToolboxPanel {
 
     /// 选择要分割的 CSV 文件，并统计总行数
     pub fn pick_csv_split_file(&mut self, cx: &mut Context<Self>) {
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.csv_split.pick_file_title").to_string();
             let path = utils::pick_file(&title, Some("CSV"), Some(&["csv"])).await;
@@ -405,7 +395,7 @@ impl ToolboxPanel {
 
     /// 选择输出目录
     pub fn pick_csv_split_output_dir(&mut self, cx: &mut Context<Self>) {
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.csv_split.pick_output_title").to_string();
             let path = utils::pick_folder(&title).await;
@@ -462,7 +452,7 @@ impl ToolboxPanel {
         self.csv_split.message = None;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let res = excel::do_split(&file, &out_dir, n);
             let _ = cx.update(|cx| {
@@ -491,7 +481,7 @@ impl ToolboxPanel {
 
     /// 选择要转换的 CSV/Excel 文件
     pub fn pick_convert_file(&mut self, cx: &mut Context<Self>) {
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.csv_convert.pick_file_title").to_string();
             let path =
@@ -527,7 +517,7 @@ impl ToolboxPanel {
                 format!("{}.{}", s, ext)
             })
             .unwrap_or_else(|| "output.json".to_string());
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.csv_convert.pick_output_title").to_string();
             let (filter_name, exts): (&str, &[&str]) = if format == excel::ConvertFormat::Json {
@@ -577,7 +567,7 @@ impl ToolboxPanel {
         self.csv_convert.message = None;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let res = excel::do_convert(&input, &output, format);
             let _ = cx.update(|cx| {
@@ -606,7 +596,7 @@ impl ToolboxPanel {
 
     /// 选择 JSON 文件（JSON 转 CSV/Excel 工具）
     pub fn pick_json_convert_file(&mut self, cx: &mut Context<Self>) {
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.json_convert.pick_file_title").to_string();
             let path = utils::pick_file(&title, Some("JSON"), Some(&["json"])).await;
@@ -641,7 +631,7 @@ impl ToolboxPanel {
                 format!("{}.{}", s, ext)
             })
             .unwrap_or_else(|| "output.csv".to_string());
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.json_convert.pick_output_title").to_string();
             let (filter_name, exts): (&str, &[&str]) =
@@ -713,7 +703,7 @@ impl ToolboxPanel {
         self.json_convert.message = None;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let res = json_convert::do_json_convert(&input, &output, &json_path, &fields, format);
             let _ = cx.update(|cx| {
@@ -745,7 +735,7 @@ impl ToolboxPanel {
 
     /// 选择批量转换的输入目录
     pub fn pick_json_batch_input_dir(&mut self, cx: &mut Context<Self>) {
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.json_convert.pick_input_dir_title").to_string();
             let dir = utils::pick_folder(&title).await;
@@ -764,7 +754,7 @@ impl ToolboxPanel {
 
     /// 选择批量转换的输出目录
     pub fn pick_json_batch_output_dir(&mut self, cx: &mut Context<Self>) {
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.json_convert.pick_output_dir_title").to_string();
             let dir = utils::pick_folder(&title).await;
@@ -828,7 +818,7 @@ impl ToolboxPanel {
         self.json_convert.message = None;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let res = json_convert::do_batch_json_convert(
                 &input_dir, &output_dir, &json_path, &fields, format,
@@ -876,7 +866,7 @@ impl ToolboxPanel {
 
     /// 选择 JSON 合并的输入目录
     pub fn pick_json_merge_input_dir(&mut self, cx: &mut Context<Self>) {
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.json_merge.pick_input_dir_title").to_string();
             let dir = utils::pick_folder(&title).await;
@@ -896,7 +886,7 @@ impl ToolboxPanel {
     /// 选择 JSON 合并的输出文件
     pub fn pick_json_merge_output(&mut self, cx: &mut Context<Self>) {
         let default_name = "merged.json".to_string();
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.json_merge.pick_output_title").to_string();
             let path = utils::pick_save_file(&title, Some(&default_name), Some("JSON"), Some(&["json"]))
@@ -949,7 +939,7 @@ impl ToolboxPanel {
         self.json_merge.message = None;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let res = json_merge::do_json_merge(&input_dir, &output, &json_path);
             let _ = cx.update(|cx| {
@@ -985,7 +975,7 @@ impl ToolboxPanel {
 
     /// 选择批量重命名目标目录
     pub fn pick_batch_rename_dir(&mut self, cx: &mut Context<Self>) {
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let title = t!("toolbox.rename.pick_dir_title").to_string();
             let path = utils::pick_folder(&title).await;
@@ -1127,7 +1117,7 @@ impl ToolboxPanel {
         self.batch_rename.message = None;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let (ok, errs) = rename::apply_rename_plan(&plan);
             let _ = cx.update(|cx| {
@@ -1198,7 +1188,7 @@ impl ToolboxPanel {
         self.api_request.response_error = None;
         cx.notify();
 
-        let entity = cx.entity().downgrade();
+        let _entity = cx.entity().downgrade();
         cx.spawn(async move |entity, cx| {
             let result = std::thread::spawn(move || {
                 let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
@@ -1400,13 +1390,13 @@ impl Render for ToolboxPanel {
                 .gap_3()
                 .size_full()
                 .overflow_hidden()
-                .child(
-                    h_flex().gap_2().items_center().child(back_btn).child(
-                        Label::new(t!("toolbox.title").to_string())
-                            .text_sm()
-                            .text_color(theme.muted_foreground),
-                    ),
-                )
+                // .child(
+                //     h_flex().gap_2().items_center().child(back_btn).child(
+                //         Label::new(t!("toolbox.title").to_string())
+                //             .text_sm()
+                //             .text_color(theme.muted_foreground),
+                //     ),
+                // )
                 .child(
                     gpui::div()
                         .flex_1()

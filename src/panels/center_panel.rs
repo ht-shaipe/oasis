@@ -4,7 +4,6 @@ use gpui_component::button::{Button, ButtonVariants as _};
 use gpui_component::dock::{Panel, PanelEvent};
 use gpui_component::h_flex;
 use gpui_component::label::Label;
-use gpui_component::scroll::ScrollableElement;
 use gpui_component::setting::{
     NumberFieldOptions, SettingField, SettingGroup, SettingItem, SettingPage,
 };
@@ -14,14 +13,23 @@ use gpui_component::{Icon, IconName, Sizable, Theme, ThemeMode};
 use rust_i18n::t;
 
 use crate::app_menus;
-use crate::app_state::AppSettings;
+use crate::app_state::{AppSettings, tool_id_from_tab};
 use crate::core::updater::{UpdateCheckResult, UpdateManager, Version};
-use crate::panels::ToolboxPanel;
+use crate::panels::toolbox_panel::ToolboxPanel;
+use crate::panels::credential_manager::CredentialManagerPanel;
+use crate::panels::code_editor::CodeEditorPanel;
+use crate::panels::markdown_editor::MarkdownEditorPanel;
 
 const TAB_WORKBENCH: usize = 0;
 const TAB_CONFIG: usize = 1;
 const TAB_LOG: usize = 2;
 const TAB_MONITOR: usize = 3;
+const TOOL_TAB_ID_BASE: usize = 1000;
+
+/// 检查是否为工具标签
+fn is_tool_tab(tab_id: usize) -> bool {
+    tab_id >= TOOL_TAB_ID_BASE
+}
 
 /// Update check status
 #[derive(Debug, Clone, Default)]
@@ -43,6 +51,9 @@ pub struct CenterPanel {
     update_status: UpdateStatus,
     open_tabs: Vec<usize>,  // Track which tabs are open
     tool_content: Entity<ToolboxPanel>, // Tool content rendered in center
+    credential_content: Entity<CredentialManagerPanel>, // Credential manager panel
+    code_editor_content: Entity<CodeEditorPanel>, // Code editor panel
+    markdown_editor_content: Entity<MarkdownEditorPanel>, // Markdown editor panel
 }
 
 impl CenterPanel {
@@ -53,39 +64,51 @@ impl CenterPanel {
             update_status: UpdateStatus::default(),
             open_tabs: vec![TAB_WORKBENCH, TAB_CONFIG, TAB_LOG, TAB_MONITOR],  // All tabs open by default
             tool_content: cx.new(|cx| ToolboxPanel::new(_window, cx)),
+            credential_content: cx.new(|cx| CredentialManagerPanel::new(_window, cx)),
+            code_editor_content: CodeEditorPanel::view(_window, cx),
+            markdown_editor_content: MarkdownEditorPanel::view(_window, cx),
         }
     }
 
     /// Close a tab
     fn close_tab(&mut self, tab_idx: usize, cx: &mut Context<Self>) {
-        // Don't close if it's the last tab
+        // 如果是工具标签，直接关闭
+        if is_tool_tab(tab_idx) {
+            AppSettings::global_mut(cx).close_tool_tab(tab_idx);
+            return;
+        }
+
+        // 静态标签：不要关闭最后一个标签
         if self.open_tabs.len() <= 1 {
             return;
         }
-        // Remove the tab
+        // 移除标签
         self.open_tabs.retain(|&t| t != tab_idx);
-        // If the closed tab was selected, switch to first available tab
+        // 如果关闭的是当前选中的标签，切换到第一个可用标签
         let settings = AppSettings::global(cx);
         let is_selected = if tab_idx == TAB_CONFIG {
             settings.show_settings
         } else {
             false
         };
-        // Check if current tab is still open
+        // 检查当前标签是否仍然打开
         let current_tab_open = self.open_tabs.contains(&tab_idx);
         if is_selected || !current_tab_open {
-            // Switch to workbench (always available)
+            // 切换到工作台（始终可用）
             AppSettings::global_mut(cx).show_settings = false;
         }
     }
 
     fn get_selected_tab(&self, cx: &App) -> usize {
-        // Tool takes priority: if a tool is selected, show it in center
-        if AppSettings::global(cx).selected_tool.is_some() {
-            return TAB_WORKBENCH;
+        let settings = AppSettings::global(cx);
+
+        // 工具标签优先级最高
+        if let Some(tool_tab_id) = settings.active_tool_tab_id {
+            return tool_tab_id;
         }
-        // Check if settings should be shown
-        if AppSettings::global(cx).show_settings {
+
+        // 检查是否显示配置标签
+        if settings.show_settings {
             TAB_CONFIG
         } else {
             TAB_WORKBENCH
@@ -99,14 +122,35 @@ impl CenterPanel {
         let theme = cx.theme();
         let open_tabs = &self.open_tabs;
         let entity = cx.entity().clone();
+        let settings = AppSettings::global(cx);
+        let tool_tabs = settings.get_all_tool_tabs();
 
-        // Tab definitions with icons
-        let tab_defs = [
+        // 静态标签定义
+        let static_tab_defs = [
             (TAB_WORKBENCH, t!("tab.workbench").to_string(), IconName::LayoutDashboard),
             (TAB_CONFIG, t!("tab.config").to_string(), IconName::Settings),
             (TAB_LOG, t!("tab.log").to_string(), IconName::SquareTerminal),
             (TAB_MONITOR, t!("tab.monitor").to_string(), IconName::ChartPie),
         ];
+
+        // 构建混合标签列表
+        let mut all_tabs: Vec<(usize, String, IconName)> = static_tab_defs
+            .iter()
+            .filter(|(id, _, _)| open_tabs.contains(id))
+            .map(|(id, label, icon)| (*id, label.clone(), icon.clone()))
+            .collect();
+
+        // 找到工作台标签的插入位置
+        let workbench_idx = all_tabs
+            .iter()
+            .position(|(id, _, _)| *id == TAB_WORKBENCH)
+            .unwrap_or(0);
+
+        // 插入工具标签到工作台之后
+        for tool_tab in tool_tabs {
+            let tab_entry = (tool_tab.id, tool_tab.title.to_string(), tool_tab.icon.clone());
+            all_tabs.insert(workbench_idx + 1, tab_entry);
+        }
 
         h_flex()
             .id("tab-bar")
@@ -116,7 +160,7 @@ impl CenterPanel {
             .border_b(px(1.0))
             .border_color(theme.colors.border)
             .items_center()
-            // Left: toggle left panel button
+            // 左侧面板切换按钮
             .child(
                 Button::new("toggle-left")
                     .ghost()
@@ -130,15 +174,10 @@ impl CenterPanel {
                             !AppSettings::global(cx).show_left_panel;
                     }),
             )
-            // Center: tabs
-            .children(tab_defs.iter().filter_map(|(idx, label, icon)| {
-                // Only show tabs that are open
-                if !open_tabs.contains(idx) {
-                    return None;
-                }
-                let is_selected = selected_tab == *idx;
-                let tab_idx = *idx;
-                let tab_label = label.clone();
+            // 标签区域
+            .children(all_tabs.into_iter().map(|(tab_idx, tab_label, tab_icon)| {
+                let is_selected = selected_tab == tab_idx;
+                let is_tool = is_tool_tab(tab_idx);
                 let tab_bg = theme.colors.tab_active;
                 let tab_bar_bg = theme.colors.tab_bar;
                 let primary = theme.colors.primary;
@@ -146,72 +185,74 @@ impl CenterPanel {
                 let muted_fg = theme.colors.muted_foreground;
                 let entity_clone = entity.clone();
 
-                Some(
-                    div()
-                        .id(*idx)
-                        .px(px(12.))
-                        .h_full()
-                        .flex()
-                        .items_center()
-                        .gap(px(6.))
-                        .cursor_pointer()
-                        .when(is_selected, |this| {
-                            this.bg(tab_bg).border_b(px(2.0)).border_color(primary)
-                        })
-                        .when(!is_selected, |this| {
-                            this.border_b(px(2.0)).border_color(tab_bar_bg)
-                        })
-                        .child(
-                            Icon::new(icon.clone())
-                                .text_size(px(14.))
-                                .text_color(if is_selected { foreground } else { muted_fg }),
-                        )
-                        .child(
-                            div()
-                                .text_color(if is_selected { foreground } else { muted_fg })
-                                .text_size(px(13.))
-                                .font_weight(if is_selected {
-                                    FontWeight::BOLD
-                                } else {
-                                    FontWeight::NORMAL
-                                })
-                                .child(tab_label),
-                        )
-                        // Close button (only show on hover, if more than one tab)
-                        .when(self.open_tabs.len() > 1, |this| {
-                            let tab_to_close = *idx;
-                            let entity = entity_clone.clone();
-                            this.child(
-                                div()
-                                    .opacity(0.0)
-                                    .hover(|style| style.opacity(1.0))
-                                    .child(
-                                        Button::new(("close-tab", *idx))
-                                            .ghost()
-                                            .icon(IconName::Close)
-                                            .on_click(move |_ev, window: &mut Window, cx: &mut App| {
-                                                cx.stop_propagation();
-                                                entity.update(cx, |this, cx| {
-                                                    this.close_tab(tab_to_close, cx);
-                                                });
-                                                window.refresh();
-                                            })
-                                    )
-                            )
-                        })
-                        .on_click(move |_ev, window: &mut Window, _cx: &mut App| {
-                            if tab_idx == TAB_CONFIG {
-                                AppSettings::global_mut(_cx).show_settings = true;
+                div()
+                    .id(tab_idx)
+                    .px(px(12.))
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .gap(px(6.))
+                    .cursor_pointer()
+                    .when(is_selected, |this| {
+                        this.bg(tab_bg).border_b(px(2.0)).border_color(primary)
+                    })
+                    .when(!is_selected, |this| {
+                        this.border_b(px(2.0)).border_color(tab_bar_bg)
+                    })
+                    .child(
+                        Icon::new(tab_icon)
+                            .text_size(px(14.))
+                            .text_color(if is_selected { foreground } else { muted_fg }),
+                    )
+                    .child(
+                        div()
+                            .text_color(if is_selected { foreground } else { muted_fg })
+                            .text_size(px(13.))
+                            .font_weight(if is_selected {
+                                FontWeight::BOLD
                             } else {
-                                AppSettings::global_mut(_cx).show_settings = false;
-                            }
-                            window.refresh();
-                        }),
-                )
+                                FontWeight::NORMAL
+                            })
+                            .child(tab_label),
+                    )
+                    // 关闭按钮：工具标签始终显示，静态标签仅在 hover 时显示
+                    .when(is_tool || self.open_tabs.len() > 1, |this| {
+                        let tab_to_close = tab_idx;
+                        let entity = entity_clone.clone();
+                        this.child(
+                            div()
+                                .when(!is_tool, |div| {
+                                    div.opacity(0.0).hover(|style| style.opacity(1.0))
+                                })
+                                .child(
+                                    Button::new(("close-tab", tab_idx))
+                                        .ghost()
+                                        .icon(IconName::Close)
+                                        .on_click(move |_ev, window: &mut Window, cx: &mut App| {
+                                            cx.stop_propagation();
+                                            entity.update(cx, |this, cx| {
+                                                this.close_tab(tab_to_close, cx);
+                                            });
+                                            window.refresh();
+                                        })
+                                )
+                        )
+                    })
+                    .on_click(move |_ev, window: &mut Window, cx: &mut App| {
+                        if is_tool_tab(tab_idx) {
+                            // 工具标签：切换到该工具
+                            AppSettings::global_mut(cx).set_active_tool_tab(tab_idx);
+                        } else if tab_idx == TAB_CONFIG {
+                            AppSettings::global_mut(cx).show_settings = true;
+                        } else {
+                            AppSettings::global_mut(cx).show_settings = false;
+                        }
+                        window.refresh();
+                    })
             }))
-            // Spacer
+            // 间隔
             .child(div().flex_1())
-            // Right: toggle right panel button
+            // 右侧面板切换按钮
             .child(
                 Button::new("toggle-right")
                     .ghost()
@@ -225,7 +266,7 @@ impl CenterPanel {
                             !AppSettings::global(cx).show_right_panel;
                     }),
             )
-            // Bottom panel toggle button
+            // 底部面板切换按钮
             .child(
                 Button::new("toggle-bottom")
                     .ghost()
@@ -241,9 +282,59 @@ impl CenterPanel {
             )
     }
 
+    fn render_tool_content(&self, tab_id: usize, cx: &mut Context<Self>) -> AnyElement {
+        let tool_id = tool_id_from_tab(tab_id).or_else(|| {
+            AppSettings::global(cx).tool_tabs.get(&tab_id).map(|t| t.tool_id.as_str())
+        });
+
+        if let Some(tool_id_str) = tool_id {
+            // Handle credential_manager separately (it has its own panel)
+            if tool_id_str == "credential_manager" {
+                return self.credential_content.clone().into_any_element();
+            }
+
+            // Handle code_editor separately (it has its own panel)
+            if tool_id_str == "code_editor" {
+                return self.code_editor_content.clone().into_any_element();
+            }
+
+            // Handle markdown_editor separately (it has its own panel)
+            if tool_id_str == "markdown_editor" {
+                return self.markdown_editor_content.clone().into_any_element();
+            }
+
+            use crate::panels::toolbox_panel::ViewState;
+            let view = match tool_id_str {
+                "csv_stats" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::CsvStats),
+                "csv_split" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::CsvSplit),
+                "csv_convert" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::CsvExcelConvert),
+                "batch_rename" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::BatchRename),
+                "excel_move" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::ExcelMoveFiles),
+                "api_request" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::ApiRequest),
+                "api_batch_download" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::ApiBatchDownload),
+                "json_convert" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::JsonToCsvExcel),
+                "json_merge" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::JsonMerge),
+                "network_scan" => ViewState::Tool(crate::panels::toolbox_panel::ToolId::NetworkScan),
+                _ => ViewState::Home,
+            };
+
+            self.tool_content.update(cx, |tp, cx| {
+                tp.view = view;
+                cx.notify();
+            });
+
+            self.tool_content.clone().into_any_element()
+        } else {
+            self.render_workbench_content(cx).into_any_element()
+        }
+    }
+
     fn render_workbench_content(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
-        let selected_tool = AppSettings::global(cx).selected_tool.clone();
+
+        // 只有在没有工具标签打开时显示欢迎界面
+        let has_tool_tabs = !AppSettings::global(cx).tool_tabs.is_empty();
+
         div()
             .id("workbench-content")
             .flex()
@@ -251,33 +342,16 @@ impl CenterPanel {
             .items_center()
             .justify_center()
             .bg(theme.colors.background)
-            .children({
-                if let Some(ref tool_id) = selected_tool {
-                    self.tool_content.update(cx, |tp, cx| {
-                        let view = match tool_id.as_str() {
-                            "csv_stats" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::CsvStats),
-                            "csv_split" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::CsvSplit),
-                            "csv_convert" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::CsvExcelConvert),
-                            "batch_rename" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::BatchRename),
-                            "excel_move" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::ExcelMoveFiles),
-                            "api_request" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::ApiRequest),
-                            "api_batch_download" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::ApiBatchDownload),
-                            "json_convert" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::JsonToCsvExcel),
-                            "json_merge" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::JsonMerge),
-                            "network_scan" => super::toolbox_panel::ViewState::Tool(super::toolbox_panel::ToolId::NetworkScan),
-                            _ => super::toolbox_panel::ViewState::Home,
-                        };
-                        tp.view = view;
-                        cx.notify();
-                    });
-                    vec![self.tool_content.clone().into_any_element()]
-                } else {
-                    vec![div()
+            .children(if !has_tool_tabs {
+                vec![
+                    div()
                         .text_color(theme.colors.muted_foreground)
                         .text_size(px(24.))
                         .child(t!("tab.workbench").to_string())
-                        .into_any_element()]
-                }
+                        .into_any_element()
+                ]
+            } else {
+                vec![]
             })
     }
 
@@ -692,7 +766,7 @@ impl Render for CenterPanel {
         if AppSettings::global(cx).show_settings && !self.open_tabs.contains(&TAB_CONFIG) {
             self.open_tabs.push(TAB_CONFIG);
         }
-        
+
         let selected_tab = self.get_selected_tab(cx);
 
         div()
@@ -702,7 +776,9 @@ impl Render for CenterPanel {
             .w_full()
             .h_full()
             .child(self.render_tab_bar(selected_tab, cx))
-            .child(if selected_tab == TAB_CONFIG {
+            .child(if is_tool_tab(selected_tab) {
+                self.render_tool_content(selected_tab, cx)
+            } else if selected_tab == TAB_CONFIG {
                 self.render_config_content(cx).into_any_element()
             } else if selected_tab == TAB_LOG {
                 self.render_log_content(cx).into_any_element()

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::path::PathBuf;
 
 use autocorrect::ignorer::Ignorer;
@@ -49,6 +50,8 @@ pub fn completion_item(
 pub fn build_file_items(ignorer: &Ignorer, root: &PathBuf, path: &PathBuf) -> Vec<TreeItem> {
     let mut items = Vec::new();
 
+    log::info!("[build_file_items] Building file items for path: {:?}", path);
+
     if let Ok(entries) = std::fs::read_dir(path) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -65,13 +68,19 @@ pub fn build_file_items(ignorer: &Ignorer, root: &PathBuf, path: &PathBuf) -> Ve
                 .to_string();
             let id = path.to_string_lossy().to_string();
             if path.is_dir() {
+                log::info!("[build_file_items] Found directory: {}", file_name);
                 let children = build_file_items(ignorer, &root, &path);
                 items.push(TreeItem::new(id, file_name).children(children));
             } else {
+                log::info!("[build_file_items] Found file: {}", file_name);
                 items.push(TreeItem::new(id, file_name));
             }
         }
+    } else {
+        log::error!("[build_file_items] Failed to read directory: {:?}", path);
     }
+
+    log::info!("[build_file_items] Total items found: {}", items.len());
     items.sort_by(|a, b| {
         b.is_folder()
             .cmp(&a.is_folder())

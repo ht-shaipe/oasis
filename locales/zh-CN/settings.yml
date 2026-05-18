@@ -1,0 +1,60 @@
+_version: 1
+
+# 设置
+settings.general.title: 通用
+settings.general.group.appearance: 外观
+settings.general.appearance.dark_mode.label: 深色模式
+settings.general.appearance.dark_mode.description: "在浅色与深色主题间切换。"
+settings.general.appearance.auto_switch.label: 自动切换主题
+settings.general.appearance.auto_switch.description: "根据系统设置自动切换主题。"
+settings.general.appearance.resettable.label: 重置按钮
+settings.general.appearance.resettable.description: "启用或禁用设置中的重置按钮。"
+settings.general.group.font: 字体
+settings.general.font.family.label: 字体
+settings.general.font.family.description: 选择界面字体。
+settings.general.font.size.label: 字号
+settings.general.font.size.description: 调整字号以提升可读性。
+settings.general.font.line_height.label: 行高
+settings.general.font.line_height.description: 调整行高以提升可读性。
+settings.general.group.other: 其他
+settings.general.language.label: 语言
+settings.general.language.description: 选择界面语言。
+settings.general.auto_switch_theme.label: 自动切换主题
+settings.general.auto_switch_theme.description: 根据系统设置自动切换主题。
+
+# 配置页面
+config.page.title: 系统配置
+config.group.appearance: 外观
+config.appearance.dark_mode.label: 深色模式
+config.appearance.dark_mode.description: 启用深色主题
+config.appearance.language.label: 语言
+config.appearance.language.description: 选择界面语言
+config.group.font: 字体
+config.font.label: 字体
+config.font.description: 选择界面字体
+config.font.size.label: 字号
+config.font.size.description: 调整字号以提升可读性
+config.font.line_height.label: 行高
+config.font.line_height.description: 调整行高以提升可读性
+config.group.other: 其他
+config.auto_switch_theme.label: 自动切换主题
+config.auto_switch_theme.description: 根据系统设置自动切换主题
+
+# 软件更新
+config.group.update: 软件更新
+config.update.current_version.label: 当前版本
+config.update.status.up_to_date: 已是最新版本
+config.update.status.checking: "正在检查更新..."
+config.update.status.available: "发现新版本: %{version}"
+config.update.status.error: "检查更新失败: %{error}"
+config.update.check.label: 检查更新
+config.update.check.button: 立即检查
+config.update.check.description: 手动检查是否有可用的软件更新
+config.update.auto_check.label: 启动时自动检查
+config.update.auto_check.description: 应用启动时自动检查是否有新版本
+config.update.notifications.label: 更新通知
+config.update.notifications.description: 当有新版本时显示通知提醒
+config.update.auto_update.label: 自动更新
+config.update.auto_update.description: 发现新版本时自动下载并安装更新
+config.update.frequency.label: 检查频率
+config.update.frequency.description: 自动检查更新的间隔天数

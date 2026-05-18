@@ -1,7 +1,7 @@
 //! 接口请求工具：参照 Postman 式布局，方法+URL+发送、Params/Body/Headers 标签、返回响应区。
 
 use gpui::{
-    AppContext as _, Context, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
+    AppContext as _, Context, Entity, IntoElement, ParentElement as _,
     Styled, Window, prelude::FluentBuilder as _, px,
 };
 use gpui_component::{

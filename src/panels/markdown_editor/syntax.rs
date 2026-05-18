@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::ops::Range;
 
 /// Semantic token categories for lightweight Markdown syntax highlighting.

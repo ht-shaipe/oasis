@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_must_use)]
 //! 批量下载小工具：
 //! - 配置下载目录
 //! - 配置 URL 模板（支持 `{0}` 占位）
@@ -27,8 +29,8 @@ use gpui::{
     Subscription, Window, prelude::FluentBuilder as _, px,
 };
 use gpui_component::{
-    ActiveTheme, Disableable, Icon, IconName,
     button::{Button, ButtonVariants as _},
+    ActiveTheme, Disableable, Icon, IconName,
     h_flex,
     input::{Input, NumberInput, NumberInputEvent, StepAction},
     label::Label,
@@ -2201,7 +2203,7 @@ impl BatchDownloadState {
 
         // UI 线程中轮询下载进度并更新列表
         let poll_entity = entity.clone();
-        cx.spawn(async move |entity, cx| {
+        cx.spawn(async move |_entity, cx| {
             loop {
                 let mut disconnected = false;
                 loop {

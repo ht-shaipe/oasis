@@ -1,0 +1,19 @@
+_version: 1
+
+# 中心面板标签
+tab.workbench: 工作台
+tab.config: 配置
+tab.log: 日志
+tab.monitor: 监控
+
+# 面板标题
+panel.workspace: 工作区
+
+# 左侧面板
+left_panel.explorer: 资源管理器
+left_panel.outline: 大纲
+left_panel.search: 搜索
+left_panel.git: Git
+left_panel.extensions: 扩展
+left_panel.settings: 设置
+left_panel.no_symbols: 未找到符号

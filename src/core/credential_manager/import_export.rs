@@ -1,5 +1,5 @@
+#![allow(dead_code)]
 use crate::core::credential_manager::models::Credential;
-use crate::core::credential_manager::CredentialService;
 use anyhow::Result;
 use serde_json::json;
 

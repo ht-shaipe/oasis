@@ -1,5 +1,6 @@
 mod app;
 mod assets;
+mod components;
 mod core;
 mod utils;
 mod i18n;

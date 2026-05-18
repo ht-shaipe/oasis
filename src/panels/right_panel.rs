@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Right panel - Outline / Properties panel
 
 use gpui::*;

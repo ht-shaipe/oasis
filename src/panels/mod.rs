@@ -12,13 +12,8 @@ mod toolbox_panel;
 
 pub use crate::app_state::AppSettings;
 pub use bottom_panel::BottomPanel;
-pub use code_editor::CodeEditorPanel;
 pub use center_panel::CenterPanel;
-pub use credential_manager::CredentialManagerPanel;
-pub use dock_panel::DockPanel;
 pub use left_panel::LeftPanel;
-pub use markdown_editor::MarkdownEditorPanel;
-pub use right_panel::RightPanel;
 pub use settings::SettingsPanel;
 pub use toolbox_panel::ToolboxPanel;
 

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! 从 Excel 指定列读取文件名，按多个后缀在目录中匹配，匹配到则移动到输出目录。
 
 use std::collections::HashSet;
@@ -5,7 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use gpui::{
-    AppContext as _, Context, Entity, InteractiveElement as _, IntoElement, ParentElement as _,
+    AppContext as _, Context, Entity, IntoElement, ParentElement as _,
     SharedString, Styled, Window, prelude::FluentBuilder as _, px,
 };
 use gpui_component::{
@@ -21,7 +22,6 @@ use gpui_component::{
 use rust_i18n::t;
 
 use super::ToolboxPanel;
-use crate::utils;
 
 fn file_ext_lower(path: &Path) -> String {
     path.extension()
@@ -306,7 +306,7 @@ impl ExcelMoveState {
     pub fn render(
         state: &mut ExcelMoveState,
         entity: Entity<ToolboxPanel>,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<ToolboxPanel>,
     ) -> impl IntoElement {
         let theme = cx.theme();

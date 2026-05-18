@@ -7,9 +7,7 @@ pub mod models;
 pub mod service;
 pub mod types;
 
-pub use audit::AuditService;
 pub use encryption::EncryptionService;
-pub use import_export::ImportExportService;
 pub use init::CredentialManagerInit;
-pub use models::{AuditLog, Credential, MasterKeyConfig};
+pub use models::Credential;
 pub use service::CredentialService;

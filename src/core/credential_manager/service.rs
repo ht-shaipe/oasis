@@ -1,5 +1,6 @@
-use crate::core::credential_manager::models::{AuditLog, Credential, MasterKeyConfig};
-use crate::core::credential_manager::{db, encryption::EncryptionService};
+#![allow(dead_code)]
+use crate::core::credential_manager::models::{Credential, MasterKeyConfig};
+use crate::core::credential_manager::db;
 use anyhow::Result;
 use rusqlite::{params, OptionalExtension};
 use std::path::PathBuf;

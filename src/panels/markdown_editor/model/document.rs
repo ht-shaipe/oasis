@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::path::PathBuf;
 use ropey::Rope;
 use std::collections::hash_map::DefaultHasher;

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{path::PathBuf, rc::Rc, str::FromStr};
 
 use autocorrect::ignorer::Ignorer;
@@ -146,16 +147,20 @@ impl CodeEditorPanel {
 
     fn load_files(state: Entity<TreeState>, path: PathBuf, cx: &mut App) {
         if !path.is_dir() {
+            log::warn!("[CodeEditor] Path is not a directory: {:?}", path);
             return;
         }
 
         if path.parent().is_none() {
+            log::warn!("[CodeEditor] Path has no parent: {:?}", path);
             return;
         }
 
+        log::info!("[CodeEditor] Loading files from: {:?}", path);
         cx.spawn(async move |cx| {
             let ignorer = Ignorer::new(&path.to_string_lossy());
             let items = build_file_items(&ignorer, &path, &path);
+            log::info!("[CodeEditor] Loaded {} items from {:?}", items.len(), path);
 
             _ = state.update(cx, |state, cx| {
                 state.set_items(items, cx);
@@ -165,12 +170,19 @@ impl CodeEditorPanel {
     }
 
     fn ensure_file_tree_loaded(&mut self, cx: &mut App) {
-        if self.files_loaded || !crate::themes::startup_completed() {
+        if self.files_loaded {
+            log::info!("[CodeEditor] Files already loaded, skipping");
             return;
         }
 
+        log::info!("[CodeEditor] Ensuring file tree loaded from: {:?}", self.working_directory);
         self.files_loaded = true;
         Self::load_files(self.tree_state.clone(), self.working_directory.clone(), cx);
+    }
+
+    fn reload_file_tree(&mut self, cx: &mut App) {
+        self.files_loaded = false;
+        self.ensure_file_tree_loaded(cx);
     }
 
     /// Get the workspace_id (if available)
@@ -332,52 +344,88 @@ impl CodeEditorPanel {
 
     fn render_file_tree(&self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let view = cx.entity();
-        tree(
-            &self.tree_state,
-            move |ix, entry, _selected, _window, cx| {
-                view.update(cx, |_, cx| {
-                    let item = entry.item();
-                    let icon = if !entry.is_folder() {
-                        IconName::File
-                    } else if entry.is_expanded() {
-                        IconName::FolderOpen
-                    } else {
-                        IconName::Folder
-                    };
+        let working_dir = self.working_directory.display().to_string();
+        let theme = cx.theme();
 
-                    ListItem::new(ix)
-                        .w_full()
-                        .rounded(cx.theme().radius)
-                        .py_0p5()
-                        .px_2()
-                        .pl(px(16.) * entry.depth() + px(8.))
-                        .child(h_flex().gap_2().child(icon).child(item.label.clone()))
-                        .on_click(cx.listener({
-                            let item = item.clone();
-                            move |_, _, _window, cx| {
-                                if item.is_folder() {
-                                    return;
-                                }
+        // 安全地截断工作目录显示，避免在多字节字符中间截断
+        let display_dir = if working_dir.chars().count() > 40 {
+            // 使用字符边界安全的截断
+            working_dir.chars().take(40).collect::<String>() + "..."
+        } else {
+            working_dir
+        };
 
-                                Self::open_file(
-                                    cx.entity(),
-                                    PathBuf::from(item.id.as_str()),
-                                    _window,
-                                    cx,
+        v_flex()
+            .size_full()
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .px_3()
+                    .py_2()
+                    .border_b_1()
+                    .border_color(theme.border)
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_semibold()
+                            .text_color(theme.foreground)
+                            .child(display_dir),
+                    )
+            )
+            .child(
+                tree(
+                    &self.tree_state,
+                    move |ix, entry, _selected, _window, cx| {
+                        view.update(cx, |_, cx| {
+                            let item = entry.item();
+                            let icon = if !entry.is_folder() {
+                                IconName::File
+                            } else if entry.is_expanded() {
+                                IconName::FolderOpen
+                            } else {
+                                IconName::Folder
+                            };
+
+                            ListItem::new(ix)
+                                .w_full()
+                                .rounded(cx.theme().radius)
+                                .py_0p5()
+                                .px_2()
+                                .pl(px(16.) * entry.depth() + px(8.))
+                                .child(
+                                    h_flex()
+                                        .gap_2()
+                                        .items_center()
+                                        .child(icon)
+                                        .child(item.label.clone())
                                 )
-                                .ok();
+                                .on_click(cx.listener({
+                                    let item = item.clone();
+                                    move |_, _, _window, cx| {
+                                        if item.is_folder() {
+                                            return;
+                                        }
 
-                                cx.notify();
-                            }
-                        }))
-                })
-            },
-        )
-        .text_sm()
-        .p_1()
-        .bg(cx.theme().sidebar)
-        .text_color(cx.theme().sidebar_foreground)
-        .h_full()
+                                        Self::open_file(
+                                            cx.entity(),
+                                            PathBuf::from(item.id.as_str()),
+                                            _window,
+                                            cx,
+                                        )
+                                        .ok();
+
+                                        cx.notify();
+                                    }
+                                }))
+                        })
+                    },
+                )
+                .text_sm()
+                .flex_1()
+                .p_1()
+            )
     }
 
     fn render_toggle_file_tree_button(
@@ -397,6 +445,131 @@ impl CodeEditorPanel {
                 this.show_file_tree = !this.show_file_tree;
                 cx.notify();
             }))
+    }
+
+    fn render_set_working_dir_button(
+        &self,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        Button::new("set-working-dir")
+            .ghost()
+            .xsmall()
+            .tooltip("Set Working Directory / 设置工作目录")
+            .child(Icon::new(IconName::Folder).size(px(16.)))
+            .on_click(cx.listener(|this, _, window, cx| {
+                this.open_set_working_dir_dialog(window, cx);
+            }))
+    }
+
+    fn open_set_working_dir_dialog(&self, window: &mut Window, cx: &mut Context<Self>) {
+        let current_dir = self.working_directory.display().to_string();
+        let view = cx.entity().clone();
+        let input_state = cx.new(|cx| {
+            let mut state = InputState::new(window, cx);
+            state.set_value(SharedString::from(current_dir.clone()), window, cx);
+            state.set_placeholder(SharedString::from("/path/to/directory"), window, cx);
+            state
+        });
+
+        window.open_dialog(cx, move |dialog, _window, cx| {
+            let theme = cx.theme();
+            let view_for_confirm = view.clone();
+            let input_state_for_confirm = input_state.clone();
+            let current_dir_clone = current_dir.clone();
+            dialog
+                .title("Set Working Directory / 设置工作目录")
+                .w(px(600.))
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_4()
+                        .px_6()
+                        .py_4()
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .text_color(theme.foreground)
+                                        .child("Current directory / 当前目录："),
+                                )
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(theme.muted_foreground)
+                                        .child(current_dir_clone),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .text_color(theme.foreground)
+                                        .child("New directory path / 新目录路径："),
+                                )
+                                .child(Input::new(&input_state)),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(theme.muted_foreground)
+                                .child("Enter an absolute path to a directory / 输入目录的绝对路径"),
+                        )
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_end()
+                        .gap_2()
+                        .border_t_1()
+                        .pt_4()
+                        .child(
+                            div()
+                                .flex()
+                                .gap_2()
+                                .child(
+                                    Button::new("cancel-set-dir")
+                                        .label("Cancel / 取消")
+                                        .ghost()
+                                        .on_click(move |_event, window, cx| {
+                                            window.close_dialog(cx);
+                                        })
+                                )
+                                .child(
+                                    Button::new("confirm-set-dir")
+                                        .label("Set / 设置")
+                                        .primary()
+                                        .on_click(move |_event, window, cx| {
+                                            let new_dir = input_state_for_confirm.read(cx).value().to_string();
+                                            let path = PathBuf::from(new_dir.clone());
+
+                                            if path.is_dir() {
+                                                window.close_dialog(cx);
+                                                view_for_confirm.update(cx, |this, cx| {
+                                                    this.working_directory = path.clone();
+                                                    this.current_file_path = None;
+                                                    this.has_opened_file = false;
+                                                    this.reload_file_tree(cx);
+                                                    log::info!("Working directory set to: {:?}", path);
+                                                });
+                                            } else {
+                                                log::warn!("Invalid directory: {}", new_dir);
+                                            }
+                                        })
+                                )
+                        )
+                )
+        });
     }
 
     fn render_line_number_button(
@@ -645,6 +818,11 @@ impl Render for CodeEditorPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         use gpui_component::input::RopeExt;
 
+        // 确保文件树已加载
+        if !self.files_loaded {
+            self.ensure_file_tree_loaded(cx);
+        }
+
         // Update diagnostics
         // if self.lsp_store.is_dirty() {
         //     let diagnostics = self.lsp_store.diagnostics();
@@ -701,7 +879,7 @@ impl Render for CodeEditorPanel {
                 h_resizable("editor-container")
                     .child(
                         resizable_panel()
-                            .size(px(240.))
+                            .size(px(280.))
                             .child(self.render_file_tree(window, cx)),
                     )
                     .child(editor_input)
@@ -715,7 +893,7 @@ impl Render for CodeEditorPanel {
                 h_resizable("editor-container")
                     .child(
                         resizable_panel()
-                            .size(px(240.))
+                            .size(px(280.))
                             .child(self.render_file_tree(window, cx)),
                     )
                     .child(self.render_empty_state(window, cx).into_any_element())
@@ -748,6 +926,7 @@ impl Render for CodeEditorPanel {
                         .child(
                             h_flex()
                                 .gap_3()
+                                .child(self.render_set_working_dir_button(window, cx))
                                 .child(self.render_toggle_file_tree_button(window, cx))
                                 .child(self.render_line_number_button(window, cx))
                                 .child(self.render_soft_wrap_button(window, cx))
