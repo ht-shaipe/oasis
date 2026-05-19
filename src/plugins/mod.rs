@@ -6,7 +6,6 @@ pub mod wasm_loader;
 pub mod wasm_plugin_system;
 pub mod wasm_plugin_view;
 pub mod wasm_runtime;
-pub mod widget_loader;
 
 use std::collections::HashMap;
 

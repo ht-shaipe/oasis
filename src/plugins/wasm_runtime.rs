@@ -13,7 +13,7 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use wasmi::{Engine, Extern, Instance, Linker, Memory, Module, Store, Val};
-use wasm_plugin_types::{HostContext, WasmManifest};
+use wasm_widget_types::{HostContext, WasmManifest};
 
 /// 共享 buffer 大小上限（与 WASM 侧 BUF_CAPACITY 一致）
 const BUF_CAPACITY: usize = 8192;
@@ -219,14 +219,14 @@ impl WasmLoadedPlugin {
 ///   - `(Caller<'_, HostState>, i32, i32) -> i32` → `(i32, i32) -> i32`
 ///   - `(Caller<'_, HostState>, i32, i32)`         → `(i32, i32) -> ()`
 fn inject_host_functions(store: &mut Store<HostState>, linker: &mut Linker<HostState>) {
-    let module = wasm_plugin_types::HostEnv::MODULE_NAME;
+    let module = wasm_widget_types::HostEnv::MODULE_NAME;
 
     // host_get_context(ptr: i32, len: i32) -> i32
     // 将宿主上下文 JSON 写入 WASM 线性内存，返回长度
     linker
         .define(
             module,
-            wasm_plugin_types::HostEnv::FN_GET_CONTEXT,
+            wasm_widget_types::HostEnv::FN_GET_CONTEXT,
             wasmi::Func::wrap(&mut *store, host_get_context),
         )
         .expect("注入 host_get_context 失败");
@@ -235,7 +235,7 @@ fn inject_host_functions(store: &mut Store<HostState>, linker: &mut Linker<HostS
     linker
         .define(
             module,
-            wasm_plugin_types::HostEnv::FN_LOG,
+            wasm_widget_types::HostEnv::FN_LOG,
             wasmi::Func::wrap(&mut *store, host_log),
         )
         .expect("注入 host_log 失败");
@@ -244,7 +244,7 @@ fn inject_host_functions(store: &mut Store<HostState>, linker: &mut Linker<HostS
     linker
         .define(
             module,
-            wasm_plugin_types::HostEnv::FN_READ_FILE,
+            wasm_widget_types::HostEnv::FN_READ_FILE,
             wasmi::Func::wrap(&mut *store, host_read_file),
         )
         .expect("注入 host_read_file 失败");
@@ -253,7 +253,7 @@ fn inject_host_functions(store: &mut Store<HostState>, linker: &mut Linker<HostS
     linker
         .define(
             module,
-            wasm_plugin_types::HostEnv::FN_WRITE_FILE,
+            wasm_widget_types::HostEnv::FN_WRITE_FILE,
             wasmi::Func::wrap(&mut *store, host_write_file),
         )
         .expect("注入 host_write_file 失败");
@@ -262,7 +262,7 @@ fn inject_host_functions(store: &mut Store<HostState>, linker: &mut Linker<HostS
     linker
         .define(
             module,
-            wasm_plugin_types::HostEnv::FN_SHOW_NOTIFICATION,
+            wasm_widget_types::HostEnv::FN_SHOW_NOTIFICATION,
             wasmi::Func::wrap(&mut *store, host_show_notification),
         )
         .expect("注入 host_show_notification 失败");

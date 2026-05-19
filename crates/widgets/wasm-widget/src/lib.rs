@@ -19,7 +19,7 @@
 //!   - `env::host_write_file(ptr, len, cptr, clen)` 写文件
 //!   - `env::host_show_notification(ptr, len)`       显示通知
 
-use wasm_plugin_types::*;
+use wasm_widget_types::*;
 
 // ---------------------------------------------------------------------------
 // 宿主函数声明（Host Imports）

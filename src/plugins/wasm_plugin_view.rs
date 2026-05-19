@@ -10,7 +10,7 @@ use gpui::{
 use gpui_component::ActiveTheme as _;
 
 use super::wasm_runtime::WasmLoadedPlugin;
-use wasm_plugin_types::{UiNode, WasmManifest};
+use wasm_widget_types::{UiNode, WasmManifest};
 
 // ---------------------------------------------------------------------------
 // 状态读取辅助（独立函数，不 impl 外部类型）

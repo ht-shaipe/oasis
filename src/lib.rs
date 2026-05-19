@@ -2,6 +2,7 @@ mod app;
 mod i18n;
 mod panels;
 pub mod plugins;
+pub mod widgets;
 
 rust_i18n::i18n!("locales", fallback = "en");
 
@@ -341,7 +342,7 @@ pub fn init(cx: &mut App) {
 	// 注册内置插件（必须在 PluginRegistry 初始化之后）
     plugins::register_builtin_wasm_plugins(cx);
 	// 注册 dylib 插件相关的 widget（必须在 plugins 模块初始化之后）
-//     plugins::widget_loader::register_dylib_widgets(cx);
+//     widgets::register_dylib_widgets(cx);
 	// 最后初始化 i18n 和菜单，因为菜单中可能会用到国际化文本
     i18n::init(cx);
 	// 菜单和快捷键通常放在最后初始化，这样它们就能访问到之前初始化的所有状态和组件

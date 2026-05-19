@@ -9,7 +9,7 @@ use gpui::App;
 use libloading::{Library, Symbol};
 use plugin_sdk::{WIDGET_FACTORY_SYMBOL, WIDGET_MANIFEST_SYMBOL};
 
-use super::{DylibFactoryFn, PluginManifest, PluginRegistry, RegisteredPlugin};
+use crate::plugins::{DylibFactoryFn, PluginManifest, PluginRegistry, RegisteredPlugin};
 
 // ---------------------------------------------------------------------------
 // LoadedWidget — 持有动态库句柄

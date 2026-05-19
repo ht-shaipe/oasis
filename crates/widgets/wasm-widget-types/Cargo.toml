@@ -1,5 +1,5 @@
 [package]
-name = "wasm-plugin-types"
+name = "wasm-widget-types"
 version = "0.1.0"
 edition = "2021"
 
