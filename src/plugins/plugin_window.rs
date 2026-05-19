@@ -1,9 +1,26 @@
 use gpui::{
-    AnyView, ClickEvent, Context, InteractiveElement as _, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Point, Render, SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, hsla, px, rgb, rgba
+    div, px, rgb, AnyView, ClickEvent, Context, InteractiveElement as _, IntoElement,
+    MouseButton, MouseDownEvent, ParentElement, Pixels, Point, ReadGlobal, Render,
+    SharedString, StatefulInteractiveElement as _, Styled as _, Window,
 };
 use gpui_component::ActiveTheme as _;
 
+use crate::app::drag_state::SharedGlobalDragState;
+
 use super::PluginRegistry;
+
+/// 调整大小方向
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResizeDirection {
+    Top,
+    Bottom,
+    Left,
+    Right,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
 
 /// 插件浮动窗口
 pub struct PluginWindow {
@@ -23,10 +40,12 @@ pub struct PluginWindow {
     pub drag_origin: Point<Pixels>,
     /// 是否正在调整大小
     pub resizing: bool,
+    /// 调整大小方向
+    pub resize_direction: Option<ResizeDirection>,
     /// 调整大小开始时鼠标位置
     pub resize_start: Point<Pixels>,
-    /// 调整大小开始时窗口尺寸
-    pub resize_origin_size: (Pixels, Pixels),
+    /// 调整大小开始时窗口位置和尺寸
+    pub resize_origin: (Point<Pixels>, (Pixels, Pixels)),
     /// 是否最小化（隐藏）
     pub minimized: bool,
     /// 是否最大化
@@ -51,8 +70,9 @@ impl PluginWindow {
             drag_start: Point::default(),
             drag_origin: Point::default(),
             resizing: false,
+            resize_direction: None,
             resize_start: Point::default(),
-            resize_origin_size: (px(window_size.0), px(window_size.1)),
+            resize_origin: (Point::default(), (px(0.), px(0.))),
             minimized: false,
             maximized: false,
             restore_position: Point::new(px(120.0), px(80.0)),
@@ -89,28 +109,65 @@ impl PluginWindow {
         }
     }
 
-    /// 开始调整大小
-    pub fn start_resize(&mut self, pos: Point<Pixels>) {
-        self.resizing = true;
-        self.resize_start = pos;
-        self.resize_origin_size = self.size;
-    }
+    /// 从全局拖动状态更新位置或大小
+    pub fn update_from_global_drag(&mut self, window_id: &str, mouse_pos: Point<Pixels>) {
+        if window_id != format!("plugin-{}", self.plugin_id) {
+            return;
+        }
 
-    /// 处理拖拽或调整大小
-    pub fn handle_interaction(&mut self, pos: Point<Pixels>) {
         if self.dragging {
-            let dx = pos.x - self.drag_start.x;
-            let dy = pos.y - self.drag_start.y;
+            let dx = mouse_pos.x - self.drag_start.x;
+            let dy = mouse_pos.y - self.drag_start.y;
             self.position = Point::new(self.drag_origin.x + dx, self.drag_origin.y + dy);
-        } else if self.resizing {
-            let dx = pos.x - self.resize_start.x;
-            let dy = pos.y - self.resize_start.y;
+        } else if let Some(direction) = self.resize_direction {
+            let dx = mouse_pos.x - self.resize_start.x;
+            let dy = mouse_pos.y - self.resize_start.y;
+            let (origin_pos, origin_size) = self.resize_origin;
             let min_w = px(200.0);
             let min_h = px(150.0);
-            self.size = (
-                (self.resize_origin_size.0 + dx).max(min_w),
-                (self.resize_origin_size.1 + dy).max(min_h),
-            );
+
+            match direction {
+                ResizeDirection::Right => {
+                    self.size.0 = (origin_size.0 + dx).max(min_w);
+                }
+                ResizeDirection::Bottom => {
+                    self.size.1 = (origin_size.1 + dy).max(min_h);
+                }
+                ResizeDirection::Left => {
+                    let new_width = (origin_size.0 - dx).max(min_w);
+                    self.size.0 = new_width;
+                    self.position.x = origin_pos.x + (origin_size.0 - new_width);
+                }
+                ResizeDirection::Top => {
+                    let new_height = (origin_size.1 - dy).max(min_h);
+                    self.size.1 = new_height;
+                    self.position.y = origin_pos.y + (origin_size.1 - new_height);
+                }
+                ResizeDirection::TopRight => {
+                    let new_height = (origin_size.1 - dy).max(min_h);
+                    self.size.0 = (origin_size.0 + dx).max(min_w);
+                    self.size.1 = new_height;
+                    self.position.y = origin_pos.y + (origin_size.1 - new_height);
+                }
+                ResizeDirection::BottomRight => {
+                    self.size.0 = (origin_size.0 + dx).max(min_w);
+                    self.size.1 = (origin_size.1 + dy).max(min_h);
+                }
+                ResizeDirection::BottomLeft => {
+                    let new_width = (origin_size.0 - dx).max(min_w);
+                    self.size.0 = new_width;
+                    self.size.1 = (origin_size.1 + dy).max(min_h);
+                    self.position.x = origin_pos.x + (origin_size.0 - new_width);
+                }
+                ResizeDirection::TopLeft => {
+                    let new_width = (origin_size.0 - dx).max(min_w);
+                    let new_height = (origin_size.1 - dy).max(min_h);
+                    self.size.0 = new_width;
+                    self.size.1 = new_height;
+                    self.position.x = origin_pos.x + (origin_size.0 - new_width);
+                    self.position.y = origin_pos.y + (origin_size.1 - new_height);
+                }
+            }
         }
     }
 
@@ -118,6 +175,7 @@ impl PluginWindow {
     pub fn end_interaction(&mut self) {
         self.dragging = false;
         self.resizing = false;
+        self.resize_direction = None;
     }
 }
 
@@ -127,14 +185,21 @@ impl Render for PluginWindow {
         let is_dark = theme.mode.is_dark();
 
         let entity = cx.entity().downgrade();
-        let entity2 = entity.clone();
-        let entity3 = entity.clone();
-        let entity_resize = entity.clone();
+        let entity_for_drag = entity.clone();
+        let entity_for_resize = entity.clone();
         let entity_min = entity.clone();
         let entity_max = entity.clone();
 
         // 关闭按钮需要 plugin_id
         let plugin_id_for_close = self.plugin_id.clone();
+
+        // 用于全局拖动状态的唯一 ID
+        let window_id = format!("plugin-{}", self.plugin_id);
+        let window_id_for_drag = window_id.clone();
+
+        // 当前窗口位置和尺寸（用于拖动开始时记录）
+        let current_pos = self.position;
+        let current_size = self.size;
 
         // 窗口背景
         let bg_color = if is_dark {
@@ -150,7 +215,11 @@ impl Render for PluginWindow {
             theme.colors.muted.opacity(0.15)
         };
 
+        // 调整手柄样式
+        let handle_color = theme.colors.muted_foreground.opacity(0.3);
+
         div()
+            .id(SharedString::from(format!("plugin-window-{}", self.plugin_id)))
             .absolute()
             .left(self.position.x)
             .top(self.position.y)
@@ -158,11 +227,13 @@ impl Render for PluginWindow {
             .h(self.size.1)
             .flex()
             .flex_col()
-            .rounded_lg()
+            .rounded_2xl()
             .bg(bg_color)
-            .shadow_lg()
+            .shadow_xl()
+            .border_1()
+            .border_color(theme.colors.border.opacity(0.2))
             .overflow_hidden()
-			.cursor_default()
+            .cursor_default()
             // 标题栏 —— 可拖拽区域
             .child(
                 div()
@@ -177,39 +248,30 @@ impl Render for PluginWindow {
                     .px(px(12.))
                     .py(px(8.))
                     .bg(title_bar_bg)
-                    // 拖拽：鼠标按下
+                    .cursor_grab()
+                    // 拖拽：鼠标按下 - 使用全局拖动状态
                     .on_mouse_down(
                         MouseButton::Left,
                         move |event: &MouseDownEvent, _window, cx| {
-                            if let Some(e) = entity.upgrade() {
+                            // 记录当前窗口状态到全局
+                            let drag_state = SharedGlobalDragState::global(cx);
+                            drag_state.start_drag(
+                                window_id_for_drag.clone(),
+                                event.position,
+                                current_pos,
+                            );
+
+                            // 同时更新本地状态
+                            if let Some(e) = entity_for_drag.upgrade() {
                                 e.update(cx, |this, _cx| {
                                     this.dragging = true;
                                     this.drag_start = event.position;
-                                    this.drag_origin = this.position;
+                                    this.drag_origin = current_pos;
                                 });
                             }
                         },
                     )
-                    // 拖拽/调整大小：鼠标移动
-                    .on_mouse_move(move |event: &MouseMoveEvent, _window, cx| {
-                        if let Some(e) = entity2.upgrade() {
-                            e.update(cx, |this, _cx| {
-                                this.handle_interaction(event.position);
-                            });
-                        }
-                    })
-                    // 拖拽/调整大小：鼠标抬起
-                    .on_mouse_up(
-                        MouseButton::Left,
-                        move |_event: &MouseUpEvent, _window, cx| {
-                            if let Some(e) = entity3.upgrade() {
-                                e.update(cx, |this, _cx| {
-                                    this.end_interaction();
-                                });
-                            }
-                        },
-                    )
-                    // macOS 风格窗口按钮（红色 = 关闭）
+                    // macOS 风格窗口按钮
                     .child(
                         div()
                             .flex()
@@ -277,7 +339,217 @@ impl Render for PluginWindow {
             )
             // 内容区
             .child(div().flex_1().overflow_hidden().child(self.content.clone()))
-            // 右下角 resize handle
+            // === 8 个调整大小的手柄 ===
+            // 上边手柄
+            .child(
+                div()
+                    .absolute()
+                    .top(px(0.))
+                    .left(px(12.))
+                    .right(px(12.))
+                    .h(px(4.))
+                    .cursor_n_resize()
+                    .on_mouse_down(MouseButton::Left, {
+                        let entity = entity_for_resize.clone();
+                        let window_id = window_id.clone();
+                        let current_pos = current_pos;
+                        let current_size = current_size;
+                        move |event: &MouseDownEvent, _window, cx| {
+                            let drag_state = SharedGlobalDragState::global(cx);
+                            drag_state.start_resize(window_id.clone(), event.position, current_size);
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |this, _cx| {
+                                    this.resizing = true;
+                                    this.resize_direction = Some(ResizeDirection::Top);
+                                    this.resize_start = event.position;
+                                    this.resize_origin = (current_pos, current_size);
+                                });
+                            }
+                        }
+                    }),
+            )
+            // 下边手柄
+            .child(
+                div()
+                    .absolute()
+                    .bottom(px(0.))
+                    .left(px(12.))
+                    .right(px(12.))
+                    .h(px(4.))
+                    .cursor_s_resize()
+                    .on_mouse_down(MouseButton::Left, {
+                        let entity = entity_for_resize.clone();
+                        let window_id = window_id.clone();
+                        let current_pos = current_pos;
+                        let current_size = current_size;
+                        move |event: &MouseDownEvent, _window, cx| {
+                            let drag_state = SharedGlobalDragState::global(cx);
+                            drag_state.start_resize(window_id.clone(), event.position, current_size);
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |this, _cx| {
+                                    this.resizing = true;
+                                    this.resize_direction = Some(ResizeDirection::Bottom);
+                                    this.resize_start = event.position;
+                                    this.resize_origin = (current_pos, current_size);
+                                });
+                            }
+                        }
+                    }),
+            )
+            // 左边手柄
+            .child(
+                div()
+                    .absolute()
+                    .left(px(0.))
+                    .top(px(12.))
+                    .bottom(px(12.))
+                    .w(px(4.))
+                    .cursor_w_resize()
+                    .on_mouse_down(MouseButton::Left, {
+                        let entity = entity_for_resize.clone();
+                        let window_id = window_id.clone();
+                        let current_pos = current_pos;
+                        let current_size = current_size;
+                        move |event: &MouseDownEvent, _window, cx| {
+                            let drag_state = SharedGlobalDragState::global(cx);
+                            drag_state.start_resize(window_id.clone(), event.position, current_size);
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |this, _cx| {
+                                    this.resizing = true;
+                                    this.resize_direction = Some(ResizeDirection::Left);
+                                    this.resize_start = event.position;
+                                    this.resize_origin = (current_pos, current_size);
+                                });
+                            }
+                        }
+                    }),
+            )
+            // 右边手柄
+            .child(
+                div()
+                    .absolute()
+                    .right(px(0.))
+                    .top(px(12.))
+                    .bottom(px(12.))
+                    .w(px(4.))
+                    .cursor_e_resize()
+                    .on_mouse_down(MouseButton::Left, {
+                        let entity = entity_for_resize.clone();
+                        let window_id = window_id.clone();
+                        let current_pos = current_pos;
+                        let current_size = current_size;
+                        move |event: &MouseDownEvent, _window, cx| {
+                            let drag_state = SharedGlobalDragState::global(cx);
+                            drag_state.start_resize(window_id.clone(), event.position, current_size);
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |this, _cx| {
+                                    this.resizing = true;
+                                    this.resize_direction = Some(ResizeDirection::Right);
+                                    this.resize_start = event.position;
+                                    this.resize_origin = (current_pos, current_size);
+                                });
+                            }
+                        }
+                    }),
+            )
+            // 左上角手柄
+            .child(
+                div()
+                    .absolute()
+                    .left(px(0.))
+                    .top(px(0.))
+                    .w(px(12.))
+                    .h(px(12.))
+                    .cursor_nwse_resize()
+                    .on_mouse_down(MouseButton::Left, {
+                        let entity = entity_for_resize.clone();
+                        let window_id = window_id.clone();
+                        let current_pos = current_pos;
+                        let current_size = current_size;
+                        move |event: &MouseDownEvent, _window, cx| {
+                            let drag_state = SharedGlobalDragState::global(cx);
+                            drag_state.start_resize(window_id.clone(), event.position, current_size);
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |this, _cx| {
+                                    this.resizing = true;
+                                    this.resize_direction = Some(ResizeDirection::TopLeft);
+                                    this.resize_start = event.position;
+                                    this.resize_origin = (current_pos, current_size);
+                                });
+                            }
+                        }
+                    }),
+            )
+            // 右上角手柄
+            .child(
+                div()
+                    .absolute()
+                    .right(px(0.))
+                    .top(px(0.))
+                    .w(px(12.))
+                    .h(px(12.))
+                    .cursor_n_resize()
+                    .on_mouse_down(MouseButton::Left, {
+                        let entity = entity_for_resize.clone();
+                        let window_id = window_id.clone();
+                        let current_pos = current_pos;
+                        let current_size = current_size;
+                        move |event: &MouseDownEvent, _window, cx| {
+                            let drag_state = SharedGlobalDragState::global(cx);
+                            drag_state.start_resize(window_id.clone(), event.position, current_size);
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |this, _cx| {
+                                    this.resizing = true;
+                                    this.resize_direction = Some(ResizeDirection::TopRight);
+                                    this.resize_start = event.position;
+                                    this.resize_origin = (current_pos, current_size);
+                                });
+                            }
+                        }
+                    }),
+            )
+            // 左下角手柄
+            .child(
+                div()
+                    .absolute()
+                    .left(px(0.))
+                    .bottom(px(0.))
+                    .w(px(12.))
+                    .h(px(12.))
+                    .cursor_s_resize()
+                    .on_mouse_down(MouseButton::Left, {
+                        let entity = entity_for_resize.clone();
+                        let window_id = window_id.clone();
+                        let current_pos = current_pos;
+                        let current_size = current_size;
+                        move |event: &MouseDownEvent, _window, cx| {
+                            let drag_state = SharedGlobalDragState::global(cx);
+                            drag_state.start_resize(window_id.clone(), event.position, current_size);
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |this, _cx| {
+                                    this.resizing = true;
+                                    this.resize_direction = Some(ResizeDirection::BottomLeft);
+                                    this.resize_start = event.position;
+                                    this.resize_origin = (current_pos, current_size);
+                                });
+                            }
+                        }
+                    })
+                    // 左下角调整图标
+                    .child(
+                        div()
+                            .absolute()
+                            .left(px(3.))
+                            .bottom(px(3.))
+                            .flex()
+                            .flex_col()
+                            .gap(px(1.))
+                            .child(div().h(px(1.)).w(px(6.)).rounded_full().bg(handle_color))
+                            .child(div().h(px(1.)).w(px(4.)).rounded_full().bg(handle_color))
+                            .child(div().h(px(1.)).w(px(2.)).rounded_full().bg(handle_color)),
+                    ),
+            )
+            // 右下角手柄
             .child(
                 div()
                     .id(SharedString::from(format!(
@@ -287,48 +559,39 @@ impl Render for PluginWindow {
                     .absolute()
                     .right(px(0.))
                     .bottom(px(0.))
-                    .w(px(18.))
-                    .h(px(18.))
+                    .w(px(12.))
+                    .h(px(12.))
                     .cursor_nwse_resize()
-                    .on_mouse_down(
-                        MouseButton::Left,
+                    .on_mouse_down(MouseButton::Left, {
+                        let entity = entity_for_resize.clone();
+                        let window_id = window_id.clone();
+                        let current_pos = current_pos;
+                        let current_size = current_size;
                         move |event: &MouseDownEvent, _window, cx| {
-                            if let Some(e) = entity_resize.upgrade() {
+                            let drag_state = SharedGlobalDragState::global(cx);
+                            drag_state.start_resize(window_id.clone(), event.position, current_size);
+                            if let Some(e) = entity.upgrade() {
                                 e.update(cx, |this, _cx| {
-                                    this.start_resize(event.position);
+                                    this.resizing = true;
+                                    this.resize_direction = Some(ResizeDirection::BottomRight);
+                                    this.resize_start = event.position;
+                                    this.resize_origin = (current_pos, current_size);
                                 });
                             }
-                        },
-                    )
+                        }
+                    })
+                    // 右下角调整图标
                     .child(
                         div()
                             .absolute()
-                            .right(px(4.))
-                            .bottom(px(4.))
+                            .right(px(3.))
+                            .bottom(px(3.))
                             .flex()
                             .flex_col()
-                            .gap(px(2.))
-                            .child(
-                                div()
-                                    .h(px(1.5))
-                                    .w(px(10.))
-                                    .rounded_full()
-                                    .bg(theme.colors.muted_foreground.opacity(0.35)),
-                            )
-                            .child(
-                                div()
-                                    .h(px(1.5))
-                                    .w(px(7.))
-                                    .rounded_full()
-                                    .bg(theme.colors.muted_foreground.opacity(0.35)),
-                            )
-                            .child(
-                                div()
-                                    .h(px(1.5))
-                                    .w(px(4.))
-                                    .rounded_full()
-                                    .bg(theme.colors.muted_foreground.opacity(0.35)),
-                            ),
+                            .gap(px(1.))
+                            .child(div().h(px(1.)).w(px(6.)).rounded_full().bg(handle_color))
+                            .child(div().h(px(1.)).w(px(4.)).rounded_full().bg(handle_color))
+                            .child(div().h(px(1.)).w(px(2.)).rounded_full().bg(handle_color)),
                     ),
             )
     }

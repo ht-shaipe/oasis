@@ -15,8 +15,9 @@ pub use app::{
 pub use panels::SamplePanel;
 
 use gpui::{
-    div, img, AnyView, App, AppContext as _, BorrowAppContext, Context, Entity, IntoElement,
-    ObjectFit, ParentElement, Render, SharedString, Styled, StyledImage, Window, WindowOptions,
+    div, img, AnyView, App, AppContext as _, BorrowAppContext, Context, Entity,
+    InteractiveElement as _, IntoElement, ObjectFit, ParentElement, ReadGlobal, Render,
+    SharedString, Styled, StyledImage, Window, WindowOptions,
 };
 #[cfg(not(target_family = "wasm"))]
 use gpui::{px, size, Bounds, WindowBounds, WindowKind};
@@ -163,13 +164,87 @@ impl Render for DockRoot {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
 
+        // 克隆实体用于事件处理（预留）
+        let _root_entity = cx.entity().downgrade();
+
         // 外层容器
         let mut root = div()
             .w_full()
             .h_full()
             .flex()
             .flex_col()
-            .relative();
+            .relative()
+            // 全局鼠标移动 - 处理窗口拖动、调整大小和 Dock 悬停
+            .on_mouse_move(move |event, _window, cx| {
+                use crate::app::drag_state::SharedGlobalDragState;
+                use crate::app::dock::DockHoverState;
+
+                // 处理 Dock 悬停状态 - 鼠标移出 Dock 区域时清除
+                {
+                    let dock_state = DockHoverState::global(cx);
+                    if dock_state.hovered_plugin_id.is_some() {
+                        // Dock 在屏幕底部，如果鼠标 y 坐标小于屏幕高度的 80%，认为移出了 Dock
+                        let mouse_y_px: f32 = event.position.y.into();
+                        // 简化处理：假设窗口高度至少 600px，Dock 在底部 120px 区域
+                        let is_outside_dock = mouse_y_px < 480.0;
+                        if is_outside_dock {
+                            cx.global_mut::<DockHoverState>().hovered_plugin_id = None;
+                        }
+                    }
+                }
+
+                // 处理窗口拖动和调整大小
+                let drag_state = SharedGlobalDragState::global(cx);
+                if !drag_state.is_active() {
+                    return;
+                }
+
+                // 获取拖动状态（克隆数据以避免长时间借用）
+                let (dragging_window, _, _) = drag_state.get_drag_state();
+                let (resizing_window, _, _) = drag_state.get_resize_state();
+                let window_id = dragging_window.or(resizing_window);
+
+                // 获取需要更新的窗口实体（克隆以避免借用）
+                let window_entity_to_update = if let Some(wid) = &window_id {
+                    let plugin_id = wid.strip_prefix("plugin-").unwrap_or("");
+                    cx.global::<crate::plugins::PluginRegistry>()
+                        .open_windows
+                        .get(plugin_id)
+                        .cloned()
+                } else {
+                    None
+                };
+
+                // 更新窗口位置/大小
+                if let (Some(wid), Some(window_entity)) = (window_id, window_entity_to_update) {
+                    let _ = window_entity.update(cx, |win, _cx| {
+                        win.update_from_global_drag(&wid, event.position);
+                    });
+                }
+            })
+            // 全局鼠标抬起 - 结束拖动/调整大小
+            .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, cx| {
+                use crate::app::drag_state::SharedGlobalDragState;
+
+                let drag_state = SharedGlobalDragState::global(cx);
+                if drag_state.is_active() {
+                    drag_state.end();
+
+                    // 收集需要更新的窗口实体
+                    let window_entities: Vec<_> = cx.global::<crate::plugins::PluginRegistry>()
+                        .open_windows
+                        .values()
+                        .cloned()
+                        .collect();
+
+                    // 更新所有窗口的本地状态
+                    for window_entity in window_entities {
+                        let _ = window_entity.update(cx, |win, _cx| {
+                            win.end_interaction();
+                        });
+                    }
+                }
+            });
 
         // 背景图片层（从全局 BackgroundSettings 读取）
         let bg_settings = app::background::BackgroundSettings::global(cx);

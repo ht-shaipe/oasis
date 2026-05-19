@@ -18,21 +18,19 @@ impl FloatingDock {
 
 impl Render for FloatingDock {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-        let is_dark = theme.mode.is_dark();
-
-        // Dock 背景色：半透明 (70% 不透明度，30% 透明度)
-        let bg_color = if is_dark {
-            theme.colors.background.opacity(0.5)
-        } else {
-            theme.colors.background.opacity(0.5)
+        // 先获取所有需要的颜色值，避免借用冲突
+        let (bg_color, icon_bg, icon_fg, border_color) = {
+            let theme = cx.theme();
+            let bg = theme.colors.background.opacity(0.5);
+            let icon_bg = theme.colors.muted.opacity(0.5);
+            let icon_fg = theme.colors.foreground;
+            let border_color = theme.colors.border.opacity(0.15);
+            (bg, icon_bg, icon_fg, border_color)
         };
 
-        // 图标占位颜色
-        let icon_bg = theme.colors.muted.opacity(0.5);
-        let icon_fg = theme.colors.foreground;
-
-        // 从 PluginRegistry 读取插件列表
+        // 先获取悬停状态（需要可变借用）
+        let hover_plugin_id = cx.global_mut::<DockHoverState>().hovered_plugin_id.clone();
+        // 然后获取插件列表（不可变借用）
         let registry = cx.global::<PluginRegistry>();
 
         div()
@@ -58,7 +56,10 @@ impl Render for FloatingDock {
                     .bg(bg_color)
                     .shadow_lg()
                     .border_1()
-                    .border_color(theme.colors.border.opacity(0.15))
+                    .border_color(border_color)
+                    .on_mouse_move(move |_event, _window, _cx| {
+                        // 鼠标在 Dock 区域移动，悬停状态由各个图标处理
+                    })
                     .children(
                         registry.plugins.iter().map(|plugin| {
                             let plugin_id = plugin.manifest.id.clone();
@@ -72,6 +73,7 @@ impl Render for FloatingDock {
                             };
 
                             let is_open = registry.open_windows.contains_key(&plugin_id);
+                            let is_hovered = hover_plugin_id.as_ref() == Some(&plugin_id);
                             let dot_color = if is_open {
                                 icon_fg
                             } else {
@@ -81,6 +83,10 @@ impl Render for FloatingDock {
                             let icon_bg_copy = icon_bg;
                             let icon_fg_copy = icon_fg;
 
+                            // 悬停时放大图标尺寸 (更明显的放大效果)
+                            let icon_size = if is_hovered { px(56.) } else { px(44.) };
+                            let text_size = if is_hovered { px(52.) } else { px(40.) };
+
                             div()
                                 .id(SharedString::from(format!("dock-icon-{}", plugin_id)))
                                 .flex()
@@ -88,8 +94,17 @@ impl Render for FloatingDock {
                                 .items_center()
                                 .gap(px(4.))
                                 .cursor_pointer()
-                                .on_click(move |_ev: &ClickEvent, window, cx| {
-                                    PluginRegistry::open_plugin(&plugin_id, window, cx);
+                                .on_click({
+                                    let plugin_id = plugin_id.clone();
+                                    move |_ev: &ClickEvent, window, cx| {
+                                        PluginRegistry::open_plugin(&plugin_id, window, cx);
+                                    }
+                                })
+                                .on_mouse_move({
+                                    let plugin_id = plugin_id.clone();
+                                    move |_event, _window, cx| {
+                                        cx.global_mut::<DockHoverState>().hovered_plugin_id = Some(plugin_id.clone());
+                                    }
                                 })
                                 .child(
                                     // 图标圆形背景
@@ -97,12 +112,15 @@ impl Render for FloatingDock {
                                         .flex()
                                         .items_center()
                                         .justify_center()
-                                        .size(px(44.))
+                                        .size(icon_size)
                                         .rounded_lg()
                                         .bg(icon_bg_copy)
+                                        .when(is_hovered, |el| {
+                                            el.shadow_xl()
+                                        })
                                         .child(
                                             div()
-                                                .text_size(px(42.))
+                                                .text_size(text_size)
                                                 .text_color(icon_fg_copy)
                                                 .font_weight(gpui::FontWeight::SEMIBOLD)
                                                 .child(display_icon),
@@ -117,3 +135,11 @@ impl Render for FloatingDock {
             )
     }
 }
+
+/// Dock 悬停状态
+#[derive(Debug, Clone, Default)]
+pub struct DockHoverState {
+    pub hovered_plugin_id: Option<String>,
+}
+
+impl gpui::Global for DockHoverState {}

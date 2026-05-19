@@ -2,6 +2,8 @@ use gpui::{App, Global, SharedString};
 use serde::{Deserialize, Serialize};
 
 pub use crate::app::background::{BackgroundManager, BackgroundSettings};
+pub use crate::app::dock::DockHoverState;
+pub use crate::app::drag_state::SharedGlobalDragState;
 
 /// Application settings persisted to state file
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,6 +67,15 @@ impl AppState {
         // Initialize background settings
         tracing::info!("📋 设置 BackgroundSettings 全局状态");
         cx.set_global::<BackgroundSettings>(BackgroundSettings::default());
+
+        // Initialize dock hover state
+        tracing::info!("🖱️ 设置 DockHoverState 全局状态");
+        cx.set_global::<DockHoverState>(DockHoverState::default());
+
+        // Initialize global drag state
+        tracing::info!("🖐️ 设置 SharedGlobalDragState 全局状态");
+        cx.set_global::<SharedGlobalDragState>(SharedGlobalDragState::default());
+
         tracing::info!("🎨 初始化 BackgroundManager");
         crate::app::background::init(cx);
         tracing::info!("✅ AppState::init() 完成");
