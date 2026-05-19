@@ -42,6 +42,7 @@ impl Render for AppTitleBar {
 
 		TitleBar::new()
 			.bg(cx.theme().transparent)
+			.border_color(gpui::rgba(0x00000000))
 			.child(div().child("child"))
             .child(
                 div()
