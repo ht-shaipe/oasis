@@ -1,7 +1,8 @@
 use gpui::{
-    div, px, App, ClickEvent, Context, InteractiveElement as _, IntoElement, ParentElement, Render,
-    SharedString, StatefulInteractiveElement as _, Styled as _, Window,
+    div, px, App, ClickEvent, Context, InteractiveElement as _, IntoElement, ParentElement,
+    Render, SharedString, StatefulInteractiveElement as _, Styled, Window,
 };
+use gpui::prelude::FluentBuilder;
 use gpui_component::ActiveTheme as _;
 
 use crate::plugins::PluginRegistry;
@@ -101,16 +102,16 @@ impl Render for FloatingDock {
                                         .bg(icon_bg_copy)
                                         .child(
                                             div()
-                                                .text_size(px(16.))
+                                                .text_size(px(42.))
                                                 .text_color(icon_fg_copy)
                                                 .font_weight(gpui::FontWeight::SEMIBOLD)
                                                 .child(display_icon),
                                         ),
                                 )
-                                .child(
-                                    // 底部小圆点指示器
-                                    div().size(px(4.)).rounded_full().bg(dot_color),
-                                )
+                                .when(is_open, |dot| {
+                                    // 底部小圆点指示器 - 只在窗口打开时显示
+                                    dot.child(div().size(px(4.)).rounded_full().bg(dot_color))
+                                })
                         }),
                     ),
             )

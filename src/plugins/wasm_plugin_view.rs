@@ -3,6 +3,8 @@
 //! 从 WASM 插件读取 UI schema，通用渲染。
 //! 宿主不包含任何插件特定代码，完全由 schema 驱动。
 
+use std::sync::Arc;
+
 use gpui::{
     div, px, AnyView, App, AppContext as _, Context, Hsla, InteractiveElement as _, IntoElement,
     ParentElement, Render, SharedString, StatefulInteractiveElement as _, Styled as _, Window,
@@ -10,7 +12,8 @@ use gpui::{
 use gpui_component::ActiveTheme as _;
 
 use super::wasm_runtime::WasmLoadedPlugin;
-use wasm_widget_types::{UiNode, WasmManifest};
+use plugin_sdk::UiNode;
+use wasm_widget_types::WasmManifest;
 
 // ---------------------------------------------------------------------------
 // 状态读取辅助（独立函数，不 impl 外部类型）
@@ -115,6 +118,16 @@ impl Render for WasmPluginView {
         let white = gpui::rgb(0xffffff).into(); // Rgba → Hsla
 
         let entity = cx.entity().downgrade();
+        let action_handler: Arc<dyn ActionHandler> = Arc::new(WasmActionHandler { entity });
+
+        // 将 manifest.ui (serde_json::Value) 反序列化为 plugin_sdk::UiSchema
+        let ui_schema: plugin_sdk::UiSchema = match serde_json::from_value(manifest.ui.clone()) {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::error!("Failed to parse UI schema: {e}");
+                return div().child("UI schema parse error");
+            }
+        };
 
         div()
             .flex()
@@ -150,8 +163,8 @@ impl Render for WasmPluginView {
             )
             // 逐个渲染 schema children
             .children(
-                manifest.ui.children.iter().enumerate().map(|(idx, node)| {
-                    render_node(node, state, fg, muted_fg, muted, primary, white, &entity, idx)
+                ui_schema.children.iter().enumerate().map(|(idx, node)| {
+                    render_node(node, state, fg, muted_fg, muted, primary, white, action_handler.clone(), idx)
                 })
             )
     }
@@ -161,8 +174,31 @@ impl Render for WasmPluginView {
 // 节点渲染函数
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// ActionHandler — render_node 的泛型抽象，让所有插件视图共用同一套渲染
+// ---------------------------------------------------------------------------
+
+pub(crate) trait ActionHandler: 'static + Send + Sync {
+    fn handle(&self, action: String, cx: &mut gpui::App);
+}
+
+struct WasmActionHandler {
+    entity: gpui::WeakEntity<WasmPluginView>,
+}
+
+impl ActionHandler for WasmActionHandler {
+    fn handle(&self, action: String, cx: &mut gpui::App) {
+        if let Some(e) = self.entity.upgrade() {
+            let action = action.clone();
+            e.update(cx, |view, cx| {
+                view.handle_action(action, cx);
+            });
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
-fn render_node(
+pub(crate) fn render_node(
     node: &UiNode,
     state: &serde_json::Value,
     fg: Hsla,
@@ -170,7 +206,7 @@ fn render_node(
     muted: Hsla,
     primary: Hsla,
     white: Hsla,
-    entity: &gpui::WeakEntity<WasmPluginView>,
+    handler: Arc<dyn ActionHandler>,
     node_idx: usize,
 ) -> gpui::Div {
     match node {
@@ -246,7 +282,7 @@ fn render_node(
                 let bg = if is_primary { primary } else { muted };
                 let text_color = if is_primary { white } else { fg };
                 let action = btn.action.clone();
-                let weak = entity.clone();
+                let handler = handler.clone();
                 let btn_id = SharedString::from(format!("wasm-btn-{}-{}", node_idx, i));
 
                 row = row.child(
@@ -263,12 +299,8 @@ fn render_node(
                         .text_color(text_color)
                         .child(btn.label.clone())
                         .on_click(move |_ev, _window, cx| {
-                            if let Some(e) = weak.upgrade() {
-                                let action = action.clone();
-                                e.update(cx, |view, cx| {
-                                    view.handle_action(action, cx);
-                                });
-                            }
+                            let action = action.clone();
+                            handler.handle(action, cx);
                         })
                 );
             }
@@ -308,7 +340,7 @@ fn render_node(
 // 错误占位视图
 // ---------------------------------------------------------------------------
 
-struct WasmPluginErrorView {
+pub(crate) struct WasmPluginErrorView {
     message: String,
 }
 
