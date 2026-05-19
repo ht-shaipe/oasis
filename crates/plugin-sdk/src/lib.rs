@@ -1,5 +1,5 @@
 //! copyright © ecdata.cn 2026 - present
-//! 插件
+//! 插件 SDK — 挂件系统核心
 //! created shaipe by 2026-05-18 17:07:05
 
 /// 插件元数据（进程 / 清单级信息）。
@@ -16,6 +16,16 @@ pub use plugin::Plugin;
 mod context;
 pub use context::PluginContext;
 
+/// 挂件 trait — 动态库插件的核心接口
+mod widget;
+pub use widget::{Widget, WidgetEntry, WidgetManifest};
+
+/// FFI 辅助 — 动态库导出/导入
+mod ffi;
+pub use ffi::{
+    call_widget_factory, WidgetCreateFn, WidgetFactoryFn, WIDGET_FACTORY_SYMBOL,
+    WIDGET_MANIFEST_SYMBOL,
+};
 
 /// SDK 层错误类型。
 #[derive(Debug, thiserror::Error)]
@@ -29,6 +39,12 @@ pub enum PluginError {
     // 无效参数
     #[error("invalid arguments: {0}")]
     InvalidArguments(String),
+    // 动态库加载错误
+    #[error("dynamic library error: {0}")]
+    Dylib(String),
+    // 符号未找到
+    #[error("symbol not found in `{lib}`: {symbol}")]
+    SymbolNotFound { lib: String, symbol: String },
 }
 
 impl PluginError {

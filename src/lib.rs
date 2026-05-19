@@ -192,7 +192,7 @@ impl Render for DockRoot {
             .flex_1()
             .w_full()
             .overflow_hidden()
-            .bg(gpui::rgba(0x00000000)) // 透明背景
+            // .bg(gpui::rgba(0x00000000)) // 透明背景
             .child(self.view.clone())
             .context_menu(move |menu, _window, _cx| {
                 menu.item(
@@ -294,8 +294,8 @@ where
             window_bounds: Some(WindowBounds::Windowed(window_bounds)),
             titlebar: Some(TitleBar::title_bar_options()),
             window_min_size: Some(gpui::Size {
-                width: px(480.),
-                height: px(320.),
+                width: px(800.),
+                height: px(600.),
             }),
             kind: WindowKind::Normal,
             ..Default::default()
@@ -310,7 +310,7 @@ where
     .update(cx, |_, window, _| {
         window.activate_window();
         window.set_window_title(&title);
-        window.toggle_fullscreen();
+        // toggle_fullscreen 在窗口未完成初始化时会 panic，暂不调用
     })
     .expect("failed to update window");
 }
@@ -328,21 +328,35 @@ pub fn init(cx: &mut App) {
         )
         .try_init();
 
+		// 初始化全局状态和组件
     gpui_component::init(cx);
+	// 注意初始化顺序：AppState 可能被其他组件依赖，必须最先初始化
     app_state::AppState::init(cx);
+	// background 依赖 AppState 中的背景设置，必须在 AppState 之后初始化
     background::init(cx);
+	// themes 依赖 AppState 中的主题设置，必须在 AppState 之后初始化
     themes::init(cx);
+	// 插件系统需要在 app_menus 之前初始化，因为菜单中会有插件相关的项
     plugins::PluginRegistry::init(cx);
+	// 注册内置插件（必须在 PluginRegistry 初始化之后）
     plugins::register_builtin_wasm_plugins(cx);
+	// 注册 dylib 插件相关的 widget（必须在 plugins 模块初始化之后）
+//     plugins::widget_loader::register_dylib_widgets(cx);
+	// 最后初始化 i18n 和菜单，因为菜单中可能会用到国际化文本
     i18n::init(cx);
+	// 菜单和快捷键通常放在最后初始化，这样它们就能访问到之前初始化的所有状态和组件
     app_menus::init("oasis", cx);
+	// 键盘绑定需要在菜单之后初始化，因为有些绑定可能会触发菜单命令
     key_binding::init(cx);
 
+	// 注册面板
     register_panel(cx, PANEL_NAME, |_dock_area, _state, _info, window, cx| {
         let panel: gpui::Entity<SamplePanel> = cx.new(|cx| SamplePanel::new(window, cx));
         Box::new(panel) as Box<dyn gpui_component::dock::PanelView>
     });
 
+	// 注册系统托盘（需要在菜单和主题初始化之后，因为托盘图标和菜单可能会用到它们）
     system_tray::init(cx);
+	// 打开主窗口
     cx.activate(true);
 }

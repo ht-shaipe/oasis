@@ -55,7 +55,9 @@ tracing = "0.1"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
 wasmi = "0.34"
 thiserror = "2"
+libloading = "0.8"
 wasm-plugin-types = { path = "crates/wasm-plugin-types" }
+plugin-sdk = { path = "crates/plugin-sdk" }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 dirs = "6"
@@ -121,6 +123,8 @@ members = [
 	"crates/network-plugin",
 	"crates/wasm-plugin",
 	"crates/wasm-plugin-types",
+	"crates/widget-calculator",
+	"crates/widget-notepad",
 ]
 resolver = "2"
 

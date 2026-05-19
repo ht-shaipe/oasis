@@ -8,6 +8,7 @@
 /www/node_modules
 /www/dist
 *.wasm
+*.dylib
 
 # Session data
 /sessions
@@ -19,6 +20,7 @@
 /workspace-config.json
 config.json.backup
 /dist
+/plugins
 
 # IDE
 .workbuddy

@@ -1,0 +1,12 @@
+[package]
+name = "widget-notepad"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+gpui = { version = "0.2.2" }
+gpui-component = { version = "0.5.1" }
+plugin-sdk = { path = "../plugin-sdk" }

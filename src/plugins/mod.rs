@@ -1,5 +1,4 @@
-pub mod calculator;
-pub mod notepad;
+
 pub mod plugin_window;
 pub mod wasm_example;
 pub mod wasm_host;
@@ -7,6 +6,7 @@ pub mod wasm_loader;
 pub mod wasm_plugin_system;
 pub mod wasm_plugin_view;
 pub mod wasm_runtime;
+pub mod widget_loader;
 
 use std::collections::HashMap;
 
@@ -80,12 +80,20 @@ pub trait Plugin: gpui::Render + 'static {
 // RegisteredPlugin — 运行时存储
 // ---------------------------------------------------------------------------
 
+/// dylib 视图工厂函数指针类型
+/// 新签名：factory 返回创建函数指针，实际创建在调用端完成
+pub type DylibFactoryFn = unsafe extern "C" fn() -> crate::plugins::DynamicWidgetCreateFn;
+
+/// Widget 创建函数指针类型
+pub type DynamicWidgetCreateFn = unsafe extern "C" fn(*mut Window, *mut App) -> AnyView;
+
 /// 运行时已注册的插件信息
 pub struct RegisteredPlugin {
     pub manifest: PluginManifest,
     pub icon_svg: &'static str,
     pub icon_emoji: Option<String>,
     pub create_view: fn(&mut Window, &mut App) -> AnyView,
+    pub dylib_factory: Option<DylibFactoryFn>,
     pub is_wasm: bool,
 }
 
@@ -115,6 +123,7 @@ impl PluginRegistry {
                             icon_svg: entry.icon_svg,
                             icon_emoji: None,
                             create_view: entry.create_view,
+                            dylib_factory: None,
                             is_wasm: false,
                         });
                     } else {
@@ -143,7 +152,7 @@ impl PluginRegistry {
     /// 打开插件窗口
     pub fn open_plugin(id: &str, window: &mut Window, cx: &mut App) {
         // 先读取信息，释放对 cx 的借用
-        let (title, window_width, window_height, create_view) = {
+        let (title, window_width, window_height, create_view, dylib_factory) = {
             let registry = cx.global::<Self>();
             if registry.open_windows.contains_key(id) {
                 tracing::info!("Plugin '{}' already open, focusing...", id);
@@ -158,11 +167,21 @@ impl PluginRegistry {
                 registered.manifest.window_width,
                 registered.manifest.window_height,
                 registered.create_view,
+                registered.dylib_factory,
             )
         };
 
         // 创建插件内容视图
-        let content = create_view(window, cx);
+        let content = if let Some(factory) = dylib_factory {
+            // dylib 插件：通过工厂函数指针获取创建函数，然后在调用端创建实体
+            unsafe {
+                let create_fn = factory();
+                create_fn(window as *mut Window, cx as *mut App)
+            }
+        } else {
+            // 静态/WASM 插件：通过函数引用创建
+            create_view(window, cx)
+        };
 
         // 创建 PluginWindow 实体
         let plugin_window = cx.new(|_| plugin_window::PluginWindow::new(
@@ -220,6 +239,7 @@ impl PluginRegistry {
             icon_svg: "",
             icon_emoji: Some(icon_emoji),
             create_view,
+            dylib_factory: None,
             is_wasm: true,
         };
 

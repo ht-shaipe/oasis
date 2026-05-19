@@ -1,29 +1,26 @@
+//! 计算器挂件 — 独立 cdylib 插件
+//!
+//! 编译为 `libwidget_calculator.dylib`，宿主运行时动态加载。
+
 use gpui::{
-    div, px, AnyView, App, AppContext as _, Context, InteractiveElement as _, IntoElement,
-    ParentElement, Render, SharedString, StatefulInteractiveElement as _, Styled as _, Window,
+    div, px, AppContext as _, Context, InteractiveElement as _, IntoElement,
+    ParentElement, Render, SharedString, StatefulInteractiveElement as _, Styled, Window,
 };
 use gpui_component::ActiveTheme as _;
-
-use crate::plugins::{Plugin, PluginEntry};
+use plugin_sdk::{Widget, WidgetManifest};
 
 // ---------------------------------------------------------------------------
-// CalculatorView
+// CalculatorWidget
 // ---------------------------------------------------------------------------
 
-/// 简易计算器视图
-pub struct CalculatorView {
-    /// 当前显示内容
+pub struct CalculatorWidget {
     display: String,
-    /// 上一个操作数
     previous: Option<f64>,
-    /// 当前运算符
     operator: Option<char>,
-    /// 是否开始新输入
     new_input: bool,
 }
 
-impl CalculatorView {
-    /// 输入数字
+impl CalculatorWidget {
     fn input_digit(&mut self, digit: &str) {
         if self.new_input {
             self.display = digit.to_string();
@@ -35,7 +32,6 @@ impl CalculatorView {
         }
     }
 
-    /// 输入运算符
     fn input_operator(&mut self, op: char) {
         let current: f64 = self.display.parse().unwrap_or(0.0);
         if let Some(prev_op) = self.operator {
@@ -51,24 +47,18 @@ impl CalculatorView {
         self.new_input = true;
     }
 
-    /// 执行计算
     fn calculate(a: f64, b: f64, op: char) -> f64 {
         match op {
             '+' => a + b,
             '-' | '−' => a - b,
             '×' | '*' => a * b,
             '÷' | '/' => {
-                if b != 0.0 {
-                    a / b
-                } else {
-                    0.0
-                }
+                if b != 0.0 { a / b } else { 0.0 }
             }
             _ => b,
         }
     }
 
-    /// 等号
     fn equals(&mut self) {
         let current: f64 = self.display.parse().unwrap_or(0.0);
         if let Some(op) = self.operator {
@@ -82,7 +72,6 @@ impl CalculatorView {
         }
     }
 
-    /// 清除
     fn clear(&mut self) {
         self.display = "0".to_string();
         self.previous = None;
@@ -91,24 +80,36 @@ impl CalculatorView {
     }
 }
 
-/// 格式化计算结果，去掉不必要的小数位
 fn format_result(value: f64) -> String {
     if value.fract() == 0.0 {
         format!("{}", value as i64)
     } else {
-        format!("{:.8}", value)
-            .trim_end_matches('0')
-            .trim_end_matches('.')
-            .to_string()
+        format!("{:.8}", value).trim_end_matches('0').trim_end_matches('.').to_string()
     }
 }
 
-impl Plugin for CalculatorView {
-    fn plugin_id() -> &'static str {
+// ---------------------------------------------------------------------------
+// Widget trait 实现
+// ---------------------------------------------------------------------------
+
+impl Widget for CalculatorWidget {
+    fn widget_id() -> &'static str {
         "calculator"
     }
 
-    fn new(_window: &mut Window, _cx: &mut Context<Self>) -> Self {
+    fn manifest() -> WidgetManifest {
+        WidgetManifest {
+            id: "calculator".into(),
+            display_name: "计算器".into(),
+            description: "一个简易计算器插件".into(),
+            icon_emoji: "🔢".into(),
+            icon_svg: include_str!("../icon.svg").into(),
+            window_width: 320.0,
+            window_height: 480.0,
+        }
+    }
+
+    fn new(_cx: &mut Context<Self>) -> Self {
         Self {
             display: "0".to_string(),
             previous: None,
@@ -118,7 +119,10 @@ impl Plugin for CalculatorView {
     }
 }
 
-/// 按钮类型
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
+
 #[derive(Clone)]
 enum CalcBtnKind {
     Digit,
@@ -127,7 +131,7 @@ enum CalcBtnKind {
     Equals,
 }
 
-impl Render for CalculatorView {
+impl Render for CalculatorWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let is_dark = theme.mode.is_dark();
@@ -140,7 +144,6 @@ impl Render for CalculatorView {
         };
         let btn_fg = theme.colors.foreground;
 
-        // 按钮定义: (label, row_index, col_index, kind)
         let buttons: Vec<(&str, usize, usize, CalcBtnKind)> = vec![
             ("7", 0, 0, CalcBtnKind::Digit),
             ("8", 0, 1, CalcBtnKind::Digit),
@@ -220,7 +223,6 @@ impl Render for CalculatorView {
             .h_full()
             .p(px(10.))
             .gap(px(8.))
-            // 显示屏
             .child(
                 div()
                     .flex()
@@ -242,25 +244,37 @@ impl Render for CalculatorView {
                             .child(self.display.clone()),
                     ),
             )
-            // 按键区
             .children(rows)
     }
 }
 
 // ---------------------------------------------------------------------------
-// inventory 提交
+// FFI 导出
 // ---------------------------------------------------------------------------
 
-/// 创建 CalculatorView 并转为 AnyView
-fn create_calculator_view(window: &mut Window, cx: &mut App) -> AnyView {
-    cx.new(|cx| CalculatorView::new(window, cx)).into()
+
+/// 导出清单 JSON — 宿主通过 libloading 读取此符号获取清单
+#[unsafe(no_mangle)]
+pub extern "C" fn widget_manifest_json() -> *const std::ffi::c_char {
+    static MANIFEST_JSON: &str = r#"{"id":"calculator","display_name":"计算器","description":"一个简易计算器插件","icon_emoji":"🔢","icon_svg":"","window_width":320.0,"window_height":480.0}"#;
+    MANIFEST_JSON.as_ptr() as *const std::ffi::c_char
 }
 
-inventory::submit! {
-    PluginEntry {
-        id: "calculator",
-        manifest_toml: include_str!("manifest.toml"),
-        icon_svg: include_str!("icon.svg"),
-        create_view: create_calculator_view,
+/// 实际的 widget 创建函数（在调用端被调用）
+#[unsafe(no_mangle)]
+pub extern "C" fn widget_create_impl(
+    _window: *mut gpui::Window,
+    app: *mut gpui::App,
+) -> gpui::AnyView {
+    unsafe {
+        let cx = &mut *app;
+        // 关键：Entity 创建在调用端的上下文中完成
+        cx.new(|cx| CalculatorWidget::new(cx)).into()
     }
+}
+
+/// Factory 函数：返回创建函数的指针
+#[unsafe(no_mangle)]
+pub extern "C" fn widget_factory() -> plugin_sdk::WidgetCreateFn {
+    widget_create_impl
 }

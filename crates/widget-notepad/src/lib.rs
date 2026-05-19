@@ -1,28 +1,41 @@
+//! 记事本挂件 — 独立 cdylib 插件
+//!
+//! 编译为 `libwidget_notepad.dylib`，宿主运行时动态加载。
+
 use gpui::{
-    div, px, AnyView, App, AppContext as _, Context, IntoElement, ParentElement, Render,
-    SharedString, Styled as _, Window,
+    div, px, AppContext as _, Context, IntoElement, ParentElement, Render,
+    SharedString, Styled, Window,
 };
 use gpui_component::ActiveTheme as _;
 use gpui_component::scroll::ScrollableElement as _;
-
-use crate::plugins::{Plugin, PluginEntry};
+use plugin_sdk::{Widget, WidgetManifest};
 
 // ---------------------------------------------------------------------------
-// NotepadView
+// NotepadWidget
 // ---------------------------------------------------------------------------
 
-/// 简易记事本视图
-pub struct NotepadView {
-    /// 文本内容
+pub struct NotepadWidget {
     content: SharedString,
 }
 
-impl Plugin for NotepadView {
-    fn plugin_id() -> &'static str {
+impl Widget for NotepadWidget {
+    fn widget_id() -> &'static str {
         "notepad"
     }
 
-    fn new(_window: &mut Window, _cx: &mut Context<Self>) -> Self {
+    fn manifest() -> WidgetManifest {
+        WidgetManifest {
+            id: "notepad".into(),
+            display_name: "记事本".into(),
+            description: "一个简易文本编辑器插件".into(),
+            icon_emoji: "📝".into(),
+            icon_svg: include_str!("../icon.svg").into(),
+            window_width: 400.0,
+            window_height: 350.0,
+        }
+    }
+
+    fn new(_cx: &mut Context<Self>) -> Self {
         Self {
             content: SharedString::from(
                 "欢迎使用记事本！\n\n这是一个简易文本编辑器插件。\n你可以在未来的版本中编辑文本内容。",
@@ -31,7 +44,7 @@ impl Plugin for NotepadView {
     }
 }
 
-impl Render for NotepadView {
+impl Render for NotepadWidget {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let is_dark = theme.mode.is_dark();
@@ -55,7 +68,6 @@ impl Render for NotepadView {
             .flex()
             .flex_col()
             .h_full()
-            // 内容区域
             .child(
                 div()
                     .flex_1()
@@ -70,7 +82,6 @@ impl Render for NotepadView {
                             .child(self.content.clone()),
                     ),
             )
-            // 底部状态栏
             .child(
                 div()
                     .flex()
@@ -99,19 +110,25 @@ impl Render for NotepadView {
 }
 
 // ---------------------------------------------------------------------------
-// inventory 提交
+// FFI 导出
 // ---------------------------------------------------------------------------
 
-/// 创建 NotepadView 并转为 AnyView
-fn create_notepad_view(window: &mut Window, cx: &mut App) -> AnyView {
-    cx.new(|cx| NotepadView::new(window, cx)).into()
+/// 导出清单 JSON — 宿主通过 libloading 读取此符号获取清单
+#[unsafe(no_mangle)]
+pub extern "C" fn widget_manifest_json() -> *const std::ffi::c_char {
+    static MANIFEST_JSON: &str = r#"{"id":"notepad","display_name":"记事本","description":"一个简易文本编辑器插件","icon_emoji":"📝","icon_svg":"","window_width":400.0,"window_height":350.0}"#;
+    MANIFEST_JSON.as_ptr() as *const std::ffi::c_char
 }
 
-inventory::submit! {
-    PluginEntry {
-        id: "notepad",
-        manifest_toml: include_str!("manifest.toml"),
-        icon_svg: include_str!("icon.svg"),
-        create_view: create_notepad_view,
+/// 导出视图工厂函数
+#[unsafe(no_mangle)]
+pub extern "C" fn widget_factory(app: *mut gpui::App) -> *mut std::ffi::c_void {
+    unsafe {
+        let cx = &mut *app;
+        // 直接创建实体并装箱为 AnyView，然后作为裸指针返回
+        let view: gpui::AnyView = cx.new(|cx| NotepadWidget::new(cx)).into();
+        // 将 AnyView 装箱并返回裸指针
+        let boxed: Box<dyn std::any::Any> = Box::new(view);
+        Box::into_raw(boxed) as *mut std::ffi::c_void
     }
 }

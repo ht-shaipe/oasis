@@ -1,7 +1,5 @@
 use gpui::{
-    div, px, AnyView, ClickEvent, Context, InteractiveElement as _, IntoElement, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Point, Render,
-    SharedString, StatefulInteractiveElement as _, Styled as _, Window,
+    AnyView, ClickEvent, Context, InteractiveElement as _, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Point, Render, SharedString, StatefulInteractiveElement as _, Styled as _, Window, div, hsla, px, rgb, rgba
 };
 use gpui_component::ActiveTheme as _;
 
@@ -179,7 +177,6 @@ impl Render for PluginWindow {
                     .px(px(12.))
                     .py(px(8.))
                     .bg(title_bar_bg)
-                    .cursor_grab()
                     // 拖拽：鼠标按下
                     .on_mouse_down(
                         MouseButton::Left,
@@ -227,8 +224,7 @@ impl Render for PluginWindow {
                                     )))
                                     .size(px(12.))
                                     .rounded_full()
-                                    .bg(gpui::red().opacity(0.8))
-                                    .cursor_pointer()
+                                    .bg(rgb(0xFF5C60))
                                     .on_click(move |_ev: &ClickEvent, _window, cx| {
                                         PluginRegistry::close_plugin(&plugin_id_for_close, cx);
                                     }),
@@ -242,8 +238,7 @@ impl Render for PluginWindow {
                                     )))
                                     .size(px(12.))
                                     .rounded_full()
-                                    .bg(gpui::yellow().opacity(0.8))
-                                    .cursor_pointer()
+                                    .bg(rgb(0xFAC800))
                                     .on_click(move |_ev: &ClickEvent, _window, cx| {
                                         if let Some(e) = entity_min.upgrade() {
                                             e.update(cx, |this, _cx| {
@@ -261,8 +256,7 @@ impl Render for PluginWindow {
                                     )))
                                     .size(px(12.))
                                     .rounded_full()
-                                    .bg(gpui::green().opacity(0.8))
-                                    .cursor_pointer()
+                                    .bg(rgb(0x35C759))
                                     .on_click(move |_ev: &ClickEvent, _window, cx| {
                                         if let Some(e) = entity_max.upgrade() {
                                             e.update(cx, |this, _cx| {
