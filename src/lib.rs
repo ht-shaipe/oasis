@@ -9,7 +9,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 
 pub use app::{
     actions::{Quit, SelectLocale, SwitchTheme, SwitchThemeMode},
-    app_menus, app_state, background, dock, floating_window, key_binding, system_tray, themes,
+    app_menus, app_state, background, dock, key_binding, system_tray, themes,
     title_bar,
 };
 pub use panels::SamplePanel;

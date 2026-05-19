@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+wasm-widget-types = { path = "../../widgets/wasm-widget-types" }
 thiserror = "1"

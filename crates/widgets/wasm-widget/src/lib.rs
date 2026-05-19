@@ -19,8 +19,7 @@
 //!   - `env::host_write_file(ptr, len, cptr, clen)` 写文件
 //!   - `env::host_show_notification(ptr, len)`       显示通知
 
-use plugin_sdk::{UiNode, UiSchema};
-use wasm_widget_types::{HostContext, WasmManifest};
+use wasm_widget_types::{UiNode, UiSchema, ButtonDef, InfoField, WasmManifest, HostContext};
 
 // ---------------------------------------------------------------------------
 // 宿主函数声明（Host Imports）
@@ -170,17 +169,17 @@ pub extern "C" fn plugin_get_manifest() -> i32 {
                 },
                 UiNode::ButtonRow {
                     buttons: vec![
-                        wasm_widget_types::ButtonDef {
+                        ButtonDef {
                             label: "➖".into(),
                             action: "decrement".into(),
                             variant: "secondary".into(),
                         },
-                        wasm_widget_types::ButtonDef {
+                        ButtonDef {
                             label: "🔄".into(),
                             action: "reset".into(),
                             variant: "secondary".into(),
                         },
-                        wasm_widget_types::ButtonDef {
+                        ButtonDef {
                             label: "➕".into(),
                             action: "increment".into(),
                             variant: "primary".into(),
@@ -189,9 +188,9 @@ pub extern "C" fn plugin_get_manifest() -> i32 {
                 },
                 UiNode::Info {
                     fields: vec![
-                        wasm_widget_types::InfoField { label: "ID".into(), field: "id".into() },
-                        wasm_widget_types::InfoField { label: "版本".into(), field: "version".into() },
-                        wasm_widget_types::InfoField { label: "描述".into(), field: "description".into() },
+                        InfoField { label: "ID".into(), field: "id".into() },
+                        InfoField { label: "版本".into(), field: "version".into() },
+                        InfoField { label: "描述".into(), field: "description".into() },
                     ],
                 },
             ],
