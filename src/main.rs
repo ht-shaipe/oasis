@@ -6,7 +6,20 @@ fn main() {
     #[cfg(target_os = "windows")]
     std::env::set_var("GPUI_DISABLE_DIRECT_COMPOSITION", "true");
 
-    gpui::Application::new().run(move |cx: &mut App| {
+    let app = gpui::Application::new();
+
+    // macOS: 点击 Dock 图标重新打开窗口
+    app.on_reopen(|cx| {
+        if cx.windows().is_empty() {
+            oasis::open_new("oasis", |window, cx| {
+                cx.new(|cx| oasis::SamplePanel::new(window, cx))
+            }, cx);
+        } else {
+            cx.activate(true);
+        }
+    });
+
+    app.run(move |cx: &mut App| {
         oasis::init(cx);
 
         // oasis::plugins::wasm_loader::init_wasm_manager(cx); // 暂时注释排查 panic

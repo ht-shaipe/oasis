@@ -6,6 +6,8 @@ use gpui::prelude::FluentBuilder;
 use gpui_component::ActiveTheme as _;
 
 use crate::plugins::PluginRegistry;
+use crate::app::app_launcher::AppLauncherState;
+use rust_i18n::t;
 
 /// 底部浮动 Dock — 从 PluginRegistry 动态读取插件列表
 pub struct FloatingDock {}
@@ -61,6 +63,58 @@ impl Render for FloatingDock {
                         // 鼠标在 Dock 区域移动，悬停状态由各个图标处理
                     })
                     .children(
+                        // "所有应用" 入口图标（固定在第一位）
+                        {
+                            let (icon_bg_all, icon_fg_all) = (icon_bg, icon_fg);
+                            let is_hovered_all = hover_plugin_id.as_ref() == Some(&"__all_apps__".to_string());
+
+                            Some(
+                                div()
+                                    .id(SharedString::from("dock-icon-all-apps"))
+                                    .flex()
+                                    .flex_col()
+                                    .items_center()
+                                    .cursor_pointer()
+                                    .on_click(move |_ev: &ClickEvent, _window, cx| {
+                                        cx.global_mut::<AppLauncherState>().visible = !cx.global::<AppLauncherState>().visible;
+                                        cx.refresh_windows();
+                                    })
+                                    .on_mouse_move(move |_event, _window, cx| {
+                                        cx.global_mut::<DockHoverState>().hovered_plugin_id = Some("__all_apps__".to_string());
+                                    })
+                                    .child(
+                                        // 图标 slot：固定尺寸，悬停时内容溢出但不撑大 dock
+                                        div()
+                                            .relative()
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .w(px(44.))
+                                            .h(px(48.))
+                                            .child(
+                                                // 放大图标用 absolute 定位向上偏移，不影响 dock 布局
+                                                div()
+                                                    .when(is_hovered_all, |el| el.absolute().bottom(px(8.)))
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
+                                                    .size(if is_hovered_all { px(56.) } else { px(44.) })
+                                                    .rounded_lg()
+                                                    .bg(icon_bg_all)
+                                                    .when(is_hovered_all, |el| el.shadow_xl())
+                                                    .child(
+                                                        div()
+                                                            .text_size(if is_hovered_all { px(52.) } else { px(40.) })
+                                                            .text_color(icon_fg_all)
+                                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                            .child(t!("launcher.icon").to_string()),
+                                                    ),
+                                            ),
+                                    ),
+                            )
+                        },
+                    )
+                    .children(
                         registry.plugins.iter().map(|plugin| {
                             let plugin_id = plugin.manifest.id.clone();
                             let display_name = plugin.manifest.display_name.clone();
@@ -83,16 +137,11 @@ impl Render for FloatingDock {
                             let icon_bg_copy = icon_bg;
                             let icon_fg_copy = icon_fg;
 
-                            // 悬停时放大图标尺寸 (更明显的放大效果)
-                            let icon_size = if is_hovered { px(56.) } else { px(44.) };
-                            let text_size = if is_hovered { px(52.) } else { px(40.) };
-
                             div()
                                 .id(SharedString::from(format!("dock-icon-{}", plugin_id)))
                                 .flex()
                                 .flex_col()
                                 .items_center()
-                                .gap(px(4.))
                                 .cursor_pointer()
                                 .on_click({
                                     let plugin_id = plugin_id.clone();
@@ -107,23 +156,32 @@ impl Render for FloatingDock {
                                     }
                                 })
                                 .child(
-                                    // 图标圆形背景
+                                    // 图标 slot：固定尺寸，悬停时内容溢出但不撑大 dock
                                     div()
+                                        .relative()
                                         .flex()
                                         .items_center()
                                         .justify_center()
-                                        .size(icon_size)
-                                        .rounded_lg()
-                                        .bg(icon_bg_copy)
-                                        .when(is_hovered, |el| {
-                                            el.shadow_xl()
-                                        })
+                                        .w(px(44.))
+                                        .h(px(48.))
                                         .child(
+                                            // 放大图标用 absolute 定位向上偏移，不影响 dock 布局
                                             div()
-                                                .text_size(text_size)
-                                                .text_color(icon_fg_copy)
-                                                .font_weight(gpui::FontWeight::SEMIBOLD)
-                                                .child(display_icon),
+                                                .when(is_hovered, |el| el.absolute().bottom(px(8.)))
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .size(if is_hovered { px(56.) } else { px(44.) })
+                                                .rounded_lg()
+                                                .bg(icon_bg_copy)
+                                                .when(is_hovered, |el| el.shadow_xl())
+                                                .child(
+                                                    div()
+                                                        .text_size(if is_hovered { px(52.) } else { px(40.) })
+                                                        .text_color(icon_fg_copy)
+                                                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                        .child(display_icon),
+                                                ),
                                         ),
                                 )
                                 .when(is_open, |dot| {

@@ -1,4 +1,6 @@
 app.title: oasis
+launcher.all_apps: 所有应用
+launcher.icon: ⊞
 menu.app.about: 关于
 menu.app.open: 打开...
 menu.app.appearance: 外观

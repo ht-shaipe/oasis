@@ -107,6 +107,7 @@ gpui = {opt-level = 3}
 gpui-component = {opt-level = 3}
 gpui-component-assets = {opt-level = 3}
 gpui_platform = {opt-level = 3}
+hashbrown = {opt-level = 3}
 
 # [patch.crates-io]
 # smol = { path = "patches/smol-wasm" }

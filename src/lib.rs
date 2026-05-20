@@ -9,7 +9,7 @@ rust_i18n::i18n!("locales", fallback = "en");
 
 pub use app::{
     actions::{Quit, SelectLocale, SwitchTheme, SwitchThemeMode},
-    app_menus, app_state, background, dock, key_binding, system_tray, themes,
+    app_launcher, app_menus, app_state, background, dock, key_binding, system_tray, themes,
     title_bar,
 };
 pub use panels::SamplePanel;
@@ -183,10 +183,12 @@ impl Render for DockRoot {
                 {
                     let dock_state = DockHoverState::global(cx);
                     if dock_state.hovered_plugin_id.is_some() {
-                        // Dock 在屏幕底部，如果鼠标 y 坐标小于屏幕高度的 80%，认为移出了 Dock
                         let mouse_y_px: f32 = event.position.y.into();
-                        // 简化处理：假设窗口高度至少 600px，Dock 在底部 120px 区域
-                        let is_outside_dock = mouse_y_px < 480.0;
+                        let window_height: f32 = _window.viewport_size().height.into();
+                        // Dock 在底部，距离底部 20px，dock 自身高度约 100px
+                        // 如果鼠标 y 坐标小于窗口底部往上 140px 的区域，认为移出了 Dock
+                        let dock_top_threshold = window_height - 140.0;
+                        let is_outside_dock = mouse_y_px < dock_top_threshold;
                         if is_outside_dock {
                             cx.global_mut::<DockHoverState>().hovered_plugin_id = None;
                         }
@@ -307,6 +309,12 @@ impl Render for DockRoot {
         // 添加浮动 Dock
         root = root.child(self.dock.clone());
 
+        // 应用启动器（根据全局状态条件渲染）
+        let launcher_visible = cx.global::<app::app_launcher::AppLauncherState>().visible;
+        if launcher_visible {
+            root = root.child(app::app_launcher::render_launcher(cx));
+        }
+
         // 渲染所有打开的插件窗口
         let open_windows = cx
             .global::<plugins::PluginRegistry>()
@@ -409,6 +417,8 @@ pub fn init(cx: &mut App) {
     gpui_component::init(cx);
 	// 注意初始化顺序：AppState 可能被其他组件依赖，必须最先初始化
     app_state::AppState::init(cx);
+    // 应用启动器全局状态
+    cx.set_global(app::app_launcher::AppLauncherState::default());
 	// background 依赖 AppState 中的背景设置，必须在 AppState 之后初始化
     background::init(cx);
 	// themes 依赖 AppState 中的主题设置，必须在 AppState 之后初始化

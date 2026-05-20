@@ -1,4 +1,6 @@
 app.title: oasis
+launcher.all_apps: All Apps
+launcher.icon: ⊞
 menu.app.about: About
 menu.app.open: Open...
 menu.app.appearance: Appearance

@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod app_launcher;
 pub mod app_menus;
 pub mod app_state;
 pub mod background;
