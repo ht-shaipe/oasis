@@ -8,6 +8,9 @@ pub mod wasm_plugin_system;
 pub mod wasm_plugin_view;
 pub mod wasm_runtime;
 
+// Aster (md-editor-plugin) inventory submit
+use md_editor_plugin::AsterView;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -29,6 +32,25 @@ pub struct PluginEntry {
 }
 
 inventory::collect!(PluginEntry);
+
+inventory::submit! {
+    PluginEntry {
+        id: "aster",
+        manifest_toml: r#"
+[plugin]
+id = "aster"
+display_name = "Aster Editor"
+description = "Markdown WYSIWYG editor"
+icon = "aster.svg"
+window_width = 1000.0
+window_height = 700.0
+"#,
+        icon_svg: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M17 3a2.85 2.83 0 1 1 4 4L7.5 18.5 2 20l1.5-5.5Z'/></svg>",
+        create_view: |window: &mut Window, cx: &mut App| -> AnyView {
+            cx.new(|cx| AsterView::new(window, cx)).into()
+        },
+    }
+}
 
 // ---------------------------------------------------------------------------
 // PluginManifest — TOML 解析目标
