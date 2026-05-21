@@ -3,7 +3,7 @@
 use std::sync::{Arc, RwLock};
 
 use serde::{Deserialize, Serialize};
-use plugin_sdk::{Plugin, PluginMeta, UiSchema, UiNode, InfoField};
+use plugin_sdk::{Plugin, PluginMeta, UiSchema, UiNode};
 
 // ---------------------------------------------------------------------------
 // Notepad State
@@ -91,24 +91,21 @@ impl Plugin for NotepadPlugin {
 
     fn ui_schema(&self) -> UiSchema {
         UiSchema {
-            layout: "flex-col h-full".into(),
+            layout: "flex-col".into(),
             children: vec![
-                UiNode::Display {
-                    field: "content".into(),
-                    style: "flex-1 p-3 overflow-y-scroll text-sm".into(),
-                },
-                UiNode::Info {
-                    fields: vec![
-                        InfoField {
-                            label: "字符数".into(),
-                            field: "charCount".into(),
-                        },
-                        InfoField {
-                            label: "行数".into(),
-                            field: "lineCount".into(),
-                        },
-                    ],
-                },
+                // 文本展示区
+                UiNode::display("content")
+                    .id("notepad-content")
+                    .child(
+                        UiNode::with_props("display", serde_json::json!({
+                            "style": "large_text"
+                        })).bind("content"),
+                    ),
+                // 信息栏
+                UiNode::info(&[
+                    ("字符数", "charCount"),
+                    ("行数", "lineCount"),
+                ]),
             ],
         }
     }

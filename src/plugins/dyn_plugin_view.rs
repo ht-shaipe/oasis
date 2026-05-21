@@ -7,13 +7,12 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use gpui::{
-    div, px, App, AppContext as _, Context, Hsla, InteractiveElement as _,
-    IntoElement, ParentElement, Render, StatefulInteractiveElement as _, Styled as _, Window,
+    div, px, AppContext as _, Context, IntoElement, ParentElement, Render, Styled as _, Window,
 };
 use gpui_component::ActiveTheme as _;
 
-use super::wasm_plugin_view::{render_node, ActionHandler};
-use plugin_sdk::{Plugin, UiSchema};
+use super::wasm_plugin_view::{render_header, render_node, ActionHandler, RenderContext};
+use plugin_sdk::Plugin;
 
 // ---------------------------------------------------------------------------
 // DynPluginView — cdylib 插件视图
@@ -25,7 +24,7 @@ pub struct DynPluginView {
     /// 状态快照（RefCell 内部可变，供 handle_action 后刷新）
     state: RefCell<serde_json::Value>,
     /// UI schema（声明式布局）
-    ui_schema: UiSchema,
+    ui_schema: ui_schema::UiSchema,
     /// 插件元数据（仅用于标题栏渲染）
     meta: plugin_sdk::PluginMeta,
 }
@@ -79,15 +78,9 @@ impl ActionHandler for DynActionHandler {
 impl Render for DynPluginView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
+        let ctx = RenderContext::from_theme(&theme);
         let meta = &self.meta;
         let state = self.state.borrow();
-
-        // 预提取颜色值（避免闭包中借 theme）
-        let fg = theme.colors.foreground;
-        let muted_fg = theme.colors.muted_foreground;
-        let muted = theme.colors.muted;
-        let primary = theme.colors.primary;
-        let white = gpui::rgb(0xffffff).into();
 
         let action_handler: Arc<dyn ActionHandler> =
             Arc::new(DynActionHandler { entity: cx.entity().downgrade() });
@@ -100,44 +93,11 @@ impl Render for DynPluginView {
             .size_full()
             .bg(theme.colors.background)
             // 标题栏
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(12.))
-                    .child(div().text_size(px(24.)).child(meta.icon.clone()))
-                    .child(
-                        div()
-                            .text_size(px(18.))
-                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .text_color(fg)
-                            .child(meta.name.clone()),
-                    )
-                    .child(
-                        div()
-                            .px(px(6.))
-                            .py(px(2.))
-                            .rounded(px(4.))
-                            .bg(primary.opacity(0.15))
-                            .text_size(px(10.))
-                            .text_color(primary)
-                            .child("cdylib"),
-                    ),
-            )
+            .child(render_header(&meta.name, &meta.icon, "cdylib", &ctx))
             // 逐个渲染 schema children
             .children(
                 self.ui_schema.children.iter().enumerate().map(|(idx, node)| {
-                    render_node(
-                        node,
-                        &*state,
-                        fg,
-                        muted_fg,
-                        muted,
-                        primary,
-                        white,
-                        action_handler.clone(),
-                        idx,
-                    )
+                    render_node(node, &*state, &ctx, action_handler.clone(), idx)
                 }),
             )
     }

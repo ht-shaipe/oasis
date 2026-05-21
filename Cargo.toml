@@ -56,7 +56,7 @@ tokio = {version = "1", features = ["sync", "rt", "rt-multi-thread"]}
 toml = "0.8"
 tracing = "0.1"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
-wasm-widget-types = {path = "crates/widgets/wasm-widget-types"}
+ui-schema = {path = "crates/ui-schema"}
 wasmi = "0.34"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
@@ -125,7 +125,7 @@ members = [
   "crates/plugins/plugin-sdk",
   "crates/plugins/network-plugin",
   "crates/plugins/notepad-plugin",
-  "crates/widgets/wasm-widget-types",
+  "crates/ui-schema",
   "crates/widgets/wasm-widget",
   "crates/plugins/md-editor-plugin",
   "crates/plugins/toolbox-plugin",
@@ -143,4 +143,4 @@ plugin-sdk = {path = "crates/plugins/plugin-sdk"}
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 thiserror = "2"
-wasm-widget-types = {path = "crates/widgets/wasm-widget-types"}
+ui-schema = {path = "crates/ui-schema"}

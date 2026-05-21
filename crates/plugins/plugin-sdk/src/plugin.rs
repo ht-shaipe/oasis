@@ -3,8 +3,12 @@
 
 use crate::PluginMeta;
 
-// 从 wasm-widget-types 导入 UI 类型
-pub use wasm_widget_types::{UiSchema, UiNode, ButtonDef, InfoField};
+// 从 ui-schema 导入 UI 类型 + 辅助函数
+pub use ui_schema::{
+    UiSchema, UiNode, ButtonDef, InfoField,
+    prop_str, prop_str_or, prop_i64, prop_bool, prop_array,
+    state_get, state_get_str, state_get_i64, state_interpolate,
+};
 
 // ---------------------------------------------------------------------------
 // Plugin Trait（插件必须实现的核心接口）
