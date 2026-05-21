@@ -130,14 +130,49 @@ impl Render for DynPluginView {
             Arc::new(DynActionHandler { entity: cx.entity().downgrade() });
 
         tracing::info!("🧪 DynPluginView::render building div");
-        let element = div()
+
+        // 根据 ui_schema 的 layout 属性创建容器
+        let is_row = self.ui_schema.layout == "flex-row";
+        let gap = px(self.ui_schema.gap as f32);
+
+        let mut container = div()
             .flex()
-            .flex_col()
-            .gap(px(0.))
-            .p(px(0.))
+            .gap(gap)
             .size_full()
             .overflow_hidden()
-            .bg(theme.colors.background)
+            .bg(theme.colors.background);
+
+        // 设置布局方向
+        if is_row {
+            container = container.flex_row();
+        } else {
+            container = container.flex_col();
+        }
+
+        // 设置对齐方式
+        if let Some(align) = &self.ui_schema.align_items {
+            match align.as_str() {
+                "center" => { container = container.items_center(); }
+                "start" => { container = container.items_start(); }
+                "end" => { container = container.items_end(); }
+                "stretch" => { /* stretch is default in flex */ }
+                _ => {}
+            }
+        }
+
+        // 设置主轴对齐
+        if let Some(justify) = &self.ui_schema.justify_content {
+            match justify.as_str() {
+                "center" => { container = container.justify_center(); }
+                "start" => { container = container.justify_start(); }
+                "end" => { container = container.justify_end(); }
+                "space-between" => { container = container.justify_between(); }
+                "space-around" => { container = container.justify_around(); }
+                _ => {}
+            }
+        }
+
+        let element = container
             // 逐个渲染 schema children（不显示标题栏）
             .children(
                 self.ui_schema.children.iter().enumerate().map(|(idx, node)| {
