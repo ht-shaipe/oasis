@@ -19,7 +19,7 @@
 //!   - `env::host_write_file(ptr, len, cptr, clen)` 写文件
 //!   - `env::host_show_notification(ptr, len)`       显示通知
 
-use ui_schema::{UiNode, UiSchema, ButtonDef, InfoField, WasmManifest, HostContext};
+use ui_schema::{UiNode, UiSchema, WasmManifest, HostContext};
 
 // ---------------------------------------------------------------------------
 // 宿主函数声明（Host Imports）
@@ -155,45 +155,18 @@ pub extern "C" fn plugin_get_manifest() -> i32 {
         description: "WASM 插件：声明式 DSL 计数器".into(),
         version: "1.0.0".into(),
         ui: serde_json::to_value(&UiSchema {
-            layout: "column".into(),
+            layout: "flex-col".into(),
             children: vec![
-                UiNode::Display {
-                    field: "count".into(),
-                    style: "large_number".into(),
-                },
-                UiNode::Label {
-                    text: "{count} / {max}".into(),
-                },
-                UiNode::Progress {
-                    field: "percentage".into(),
-                },
-                UiNode::ButtonRow {
-                    buttons: vec![
-                        ButtonDef {
-                            label: "➖".into(),
-                            action: "decrement".into(),
-                            variant: "secondary".into(),
-                        },
-                        ButtonDef {
-                            label: "🔄".into(),
-                            action: "reset".into(),
-                            variant: "secondary".into(),
-                        },
-                        ButtonDef {
-                            label: "➕".into(),
-                            action: "increment".into(),
-                            variant: "primary".into(),
-                        },
-                    ],
-                },
-                UiNode::Info {
-                    fields: vec![
-                        InfoField { label: "ID".into(), field: "id".into() },
-                        InfoField { label: "版本".into(), field: "version".into() },
-                        InfoField { label: "描述".into(), field: "description".into() },
-                    ],
-                },
+                UiNode::display("count").prop("style", serde_json::json!("large_number")),
+                UiNode::label("{count} / {max}"),
+                UiNode::progress("percentage"),
+                UiNode::split("row")
+                    .child(UiNode::button("➖", "decrement"))
+                    .child(UiNode::button("🔄", "reset"))
+                    .child(UiNode::button("➕", "increment")),
+                UiNode::info(&[("ID", "id"), ("版本", "version"), ("描述", "description")]),
             ],
+            ..Default::default()
         }).unwrap_or_default(),
     };
     let json = serde_json::to_string(&manifest).unwrap_or_default();

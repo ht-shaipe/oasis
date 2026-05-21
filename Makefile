@@ -52,9 +52,9 @@ dev:
 			echo "copied $$src -> $$dst_dir/$$dst_name"; \
 		fi; \
 	}; \
-	copy_plugin target/debug/libmd_editor_plugin.dylib plugins/md-editor-plugin libmd-editor-plugin.dylib; \
+	rm -f plugins/md-editor-plugin/libmd-editor-plugin.dylib; \
 	copy_plugin target/debug/libnotepad_plugin.dylib plugins/notepad libnotepad.dylib; \
-	cargo r
+	OASIS_DISABLE_TRAY=1 OASIS_DISABLE_BUILTIN_WASM_PLUGIN=1 OASIS_DISABLE_DYLIB_PLUGINS=1 cargo r
 
 dev-web: build-wasm
 	@cd www && bun install && bun run dev

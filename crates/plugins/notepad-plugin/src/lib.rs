@@ -107,6 +107,7 @@ impl Plugin for NotepadPlugin {
                     ("行数", "lineCount"),
                 ]),
             ],
+            ..Default::default()
         }
     }
 }

@@ -96,20 +96,8 @@ impl Render for WasmPluginView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let manifest = &self.manifest;
-        let state = &self.state;
 
         let ctx = RenderContext::from_theme(&theme);
-        let entity = cx.entity().downgrade();
-        let action_handler: Arc<dyn ActionHandler> = Arc::new(WasmActionHandler { entity });
-
-        // 将 manifest.ui (serde_json::Value) 反序列化为 UiSchema
-        let ui_schema: ui_schema::UiSchema = match serde_json::from_value(manifest.ui.clone()) {
-            Ok(v) => v,
-            Err(e) => {
-                tracing::error!("Failed to parse UI schema: {e}");
-                return div().child("UI schema parse error");
-            }
-        };
 
         div()
             .flex()
@@ -120,11 +108,13 @@ impl Render for WasmPluginView {
             .bg(theme.colors.background)
             // 标题栏
             .child(render_header(&manifest.title, &manifest.icon, "WASM", &ctx))
-            // 逐个渲染 schema children
-            .children(
-                ui_schema.children.iter().enumerate().map(|(idx, node)| {
-                    render_node(node, state, &ctx, action_handler.clone(), idx)
-                })
+            .child(
+                div()
+                    .p(px(16.))
+                    .rounded_lg()
+                    .bg(ctx.muted.opacity(0.15))
+                    .text_color(ctx.muted_fg)
+                    .child("WASM schema rendering is temporarily disabled during startup"),
             )
     }
 }
@@ -201,30 +191,44 @@ pub(crate) fn render_node(
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
 ) -> gpui::AnyElement {
-    match node.component.as_str() {
-        // 已有组件
-        "display" => render_display(node, state, ctx),
-        "label" => render_label(node, state, ctx),
-        "progress" => render_progress(node, state, ctx),
-        "button" => render_button(node, ctx, handler, node_idx),
-        "button_row" => render_button_row(node, ctx, handler, node_idx),
-        "info" => render_info(node, state, ctx),
-        "divider" => render_divider(ctx),
-        "input" => render_input(node, state, ctx, handler, node_idx),
-        "table" => render_table(node, state, ctx),
-        "card" => render_card(node, state, ctx, handler, node_idx),
+    let component = node.component.clone();
+    let component = component.as_str();
 
-        // 分栏 & 树
-        "split" => render_split(node, state, ctx, handler, node_idx),
-        "tree" => render_tree(node, state, ctx, handler, node_idx),
-
-        // 容器组件
-        "form" => render_container(node, state, ctx, handler, node_idx),
-        "flex" | "flex-col" | "flex_row" | "flex-row" => render_container(node, state, ctx, handler, node_idx),
-        "tab" => render_container(node, state, ctx, handler, node_idx),
-
-        // 未识别 → 占位符
-        _ => render_unsupported(node, ctx),
+    if component == "display" {
+        render_display(node, state, ctx)
+    } else if component == "label" {
+        render_label(node, state, ctx)
+    } else if component == "progress" {
+        render_progress(node, state, ctx)
+    } else if component == "button" {
+        render_button(node, ctx, handler, node_idx)
+    } else if component == "button_row" {
+        render_button_row(node, ctx, handler, node_idx)
+    } else if component == "info" {
+        render_info(node, state, ctx)
+    } else if component == "divider" {
+        render_divider(ctx)
+    } else if component == "input" {
+        render_input(node, state, ctx, handler, node_idx)
+    } else if component == "table" {
+        render_table(node, state, ctx)
+    } else if component == "card" {
+        render_card(node, state, ctx, handler, node_idx)
+    } else if component == "split" {
+        render_split(node, state, ctx, handler, node_idx)
+    } else if component == "tree" {
+        render_tree(node, state, ctx, handler, node_idx)
+    } else if component == "form"
+        || component == "container"
+        || component == "flex"
+        || component == "flex-col"
+        || component == "flex_row"
+        || component == "flex-row"
+        || component == "tab"
+    {
+        render_container(node, state, ctx, handler, node_idx)
+    } else {
+        render_unsupported(component, ctx)
     }
 }
 
@@ -662,8 +666,7 @@ fn render_container(
 }
 
 /// 未识别组件 → 占位符
-fn render_unsupported(node: &UiNode, ctx: &RenderContext) -> gpui::AnyElement {
-    tracing::warn!("Unsupported component: {}", node.component);
+fn render_unsupported(component: &str, ctx: &RenderContext) -> gpui::AnyElement {
     div()
         .flex()
         .items_center()
@@ -674,12 +677,7 @@ fn render_unsupported(node: &UiNode, ctx: &RenderContext) -> gpui::AnyElement {
         .border_1()
         .border_dashed()
         .border_color(ctx.border)
-        .child(
-            div()
-                .text_size(px(12.))
-                .text_color(ctx.muted_fg)
-                .child(format!("⚠ Unsupported: {}", node.component)),
-        )
+        .child(div().text_size(px(12.)).text_color(ctx.muted_fg).child(format!("Unsupported component: {}", component)))
         .into_any_element()
 }
 

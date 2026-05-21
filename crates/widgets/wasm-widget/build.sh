@@ -39,7 +39,10 @@ wasm-bindgen \
     --out-name wasm_plugin \
     "$WASM_FILE"
 
-# 复制 WASM 文件到输出目录（作为备份）
+# 宿主 wasmi 运行时固定读取 dsl_counter.wasm，务必保持最新
+cp "$WASM_FILE" "$OUTPUT_DIR/dsl_counter.wasm"
+
+# 同时保留 bindgen 默认命名，供 Web 侧/调试使用
 cp "$WASM_FILE" "$OUTPUT_DIR/wasm_plugin_bg.wasm"
 
 echo ""

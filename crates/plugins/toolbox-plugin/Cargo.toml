@@ -5,4 +5,19 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
+plugin-sdk = { path = "../plugin-sdk" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# 纯逻辑依赖（可跨 cdylib 边界）
+csv = "1"
+calamine = "0.26"
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+futures = "0.3"
+
+[build-dependencies]

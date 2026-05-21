@@ -251,9 +251,9 @@ impl Render for DockRoot {
         // 背景图片层（从全局 BackgroundSettings 读取）
         let bg_settings = app::background::BackgroundSettings::global(cx);
         let bg_path = bg_settings.get_path_buf();
-        if let Some(bg_path) = bg_path {
+        if let Some(bg_path) = bg_path.as_ref().filter(|path| path.exists()) {
             root = root.child(
-                img(bg_path)
+                img(bg_path.clone())
                     .absolute()
                     .inset_0()
                     .w_full()
@@ -261,6 +261,9 @@ impl Render for DockRoot {
                     .object_fit(ObjectFit::Cover),
             );
         } else {
+            if bg_path.is_some() {
+                tracing::warn!("background image missing, falling back to solid background");
+            }
             root = root.bg(theme.colors.background);
         }
 
@@ -366,7 +369,7 @@ where
 {
     let title = SharedString::from(title.to_string());
 
-    let mut window_size = size(px(800.0), px(600.0));
+    let mut window_size = size(px(1200.0), px(800.0));
     if let Some(display) = cx.primary_display() {
         let display_size = display.bounds().size;
         window_size.width = window_size.width.min(display_size.width * 0.85);
@@ -379,8 +382,8 @@ where
             window_bounds: Some(WindowBounds::Windowed(window_bounds)),
             titlebar: Some(TitleBar::title_bar_options()),
             window_min_size: Some(gpui::Size {
-                width: px(800.),
-                height: px(600.),
+                width: px(1200.),
+                height: px(800.),
             }),
             kind: WindowKind::Normal,
             ..Default::default()
@@ -413,25 +416,29 @@ pub fn init(cx: &mut App) {
         )
         .try_init();
 
-		// 初始化全局状态和组件
-    gpui_component::init(cx);
-	// 注意初始化顺序：AppState 可能被其他组件依赖，必须最先初始化
-    app_state::AppState::init(cx);
+        tracing::info!("init: gpui_component::init");
+        gpui_component::init(cx);
+        tracing::info!("init: app_state::AppState::init");
+        app_state::AppState::init(cx);
     // 应用启动器全局状态
     cx.set_global(app::app_launcher::AppLauncherState::default());
-	// background 依赖 AppState 中的背景设置，必须在 AppState 之后初始化
+    tracing::info!("init: background::init");
     background::init(cx);
-	// themes 依赖 AppState 中的主题设置，必须在 AppState 之后初始化
+    tracing::info!("init: themes::init");
     themes::init(cx);
-	// 插件系统需要在 app_menus 之前初始化，因为菜单中会有插件相关的项
+    tracing::info!("init: plugins::PluginRegistry::init");
     plugins::PluginRegistry::init(cx);
-	// 注册内置插件（必须在 PluginRegistry 初始化之后）
-    plugins::register_builtin_wasm_plugins(cx);
-	// 最后初始化 i18n 和菜单，因为菜单中可能会用到国际化文本
+    if std::env::var("OASIS_DISABLE_BUILTIN_WASM_PLUGIN").ok().as_deref() == Some("1") {
+        tracing::warn!("init: skip plugins::register_builtin_wasm_plugins (OASIS_DISABLE_BUILTIN_WASM_PLUGIN=1)");
+    } else {
+        tracing::info!("init: plugins::register_builtin_wasm_plugins");
+        plugins::register_builtin_wasm_plugins(cx);
+    }
+    tracing::info!("init: i18n::init");
     i18n::init(cx);
-	// 菜单和快捷键通常放在最后初始化，这样它们就能访问到之前初始化的所有状态和组件
+    tracing::info!("init: app_menus::init");
     app_menus::init("oasis", cx);
-	// 键盘绑定需要在菜单之后初始化，因为有些绑定可能会触发菜单命令
+    tracing::info!("init: key_binding::init");
     key_binding::init(cx);
 
 	// 注册面板
@@ -440,8 +447,12 @@ pub fn init(cx: &mut App) {
         Box::new(panel) as Box<dyn gpui_component::dock::PanelView>
     });
 
-	// 注册系统托盘（需要在菜单和主题初始化之后，因为托盘图标和菜单可能会用到它们）
-    system_tray::init(cx);
-	// 打开主窗口
+    if std::env::var("OASIS_DISABLE_TRAY").ok().as_deref() == Some("1") {
+        tracing::warn!("init: skip system_tray::init (OASIS_DISABLE_TRAY=1)");
+    } else {
+        tracing::info!("init: system_tray::init");
+        system_tray::init(cx);
+    }
+    tracing::info!("init: activate");
     cx.activate(true);
 }

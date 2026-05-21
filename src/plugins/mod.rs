@@ -137,7 +137,11 @@ impl PluginRegistry {
         }
 
         // 扫描并加载 plugins/ 目录下的插件（子进程/dylib）
-        Self::scan_dylib_plugins(&mut plugins);
+        if std::env::var("OASIS_DISABLE_DYLIB_PLUGINS").ok().as_deref() == Some("1") {
+            tracing::warn!("Skipping dylib plugin scan (OASIS_DISABLE_DYLIB_PLUGINS=1)");
+        } else {
+            Self::scan_dylib_plugins(&mut plugins);
+        }
 
         // 手动注册 rlib 插件（静态链接，共享 gpui 全局状态）
         // 仅当 plugins/ 目录中未发现同名子进程版本时才注册 rlib 版本
@@ -177,7 +181,7 @@ impl PluginRegistry {
 
     /// 打开插件窗口
     pub fn open_plugin(id: &str, window: &mut Window, cx: &mut App) {
-        // 先获取注册的插件信息，释放 cx 借用
+        tracing::info!("🧪 open_plugin called: {}", id);
         let (
             title,
             window_width,
@@ -232,26 +236,55 @@ impl PluginRegistry {
         }
 
         // 内嵌模式：create_view > dyn_plugin
+        // 目前 dyn_plugin 路径在 macOS 上不稳定，先降级为测试视图，避免跨 dylib 的 UiSchema 渲染崩溃。
         let content: AnyView = if let Some(create_view) = create_view_fn {
             tracing::info!("Creating plugin '{}' from create_view", id);
             create_view(window, cx)
-        } else if let Some((_lib, plugin)) = dyn_plugin_ref {
-            tracing::info!("Creating plugin '{}' from dyn_plugin", id);
-            let view = dyn_plugin_view::DynPluginView::create_from_plugin(plugin);
-            cx.new(|_| view).into()
         } else {
-            tracing::error!("Plugin '{}' has no view creation method", id);
-            return;
+            // 测试模式：没有实际插件时，用静态 UiSchema 显示占位视图
+            if dyn_plugin_ref.is_some() {
+                tracing::warn!("⚠️ Plugin '{}' uses dyn_plugin, but host is falling back to a static test view", id);
+            } else {
+                tracing::info!("🧪 测试模式：为 '{}' 创建静态测试视图", id);
+            }
+            let test_schema = ui_schema::UiSchema::flex_col()
+                .gap(16)
+                .child(
+                    ui_schema::UiNode::new("display")
+                        .prop("style", serde_json::json!("icon-large"))
+                        .prop("text", serde_json::json!("🧰")),
+                )
+                .child(
+                    ui_schema::UiNode::label(id)
+                        .prop("size", serde_json::json!(18))
+                        .prop("weight", serde_json::json!("semibold")),
+                )
+                .child(
+                    ui_schema::UiNode::label("插件视图加载中...".to_string())
+                        .prop("style", serde_json::json!("muted")),
+                );
+            let test_state = serde_json::json!({});
+            cx.new(|_cx| {
+                dyn_plugin_view::TestPluginView {
+                    schema: test_schema,
+                    state: test_state,
+                }
+            }).into()
         };
 
+        tracing::info!("🧪 Creating PluginWindow entity for '{}'", id);
         let plugin_window = cx.new(|_| {
+            tracing::info!("🧪 PluginWindow::new for '{}'", id);
             plugin_window::PluginWindow::new(id, title, (window_width, window_height), content)
         });
+        tracing::info!("🧪 PluginWindow created, inserting into open_windows");
 
         cx.global_mut::<Self>()
             .open_windows
             .insert(id.to_string(), plugin_window);
+        tracing::info!("🧪 Calling refresh_windows");
         cx.refresh_windows();
+        tracing::info!("🧪 Plugin '{}' window opened successfully", id);
     }
 
     /// 关闭插件窗口

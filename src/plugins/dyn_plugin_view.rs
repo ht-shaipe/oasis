@@ -15,6 +15,41 @@ use super::wasm_plugin_view::{render_header, render_node, ActionHandler, RenderC
 use plugin_sdk::Plugin;
 
 // ---------------------------------------------------------------------------
+// TestPluginView — 测试视图（跳过 cdylib Plugin）
+// ---------------------------------------------------------------------------
+
+/// 测试视图：直接用静态 UiSchema 渲染，不调用 cdylib Plugin trait
+pub struct TestPluginView {
+    pub schema: ui_schema::UiSchema,
+    pub state: serde_json::Value,
+}
+
+impl Render for TestPluginView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme();
+        let ctx = RenderContext::from_theme(&theme);
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(16.))
+            .p(px(24.))
+            .size_full()
+            .bg(theme.colors.background)
+            .child(render_header("Test Plugin", "🔧", "test", &ctx))
+            .children(
+                self.schema.children.iter().enumerate().map(|(idx, node)| {
+                    render_node(node, &self.state, &ctx, Arc::new(NoopHandler), idx)
+                }),
+            )
+    }
+}
+
+struct NoopHandler;
+impl ActionHandler for NoopHandler {
+    fn handle(&self, _action: String, _cx: &mut gpui::App) {}
+}
+
+// ---------------------------------------------------------------------------
 // DynPluginView — cdylib 插件视图
 // ---------------------------------------------------------------------------
 
@@ -32,9 +67,13 @@ pub struct DynPluginView {
 impl DynPluginView {
     /// 从 Arc<dyn Plugin> 创建视图（由 PluginRegistry 调用）
     pub fn create_from_plugin(plugin: Arc<dyn Plugin>) -> Self {
+        tracing::info!("🧪 DynPluginView::create_from_plugin 开始");
         let meta = plugin.meta();
+        tracing::info!("🧪 meta: {} ({})", meta.name, meta.id);
         let state = plugin.state();
+        tracing::info!("🧪 state acquired");
         let ui_schema = plugin.ui_schema();
+        tracing::info!("🧪 ui_schema acquired, children: {}", ui_schema.children.len());
         tracing::info!("✅ cdylib 插件视图创建: {} ({})", meta.name, meta.id);
         Self {
             plugin,
@@ -77,15 +116,21 @@ impl ActionHandler for DynActionHandler {
 
 impl Render for DynPluginView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        tracing::info!("🧪 DynPluginView::render START for '{}'", self.meta.name);
         let theme = cx.theme();
+        tracing::info!("🧪 DynPluginView::render got theme");
         let ctx = RenderContext::from_theme(&theme);
+        tracing::info!("🧪 DynPluginView::render got ctx");
         let meta = &self.meta;
+        tracing::info!("🧪 DynPluginView::render meta ok");
         let state = self.state.borrow();
+        tracing::info!("🧪 DynPluginView::render state borrowed, children={}", self.ui_schema.children.len());
 
         let action_handler: Arc<dyn ActionHandler> =
             Arc::new(DynActionHandler { entity: cx.entity().downgrade() });
 
-        div()
+        tracing::info!("🧪 DynPluginView::render building div");
+        let element = div()
             .flex()
             .flex_col()
             .gap(px(16.))
@@ -99,6 +144,8 @@ impl Render for DynPluginView {
                 self.ui_schema.children.iter().enumerate().map(|(idx, node)| {
                     render_node(node, &*state, &ctx, action_handler.clone(), idx)
                 }),
-            )
+            );
+        tracing::info!("🧪 DynPluginView::render DONE");
+        element
     }
 }
