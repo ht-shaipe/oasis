@@ -10,12 +10,12 @@ pub fn schema_api_request() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("🌐 API 请求"),
+            UiNode::label("API 请求"),
             UiNode::input("url", "URL"),
             UiNode::input("method", "方法 (GET/POST/PUT/DELETE)"),
             UiNode::input("headers", "请求头 (每行一个，格式: Key: Value)"),
             UiNode::input("body", "请求体 (JSON)"),
-            make_button_row(&[("📤", "发送", "api:send")]),
+            make_button_row(&[("发送", "api:send")]),
             UiNode::info(&[("状态", "response_status")]),
             UiNode::display("response_body"),
         ],
@@ -30,13 +30,13 @@ pub fn schema_batch_download() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("⬇️ 批量下载"),
+            UiNode::label("批量下载"),
             UiNode::input("template", "URL 模板 (支持 {0} 占位)"),
             UiNode::input("paths", "路径列表 (每行一个)"),
             UiNode::input("concurrency", "并发数"),
             make_button_row(&[
-                ("📂", "输出目录", "batch_dl:pick_output"),
-                ("▶️", "开始下载", "batch_dl:start"),
+                ("输出目录", "batch_dl:pick_output"),
+                ("开始下载", "batch_dl:start"),
             ]),
             UiNode::display("message"),
         ],

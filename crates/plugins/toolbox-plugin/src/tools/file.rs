@@ -14,13 +14,13 @@ pub fn schema_batch_rename() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("📝 批量重命名"),
-            make_button_row(&[("📂", "选择目录", "rename:pick_dir")]),
+            UiNode::label("批量重命名"),
+            make_button_row(&[("选择目录", "rename:pick_dir")]),
             UiNode::input("needle", "查找内容"),
             UiNode::input("replacement", "替换为"),
             make_button_row(&[
-                ("👁️", "预览", "rename:preview"),
-                ("▶️", "执行", "rename:execute"),
+                ("预览", "rename:preview"),
+                ("执行", "rename:execute"),
             ]),
             UiNode::display("preview"),
         ],
@@ -35,16 +35,16 @@ pub fn schema_excel_move() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("📁 Excel 移动文件"),
+            UiNode::label("Excel 移动文件"),
             make_button_row(&[
-                ("📋", "选择 Excel", "excel_move:pick_excel"),
-                ("📂", "输入目录", "excel_move:pick_input"),
-                ("📤", "输出目录", "excel_move:pick_output"),
+                ("选择 Excel", "excel_move:pick_excel"),
+                ("输入目录", "excel_move:pick_input"),
+                ("输出目录", "excel_move:pick_output"),
             ]),
             UiNode::input("suffixes", "文件后缀（逗号分隔）"),
             make_button_row(&[
-                ("👁️", "预览", "excel_move:preview"),
-                ("▶️", "执行", "excel_move:execute"),
+                ("预览", "excel_move:preview"),
+                ("执行", "excel_move:execute"),
             ]),
             UiNode::display("preview"),
             UiNode::info(&[("消息", "message")]),

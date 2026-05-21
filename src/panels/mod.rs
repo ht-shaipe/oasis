@@ -117,11 +117,11 @@ impl Render for SamplePanel {
                     .flex_wrap()
                     .gap(px(12.))
                     .children(plugins.into_iter().map(|(id, name, desc, emoji, is_wasm)| {
-                        let card_bg = card_bg;
-                        let card_hover_bg = card_hover_bg;
-                        let desc_color = desc_color;
-                        let title_color = title_color;
-                        let badge_bg = badge_bg;
+                        let card_bg = card_bg.clone();
+                        let card_hover_bg = card_hover_bg.clone();
+                        let desc_color = desc_color.clone();
+                        let title_color = title_color.clone();
+                        let badge_bg = badge_bg.clone();
 
                         let badge_text = if is_wasm { "WASM" } else { "Native" };
 
@@ -136,7 +136,7 @@ impl Render for SamplePanel {
                             .border_1()
                             .border_color(theme.colors.border.opacity(0.08))
                             .cursor_pointer()
-                            .hover(|s| s.bg(card_hover_bg))
+                            .hover(move |s| s.bg(card_hover_bg.clone()))
                             .on_click(move |_ev, _window, cx| {
                                 crate::plugins::PluginRegistry::open_plugin(&id, _window, cx);
                             })
@@ -185,7 +185,7 @@ impl Render for SamplePanel {
                                             .child(badge_text.to_string()),
                                     ),
                             )
-                    })),
+                    }))
             )
     }
 }

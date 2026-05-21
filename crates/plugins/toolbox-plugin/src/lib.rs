@@ -52,4 +52,10 @@ mod tests {
         let schema = plugin.ui_schema();
         assert!(!schema.children.is_empty());
     }
+
+    #[test]
+    fn test_demo_schema() {
+        let schema = crate::tools::demo::schema_ui_schema_demo();
+        assert!(!schema.children.is_empty());
+    }
 }

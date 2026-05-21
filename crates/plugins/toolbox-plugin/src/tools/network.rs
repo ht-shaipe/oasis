@@ -14,12 +14,12 @@ pub fn schema_network_scan() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("🔍 局域网设备扫描"),
+            UiNode::label("局域网设备扫描"),
             UiNode::input("ip_range", "IP 段 (如 192.168.1.1-254)"),
             UiNode::input("ports", "端口 (如 80,443,8080 或 1-1000)"),
             UiNode::input("timeout", "超时 (ms)"),
             UiNode::progress("scan_progress"),
-            make_button_row(&[("▶️", "开始扫描", "net_scan:start")]),
+            make_button_row(&[("开始扫描", "net_scan:start")]),
             UiNode::table("scan_results", &["IP", "端口", "状态", "延迟(ms)"]),
         ],
         ..Default::default()

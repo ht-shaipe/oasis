@@ -21,10 +21,59 @@ impl ToolboxPlugin {
         self.state.read().unwrap().selected_tool.clone()
     }
 
+    /// 构建左侧边栏菜单
+    fn build_sidebar(_current_tool: ToolId) -> plugin_sdk::UiNode {
+        use plugin_sdk::UiNode;
+
+        let menu_items = vec![
+            ("主页", ToolId::Home),
+            ("CSV 统计", ToolId::CsvStats),
+            ("CSV 分割", ToolId::CsvSplit),
+            ("CSV 转换", ToolId::CsvExcelConvert),
+            ("批量重命名", ToolId::BatchRename),
+            ("Excel 移动文件", ToolId::ExcelMoveFiles),
+            ("API 请求", ToolId::ApiRequest),
+            ("批量下载", ToolId::ApiBatchDownload),
+            ("JSON 转换", ToolId::JsonToCsvExcel),
+            ("JSON 合并", ToolId::JsonMerge),
+            ("网络扫描", ToolId::NetworkScan),
+            ("UI 测试", ToolId::UiSchemaDemo),
+        ];
+
+        let buttons: Vec<plugin_sdk::UiNode> = menu_items
+            .into_iter()
+            .map(|(label, tool_id)| {
+                let action = match tool_id {
+                    ToolId::Home => "Home",
+                    ToolId::CsvStats => "CsvStats",
+                    ToolId::CsvSplit => "CsvSplit",
+                    ToolId::CsvExcelConvert => "CsvExcelConvert",
+                    ToolId::BatchRename => "BatchRename",
+                    ToolId::ExcelMoveFiles => "ExcelMoveFiles",
+                    ToolId::ApiRequest => "ApiRequest",
+                    ToolId::ApiBatchDownload => "ApiBatchDownload",
+                    ToolId::JsonToCsvExcel => "JsonToCsvExcel",
+                    ToolId::JsonMerge => "JsonMerge",
+                    ToolId::NetworkScan => "NetworkScan",
+                    ToolId::UiSchemaDemo => "UiSchemaDemo",
+                };
+
+                // 创建菜单项按钮
+                UiNode::button(label.to_string(), action)
+            })
+            .collect();
+
+        // 直接返回菜单按钮组，不显示标题
+        UiNode::new("flex-col")
+            .prop("gap", serde_json::json!(8))
+            .children(buttons)
+    }
+
     /// 根据当前选中工具返回对应 UiSchema
     fn tool_schema(&self) -> UiSchema {
         match self.selected_tool() {
             ToolId::Home => home::schema_home(),
+            ToolId::UiSchemaDemo => demo::schema_ui_schema_demo(),
             ToolId::CsvStats => csv::schema_csv_stats(),
             ToolId::CsvSplit => csv::schema_csv_split(),
             ToolId::CsvExcelConvert => csv::schema_csv_convert(),
@@ -65,10 +114,31 @@ impl Plugin for ToolboxPlugin {
 
         match action {
             // 全局导航
+            "Home" => {
+                state.selected_tool = ToolId::Home;
+            }
+            "CsvStats" => state.selected_tool = ToolId::CsvStats,
+            "CsvSplit" => state.selected_tool = ToolId::CsvSplit,
+            "CsvExcelConvert" => state.selected_tool = ToolId::CsvExcelConvert,
+            "BatchRename" => state.selected_tool = ToolId::BatchRename,
+            "ExcelMoveFiles" => state.selected_tool = ToolId::ExcelMoveFiles,
+            "ApiRequest" => state.selected_tool = ToolId::ApiRequest,
+            "ApiBatchDownload" => state.selected_tool = ToolId::ApiBatchDownload,
+            "JsonToCsvExcel" => state.selected_tool = ToolId::JsonToCsvExcel,
+            "JsonMerge" => state.selected_tool = ToolId::JsonMerge,
+            "NetworkScan" => state.selected_tool = ToolId::NetworkScan,
+            "UiSchemaDemo" => state.selected_tool = ToolId::UiSchemaDemo,
             "select_tool" => {
                 if let Some(tool) = params.get("tool").and_then(|t| t.as_str()) {
                     state.selected_tool = home::parse_tool_id(tool);
                 }
+            }
+
+            "demo:refresh" => {
+                crate::tools::demo::update_demo_state(&mut state, true);
+            }
+            "demo:toggle" => {
+                crate::tools::demo::update_demo_state(&mut state, false);
             }
 
             // CSV 统计
@@ -341,6 +411,27 @@ impl Plugin for ToolboxPlugin {
     }
 
     fn ui_schema(&self) -> UiSchema {
-        self.tool_schema()
+        // 创建左右分栏布局：左侧菜单 + 右侧内容
+        use plugin_sdk::UiNode;
+
+        let sidebar = Self::build_sidebar(self.selected_tool());
+        let content = self.tool_schema();
+
+        // 使用 split 组件创建左右分栏（左侧固定宽度 200px，右侧自适应）
+        UiSchema {
+            layout: "flex-row".into(),
+            children: vec![
+                UiNode::split("row")
+                    .prop("left_width", serde_json::json!(200))
+                    .prop("gap", serde_json::json!(1))
+                    .child(sidebar)
+                    .child(
+                        // 右侧使用 flex-col 容器包裹所有内容
+                        UiNode::new("flex-col")
+                            .children(content.children),
+                    ),
+            ],
+            ..Default::default()
+        }
     }
 }

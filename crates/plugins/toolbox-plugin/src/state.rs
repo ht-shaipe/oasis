@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// 工具 ID
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolId {
     Home,
@@ -17,6 +17,7 @@ pub enum ToolId {
     JsonToCsvExcel,
     JsonMerge,
     NetworkScan,
+    UiSchemaDemo,
 }
 
 /// CSV 统计状态
@@ -89,6 +90,40 @@ pub struct BatchDownloadState {
     pub message: Option<String>,
 }
 
+/// UiSchema Demo 树节点
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DemoTreeNode {
+    pub name: String,
+    pub is_dir: bool,
+    pub path: String,
+    pub children: Vec<DemoTreeNode>,
+}
+
+/// UiSchema Demo 表格行
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DemoTableRow {
+    pub name: String,
+    pub kind: String,
+    pub owner: String,
+    pub status: String,
+}
+
+/// UiSchema Demo 状态
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UiSchemaDemoState {
+    pub total_users: u64,
+    pub active_today: u64,
+    pub revenue: u64,
+    pub completion: u64,
+    pub status_message: String,
+    pub name: String,
+    pub email: String,
+    pub role: String,
+    pub notes: String,
+    pub tree: Vec<DemoTreeNode>,
+    pub rows: Vec<DemoTableRow>,
+}
+
 /// JSON 转换状态
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct JsonConvertState {
@@ -136,6 +171,7 @@ pub struct ToolboxState {
     pub json_convert: JsonConvertState,
     pub json_merge: JsonMergeState,
     pub network_scan: NetworkScanState,
+    pub demo: UiSchemaDemoState,
 }
 
 impl Default for ToolboxState {
@@ -206,6 +242,55 @@ impl Default for ToolboxState {
                 timeout: 1000,
                 loading: false,
                 results: vec![],
+            },
+            demo: UiSchemaDemoState {
+                total_users: 12_840,
+                active_today: 3_842,
+                revenue: 128_500,
+                completion: 76,
+                status_message: "模板库已就绪".into(),
+                name: "Li Hua".into(),
+                email: "li.hua@example.com".into(),
+                role: "design".into(),
+                notes: "展示 ui-schema 的模板和基础组件".into(),
+                tree: vec![
+                    DemoTreeNode {
+                        name: "src".into(),
+                        is_dir: true,
+                        path: "/src".into(),
+                        children: vec![
+                            DemoTreeNode {
+                                name: "main.rs".into(),
+                                is_dir: false,
+                                path: "/src/main.rs".into(),
+                                children: vec![],
+                            },
+                            DemoTreeNode {
+                                name: "plugins".into(),
+                                is_dir: true,
+                                path: "/src/plugins".into(),
+                                children: vec![DemoTreeNode {
+                                    name: "demo.rs".into(),
+                                    is_dir: false,
+                                    path: "/src/plugins/demo.rs".into(),
+                                    children: vec![],
+                                }],
+                            },
+                        ],
+                    },
+                    DemoTreeNode {
+                        name: "crates".into(),
+                        is_dir: true,
+                        path: "/crates".into(),
+                        children: vec![],
+                    },
+                ],
+                rows: vec![
+                    DemoTableRow { name: "Dashboard".into(), kind: "template".into(), owner: "UI".into(), status: "ready".into() },
+                    DemoTableRow { name: "Tree Table".into(), kind: "template".into(), owner: "UI".into(), status: "ready".into() },
+                    DemoTableRow { name: "Form Page".into(), kind: "template".into(), owner: "UI".into(), status: "ready".into() },
+                    DemoTableRow { name: "Empty State".into(), kind: "template".into(), owner: "UI".into(), status: "ready".into() },
+                ],
             },
         }
     }

@@ -236,17 +236,17 @@ impl PluginRegistry {
         }
 
         // 内嵌模式：create_view > dyn_plugin
-        // 目前 dyn_plugin 路径在 macOS 上不稳定，先降级为测试视图，避免跨 dylib 的 UiSchema 渲染崩溃。
         let content: AnyView = if let Some(create_view) = create_view_fn {
             tracing::info!("Creating plugin '{}' from create_view", id);
             create_view(window, cx)
+        } else if let Some((_, plugin)) = dyn_plugin_ref {
+            // 使用 DynPluginView 来渲染 dylib 插件
+            tracing::info!("Creating plugin '{}' from DynPluginView", id);
+            cx.new(|_cx| dyn_plugin_view::DynPluginView::create_from_plugin(plugin))
+                .into()
         } else {
             // 测试模式：没有实际插件时，用静态 UiSchema 显示占位视图
-            if dyn_plugin_ref.is_some() {
-                tracing::warn!("⚠️ Plugin '{}' uses dyn_plugin, but host is falling back to a static test view", id);
-            } else {
-                tracing::info!("🧪 测试模式：为 '{}' 创建静态测试视图", id);
-            }
+            tracing::info!("🧪 测试模式：为 '{}' 创建静态测试视图", id);
             let test_schema = ui_schema::UiSchema::flex_col()
                 .gap(16)
                 .child(
@@ -512,12 +512,12 @@ impl PluginRegistry {
     /// 在插件目录中查找 dylib 文件
     fn find_dylib(dir: &std::path::Path, plugin_id: &str) -> Option<std::path::PathBuf> {
         // macOS: lib{plugin_id}.dylib
-        let mac_path = dir.join(format!("lib{}.dylib", plugin_id));
+        let mac_path = dir.join(format!("{}.dylib", plugin_id));
         if mac_path.exists() {
             return Some(mac_path);
         }
         // Linux: lib{plugin_id}.so
-        let linux_path = dir.join(format!("lib{}.so", plugin_id));
+        let linux_path = dir.join(format!("{}.so", plugin_id));
         if linux_path.exists() {
             return Some(linux_path);
         }

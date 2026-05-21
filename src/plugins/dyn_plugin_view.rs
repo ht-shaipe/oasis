@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use gpui::{
-    div, px, AppContext as _, Context, IntoElement, ParentElement, Render, Styled as _, Window,
+    div, px, Context, IntoElement, ParentElement, Render, Styled as _, Window,
 };
 use gpui_component::ActiveTheme as _;
 
@@ -87,6 +87,8 @@ impl DynPluginView {
     fn handle_action(&mut self, action: String, cx: &mut Context<Self>) {
         let new_state = self.plugin.handle_action(&action, serde_json::Value::Null);
         *self.state.borrow_mut() = new_state;
+        // 重新获取 ui_schema 以反映状态变化（如 selected_tool 改变）
+        self.ui_schema = self.plugin.ui_schema();
         cx.notify();
     }
 }
@@ -121,8 +123,6 @@ impl Render for DynPluginView {
         tracing::info!("🧪 DynPluginView::render got theme");
         let ctx = RenderContext::from_theme(&theme);
         tracing::info!("🧪 DynPluginView::render got ctx");
-        let meta = &self.meta;
-        tracing::info!("🧪 DynPluginView::render meta ok");
         let state = self.state.borrow();
         tracing::info!("🧪 DynPluginView::render state borrowed, children={}", self.ui_schema.children.len());
 
@@ -133,13 +133,12 @@ impl Render for DynPluginView {
         let element = div()
             .flex()
             .flex_col()
-            .gap(px(16.))
-            .p(px(24.))
+            .gap(px(0.))
+            .p(px(0.))
             .size_full()
+            .overflow_hidden()
             .bg(theme.colors.background)
-            // 标题栏
-            .child(render_header(&meta.name, &meta.icon, "cdylib", &ctx))
-            // 逐个渲染 schema children
+            // 逐个渲染 schema children（不显示标题栏）
             .children(
                 self.ui_schema.children.iter().enumerate().map(|(idx, node)| {
                     render_node(node, &*state, &ctx, action_handler.clone(), idx)

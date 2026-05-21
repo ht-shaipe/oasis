@@ -10,8 +10,8 @@ pub fn schema_csv_stats() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("📊 CSV 统计"),
-            make_button_row(&[("📂", "选择文件", "csv_stats:pick_file")]),
+            UiNode::label("CSV 统计"),
+            make_button_row(&[("选择文件", "csv_stats:pick_file")]),
             UiNode::display("stats"),
         ],
         ..Default::default()
@@ -25,13 +25,13 @@ pub fn schema_csv_split() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("✂️ CSV 分割"),
-            make_button_row(&[("📂", "选择文件", "csv_split:pick_file")]),
+            UiNode::label("CSV 分割"),
+            make_button_row(&[("选择文件", "csv_split:pick_file")]),
             UiNode::info(&[
                 ("分割列", "split_col"),
                 ("输出前缀", "output_prefix"),
             ]),
-            make_button_row(&[("▶️", "执行分割", "csv_split:execute")]),
+            make_button_row(&[("执行分割", "csv_split:execute")]),
         ],
         ..Default::default()
     }
@@ -44,8 +44,8 @@ pub fn schema_csv_convert() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("🔄 CSV/Excel 转换"),
-            make_button_row(&[("📂", "选择文件", "json_conv:pick_file")]),
+            UiNode::label("CSV/Excel 转换"),
+            make_button_row(&[("选择文件", "json_conv:pick_file")]),
             UiNode::display("status"),
         ],
         ..Default::default()

@@ -129,7 +129,7 @@ members = [
   "crates/widgets/wasm-widget",
   "crates/plugins/md-editor-plugin",
   "crates/plugins/toolbox-plugin",
-  "crates/plugins/credential-plugin",
+  "crates/plugins/credential-plugin", "crates/plugins/llm-plugin",
 ]
 resolver = "2"
 

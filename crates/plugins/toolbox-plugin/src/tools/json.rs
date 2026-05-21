@@ -10,8 +10,8 @@ pub fn schema_json_convert() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("📋 JSON 转换"),
-            make_button_row(&[("📂", "选择文件", "json_conv:pick_file")]),
+            UiNode::label("JSON 转换"),
+            make_button_row(&[("选择文件", "json_conv:pick_file")]),
             UiNode::input("format", "输出格式 (csv/xlsx)"),
             UiNode::display("status"),
         ],
@@ -26,10 +26,10 @@ pub fn schema_json_merge() -> UiSchema {
     UiSchema {
         layout: "flex-col".into(),
         children: vec![
-            UiNode::label("🔗 JSON 合并"),
+            UiNode::label("JSON 合并"),
             make_button_row(&[
-                ("➕", "添加文件", "json_merge:add_file"),
-                ("▶️", "执行合并", "json_merge:execute"),
+                ("添加文件", "json_merge:add_file"),
+                ("执行合并", "json_merge:execute"),
             ]),
             UiNode::info(&[("文件数", "file_count")]),
             UiNode::display("merged"),
