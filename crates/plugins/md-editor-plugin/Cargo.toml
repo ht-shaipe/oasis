@@ -5,6 +5,11 @@ edition = "2024"
 
 [lib]
 crate-type = ["rlib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "md-editor-plugin"
+path = "src/main.rs"
 
 [dependencies]
 gpui = "0.2.2"
@@ -13,3 +18,4 @@ ropey = "1.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rfd = "0.15"
+plugin-ipc = { path = "../plugin-ipc" }

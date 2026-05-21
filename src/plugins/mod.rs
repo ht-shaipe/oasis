@@ -1,4 +1,3 @@
-
 pub mod dyn_plugin_view;
 pub mod plugin_window;
 pub mod wasm_example;
@@ -8,16 +7,13 @@ pub mod wasm_plugin_system;
 pub mod wasm_plugin_view;
 pub mod wasm_runtime;
 
-// Aster (md-editor-plugin) inventory submit
-use md_editor_plugin::AsterView;
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{AnyView, App, AppContext as _, Entity, Global, Window};
-use serde::Deserialize;
-use plugin_sdk::Plugin;
 use libloading::{Library, Symbol};
+use plugin_sdk::Plugin;
+use serde::Deserialize;
 
 // ---------------------------------------------------------------------------
 // PluginEntry — inventory 提交类型（内置插件）
@@ -32,25 +28,6 @@ pub struct PluginEntry {
 }
 
 inventory::collect!(PluginEntry);
-
-inventory::submit! {
-    PluginEntry {
-        id: "aster",
-        manifest_toml: r#"
-[plugin]
-id = "aster"
-display_name = "Aster Editor"
-description = "Markdown WYSIWYG editor"
-icon = "aster.svg"
-window_width = 1000.0
-window_height = 700.0
-"#,
-        icon_svg: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M17 3a2.85 2.83 0 1 1 4 4L7.5 18.5 2 20l1.5-5.5Z'/></svg>",
-        create_view: |window: &mut Window, cx: &mut App| -> AnyView {
-            cx.new(|cx| AsterView::new(window, cx)).into()
-        },
-    }
-}
 
 // ---------------------------------------------------------------------------
 // PluginManifest — TOML 解析目标
@@ -103,11 +80,15 @@ pub struct RegisteredPlugin {
     pub manifest: PluginManifest,
     pub icon_svg: String,
     pub icon_emoji: Option<String>,
-    /// 静态（inventory）插件的视图工厂
+    /// 静态（inventory/手动注册）插件的视图工厂
     pub create_view: Option<fn(&mut Window, &mut App) -> AnyView>,
     /// dylib 插件实例（cdylib 加载，保持 Library 句柄活跃）
     pub dyn_plugin: Option<(Library, Arc<dyn Plugin>)>,
     pub is_wasm: bool,
+    /// 子进程插件：可执行文件路径（相对于 plugins/ 目录或绝对路径）
+    pub subprocess_exec: Option<String>,
+    /// 子进程句柄（启动后持有）
+    pub subprocess: Option<std::process::Child>,
 }
 
 // ---------------------------------------------------------------------------
@@ -138,6 +119,8 @@ impl PluginRegistry {
                             create_view: Some(entry.create_view),
                             dyn_plugin: None,
                             is_wasm: false,
+                            subprocess_exec: None,
+                            subprocess: None,
                         });
                     } else {
                         tracing::error!(
@@ -153,8 +136,34 @@ impl PluginRegistry {
             }
         }
 
-        // 扫描并加载 plugins/dylib/ 目录下的 cdylib 插件
+        // 扫描并加载 plugins/ 目录下的插件（子进程/dylib）
         Self::scan_dylib_plugins(&mut plugins);
+
+        // 手动注册 rlib 插件（静态链接，共享 gpui 全局状态）
+        // 仅当 plugins/ 目录中未发现同名子进程版本时才注册 rlib 版本
+        let has_subprocess_md = plugins.iter().any(|p| p.manifest.id == "md-editor-plugin");
+        if !has_subprocess_md {
+            plugins.push(RegisteredPlugin {
+                manifest: PluginManifest {
+                    id: "md-editor-plugin".to_string(),
+                    display_name: "Markdown 编辑器".to_string(),
+                    description: "Aster 风格 Markdown 编辑器".to_string(),
+                    icon: "md-editor-plugin.svg".to_string(),
+                    window_width: 900.0,
+                    window_height: 700.0,
+                },
+                icon_svg: String::new(),
+                icon_emoji: Some("📝".to_string()),
+                create_view: Some(md_editor_plugin::create_aster_view),
+                dyn_plugin: None,
+                is_wasm: false,
+                subprocess_exec: None,
+                subprocess: None,
+            });
+            tracing::info!("✅ 注册 rlib 插件: md-editor-plugin");
+        } else {
+            tracing::info!("⏭️  rlib md-editor-plugin 跳过（子进程版本已注册）");
+        }
 
         cx.set_global(Self {
             plugins,
@@ -168,8 +177,15 @@ impl PluginRegistry {
 
     /// 打开插件窗口
     pub fn open_plugin(id: &str, window: &mut Window, cx: &mut App) {
-        // 读取插件信息（结束后 cx 借用释放）
-        let (title, window_width, window_height, content) = {
+        // 先获取注册的插件信息，释放 cx 借用
+        let (
+            title,
+            window_width,
+            window_height,
+            create_view_fn,
+            dyn_plugin_ref,
+            subprocess_exec,
+        ) = {
             let registry = cx.global::<Self>();
             if registry.open_windows.contains_key(id) {
                 tracing::info!("Plugin '{}' already open, focusing...", id);
@@ -180,36 +196,58 @@ impl PluginRegistry {
                 return;
             };
 
-            // 收集所有需要的数据，cx 借用仅持续到这里
-            let title = registered.manifest.display_name.clone();
-            let window_width = registered.manifest.window_width;
-            let window_height = registered.manifest.window_height;
-            let plugin = registered.dyn_plugin.as_ref().map(|(lib, p)| (lib, Arc::clone(p)));
-            let create_view = registered.create_view;
+            (
+                registered.manifest.display_name.clone(),
+                registered.manifest.window_width,
+                registered.manifest.window_height,
+                registered.create_view,
+                registered.dyn_plugin.as_ref().map(|(lib, p)| (lib, Arc::clone(p))),
+                registered.subprocess_exec.clone(),
+            )
+        };
 
-            (title, window_width, window_height, (plugin, create_view))
-        }; // cx 借用在这里完全释放
+        // 优先级：subprocess > create_view > dyn_plugin
+        // 子进程模式：独立进程，自有 gpui 窗口，不嵌入宿主
+        if let Some(exec_path) = subprocess_exec {
+            tracing::info!("🚀 启动子进程插件 '{}' from: {}", id, exec_path);
+            match std::process::Command::new(&exec_path)
+                .spawn()
+            {
+                Ok(child) => {
+                    // 存储子进程句柄，以便后续关闭
+                    cx.global_mut::<Self>()
+                        .plugins
+                        .iter_mut()
+                        .find(|p| p.manifest.id == id)
+                        .map(|p| p.subprocess = Some(child));
+                    tracing::info!("✅ 子进程插件 '{}' 已启动", id);
+                    // 子进程自己管理窗口，宿主无需创建 PluginWindow
+                    return;
+                }
+                Err(e) => {
+                    tracing::error!("❌ 启动子进程插件 '{}' 失败: {}", id, e);
+                    return;
+                }
+            }
+        }
 
-        // 现在 cx 可自由借用
-        let content: AnyView = if let Some((_lib, plugin)) = content.0 {
+        // 内嵌模式：create_view > dyn_plugin
+        let content: AnyView = if let Some(create_view) = create_view_fn {
+            tracing::info!("Creating plugin '{}' from create_view", id);
+            create_view(window, cx)
+        } else if let Some((_lib, plugin)) = dyn_plugin_ref {
+            tracing::info!("Creating plugin '{}' from dyn_plugin", id);
             let view = dyn_plugin_view::DynPluginView::create_from_plugin(plugin);
             cx.new(|_| view).into()
-        } else if let Some(create_view) = content.1 {
-            create_view(window, cx)
         } else {
-            tracing::error!("Plugin '{}' has no create_view and no dyn_plugin", id);
+            tracing::error!("Plugin '{}' has no view creation method", id);
             return;
         };
 
-        // 创建 PluginWindow 实体
-        let plugin_window = cx.new(|_| plugin_window::PluginWindow::new(
-            id,
-            title,
-            (window_width, window_height),
-            content,
-        ));
+        let plugin_window = cx.new(|_| {
+            plugin_window::PluginWindow::new(id, title, (window_width, window_height), content)
+        });
 
-        // 存入 open_windows
         cx.global_mut::<Self>()
             .open_windows
             .insert(id.to_string(), plugin_window);
@@ -218,9 +256,22 @@ impl PluginRegistry {
 
     /// 关闭插件窗口
     pub fn close_plugin(id: &str, cx: &mut App) {
+        // 关闭内嵌窗口
         if cx.global_mut::<Self>().open_windows.remove(id).is_some() {
             tracing::info!("Plugin '{}' window closed", id);
         }
+
+        // 终止子进程
+        let registry = cx.global_mut::<Self>();
+        if let Some(registered) = registry.plugins.iter_mut().find(|p| p.manifest.id == id) {
+            if let Some(ref mut child) = registered.subprocess {
+                let _ = child.kill();
+                let _ = child.wait(); // 回收僵尸进程
+                tracing::info!("Plugin '{}' subprocess killed", id);
+            }
+            registered.subprocess = None;
+        }
+
         cx.refresh_windows();
     }
 
@@ -231,7 +282,10 @@ impl PluginRegistry {
 
     /// 获取已注册插件的引用
     pub fn get_plugin<'a>(id: &str, cx: &'a App) -> Option<&'a RegisteredPlugin> {
-        cx.global::<Self>().plugins.iter().find(|p| p.manifest.id == id)
+        cx.global::<Self>()
+            .plugins
+            .iter()
+            .find(|p| p.manifest.id == id)
     }
 
     /// 注册 WASM 插件
@@ -259,6 +313,8 @@ impl PluginRegistry {
             create_view: Some(create_view),
             dyn_plugin: None,
             is_wasm: true,
+            subprocess_exec: None,
+            subprocess: None,
         };
 
         cx.global_mut::<Self>().plugins.push(plugin);
@@ -290,12 +346,16 @@ impl PluginRegistry {
             create_view: None,
             dyn_plugin: Some((lib, plugin)),
             is_wasm: false,
+            subprocess_exec: None,
+            subprocess: None,
         });
         tracing::info!("✅ 注册 dylib 插件: {}", id);
     }
 
     /// 扫描 plugins/ 目录下的子目录，每个子目录是一个插件
-    /// 目录结构：plugins/{plugin_id}/{plugin_id}.dylib + icon.svg
+    /// 目录结构：plugins/{plugin_id}/
+    ///   - dylib 模式：lib{plugin_id}.dylib + manifest.toml + icon.svg
+    ///   - 子进程模式：{plugin_id}(可执行文件) + manifest.toml + icon.svg
     fn scan_dylib_plugins(plugins: &mut Vec<RegisteredPlugin>) {
         let base_dir = std::env::current_dir().unwrap_or_default();
         let plugins_dir = base_dir.join("plugins");
@@ -327,25 +387,47 @@ impl PluginRegistry {
                 None => continue,
             };
 
-            // 查找 dylib 文件：{plugin_id}.dylib (macOS) 或 {plugin_id}.so (Linux)
-            let dylib_path = Self::find_dylib(&dir_path, &plugin_id);
-            let Some(dylib_path) = dylib_path else {
-                tracing::debug!("🔌 目录 {:?} 中未找到 dylib，跳过", dir_path);
-                continue;
-            };
+            // 读取 manifest.toml（可选）
+            let manifest = Self::read_manifest(&dir_path, &plugin_id);
 
             // 读取 icon.svg（可选）
             let icon_svg_path = dir_path.join("icon.svg");
             let icon_svg = if icon_svg_path.exists() {
-                match std::fs::read_to_string(&icon_svg_path) {
-                    Ok(svg) => svg,
-                    Err(e) => {
-                        tracing::warn!("⚠️ 读取 {:?} 失败: {}", icon_svg_path, e);
-                        String::new()
-                    }
-                }
+                std::fs::read_to_string(&icon_svg_path).unwrap_or_default()
             } else {
                 String::new()
+            };
+
+            // 优先检测子进程可执行文件
+            let exec_path = Self::find_executable(&dir_path, &plugin_id);
+            if exec_path.is_some() {
+                let manifest = manifest.unwrap_or_else(|| PluginManifest {
+                    id: plugin_id.clone(),
+                    display_name: plugin_id.clone(),
+                    description: String::new(),
+                    icon: "icon.svg".to_string(),
+                    window_width: 800.0,
+                    window_height: 600.0,
+                });
+                plugins.push(RegisteredPlugin {
+                    manifest,
+                    icon_svg,
+                    icon_emoji: None,
+                    create_view: None,
+                    dyn_plugin: None,
+                    is_wasm: false,
+                    subprocess_exec: exec_path.map(|p| p.to_string_lossy().to_string()),
+                    subprocess: None,
+                });
+                tracing::info!("✅ 发现子进程插件: {}", plugin_id);
+                continue;
+            }
+
+            // 其次检测 dylib 文件
+            let dylib_path = Self::find_dylib(&dir_path, &plugin_id);
+            let Some(dylib_path) = dylib_path else {
+                tracing::debug!("🔌 目录 {:?} 中未找到 dylib 或可执行文件，跳过", dir_path);
+                continue;
             };
 
             unsafe {
@@ -357,7 +439,9 @@ impl PluginRegistry {
                     }
                 };
 
-                let create: Symbol<unsafe fn() -> Arc<dyn Plugin>> = match lib.get(b"plugin_entry") {
+                // Plugin trait + UiSchema 模式
+                let create: Symbol<unsafe fn() -> Arc<dyn Plugin>> = match lib.get(b"plugin_entry")
+                {
                     Ok(sym) => sym,
                     Err(e) => {
                         tracing::error!("❌ {:?} 无 plugin_entry 符号: {}", dylib_path, e);
@@ -368,20 +452,24 @@ impl PluginRegistry {
                 let plugin = create();
                 let meta = plugin.meta();
 
+                let manifest = manifest.unwrap_or_else(|| PluginManifest {
+                    id: plugin_id.clone(),
+                    display_name: meta.name.clone(),
+                    description: meta.description.clone(),
+                    icon: format!("{}.svg", plugin_id),
+                    window_width: 400.0,
+                    window_height: 500.0,
+                });
+
                 plugins.push(RegisteredPlugin {
-                    manifest: PluginManifest {
-                        id: plugin_id.clone(),
-                        display_name: meta.name.clone(),
-                        description: meta.description.clone(),
-                        icon: format!("{}.svg", plugin_id),
-                        window_width: 400.0,
-                        window_height: 500.0,
-                    },
+                    manifest,
                     icon_svg,
                     icon_emoji: Some(meta.icon.clone()),
                     create_view: None,
                     dyn_plugin: Some((lib, plugin)),
                     is_wasm: false,
+                    subprocess_exec: None,
+                    subprocess: None,
                 });
                 tracing::info!("✅ 加载 dylib 插件: {}", plugin_id);
             }
@@ -401,6 +489,49 @@ impl PluginRegistry {
             return Some(linux_path);
         }
         None
+    }
+
+    /// 在插件目录中查找可执行文件（子进程模式）
+    fn find_executable(dir: &std::path::Path, plugin_id: &str) -> Option<std::path::PathBuf> {
+        let exec_path = dir.join(plugin_id);
+        if exec_path.exists() {
+            // 验证是否可执行
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if let Ok(meta) = std::fs::metadata(&exec_path) {
+                    if meta.permissions().mode() & 0o111 != 0 {
+                        return Some(exec_path);
+                    }
+                }
+            }
+            #[cfg(not(unix))]
+            {
+                // Windows: 检查 .exe
+                let win_path = dir.join(format!("{}.exe", plugin_id));
+                if win_path.exists() {
+                    return Some(win_path);
+                }
+            }
+        }
+        None
+    }
+
+    /// 从插件目录读取 manifest.toml
+    fn read_manifest(dir: &std::path::Path, plugin_id: &str) -> Option<PluginManifest> {
+        let manifest_path = dir.join("manifest.toml");
+        if !manifest_path.exists() {
+            return None;
+        }
+        let content = std::fs::read_to_string(&manifest_path).ok()?;
+        let file: PluginManifestFile = toml::from_str(&content).ok()?;
+        if file.plugin.id != plugin_id {
+            tracing::warn!(
+                "⚠️ manifest id '{}' 与目录名 '{}' 不匹配",
+                file.plugin.id, plugin_id
+            );
+        }
+        Some(file.plugin)
     }
 }
 

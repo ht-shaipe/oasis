@@ -5,7 +5,7 @@ ifneq ($(filter git,$(MAKECMDGOALS)),)
   $(foreach _g,$(GIT_MSG_ARGS),$(eval $(_g):;@:))
 endif
 
-.PHONY: git install-web build-wasm build-wasm-release dev-web build-web preview-web clean-web
+.PHONY: git install-web build-wasm build-wasm-release dev dev-web build-web preview-web clean-web
 
 # git commit and push
 git:
@@ -37,6 +37,24 @@ build-wasm:
 
 build-wasm-release:
 	@./scripts/build-wasm.sh --release
+
+dev:
+	@set -e; \
+	cargo build --workspace --lib --exclude wasm-plugin; \
+	./crates/widgets/wasm-widget/build.sh; \
+	copy_plugin() { \
+		src="$$1"; \
+		dst_dir="$$2"; \
+		dst_name="$$3"; \
+		if [ -f "$$src" ]; then \
+			mkdir -p "$$dst_dir"; \
+			cp "$$src" "$$dst_dir/$$dst_name"; \
+			echo "copied $$src -> $$dst_dir/$$dst_name"; \
+		fi; \
+	}; \
+	copy_plugin target/debug/libmd_editor_plugin.dylib plugins/md-editor-plugin libmd-editor-plugin.dylib; \
+	copy_plugin target/debug/libnotepad_plugin.dylib plugins/notepad libnotepad.dylib; \
+	cargo r
 
 dev-web: build-wasm
 	@cd www && bun install && bun run dev
