@@ -91,12 +91,73 @@ pub fn compute_csv_stats(headers: &[String], rows: &[Vec<String>]) -> String {
 }
 
 /// 执行 CSV 分割
-pub fn do_csv_split(headers: &[String], _rows: &[Vec<String>], col: usize, prefix: &str) -> String {
+pub fn do_csv_split(headers: &[String], rows: &[Vec<String>], col: usize, prefix: &str) -> String {
     if col >= headers.len() {
         return format!("无效列索引: {col}");
     }
-    format!(
-        "将以列「{}」={} 分割文件（功能开发中）",
-        headers[col], prefix
-    )
+    if rows.is_empty() {
+        return "无数据行".to_string();
+    }
+    
+    // col 参数用作分割份数
+    let n_parts = col.max(1);
+    let total = rows.len();
+    let actual_parts = n_parts.min(total);
+    let base = total / actual_parts;
+    let remainder = total % actual_parts;
+    let mut cursor = 0usize;
+    
+    let mut success = 0;
+    let mut errors = Vec::new();
+    
+    for i in 0..actual_parts {
+        let size = base + usize::from(i < remainder);
+        let filename = format!("{}_{}.csv", prefix, i + 1);
+        
+        // 创建 CSV writer
+        let mut writer = match csv::Writer::from_path(&filename) {
+            Ok(w) => w,
+            Err(e) => {
+                errors.push(format!("创建文件 {} 失败: {}", filename, e));
+                continue;
+            }
+        };
+        
+        // 写入标题行
+        if let Err(e) = writer.write_record(headers) {
+            errors.push(format!("写入标题到 {} 失败: {}", filename, e));
+            continue;
+        }
+        
+        // 写入数据行
+        let mut row_ok = true;
+        for row in &rows[cursor..cursor + size] {
+            if let Err(e) = writer.write_record(row) {
+                errors.push(format!("写入数据到 {} 失败: {}", filename, e));
+                row_ok = false;
+                break;
+            }
+        }
+        
+        if row_ok {
+            if let Err(e) = writer.flush() {
+                errors.push(format!("保存文件 {} 失败: {}", filename, e));
+            } else {
+                success += 1;
+            }
+        }
+        
+        cursor += size;
+    }
+    
+    if success == actual_parts && errors.is_empty() {
+        format!("成功分割为 {} 个文件: {}_{}.csv 到 {}_{}.csv", 
+                actual_parts, prefix, 1, prefix, actual_parts)
+    } else {
+        let mut msg = format!("部分成功: {}/{} 个文件", success, actual_parts);
+        if !errors.is_empty() {
+            msg.push_str(&format!("\n错误:\n{}", errors.join("\n")));
+        }
+        msg
+    }
 }
