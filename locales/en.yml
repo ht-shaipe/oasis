@@ -12,6 +12,8 @@ menu.app.language: Language
 menu.app.language.english: English
 menu.app.language.zh_cn: Simplified Chinese
 menu.app.quit: Quit
+menu.file.title: File
+menu.file.close_window: Close Window
 menu.edit.title: Edit
 menu.edit.undo: Undo
 menu.edit.redo: Redo
@@ -19,9 +21,11 @@ menu.edit.cut: Cut
 menu.edit.copy: Copy
 menu.edit.paste: Paste
 menu.edit.select_all: Select All
+menu.view.title: View
 menu.window.title: Window
 menu.window.close: Close Window
 menu.help.title: Help
+menu.help.about: About oasis
 menu.help.open_website: Open Website
 title_bar.font_size.label: Font Size
 title_bar.font_size.large: Large

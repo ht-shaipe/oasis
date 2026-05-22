@@ -234,6 +234,10 @@ impl Render for PluginWindow {
             .border_color(theme.colors.border.opacity(0.2))
             .overflow_hidden()
             .cursor_default()
+            // 拦截所有鼠标事件，防止点击穿透到背后元素
+            .on_mouse_down(MouseButton::Left, |_ev, _, cx| {
+                cx.stop_propagation();
+            })
             // 标题栏 —— 可拖拽区域
             .child(
                 div()

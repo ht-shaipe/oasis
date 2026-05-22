@@ -7,7 +7,7 @@ use gpui_component::{ActiveTheme as _, ThemeMode, ThemeRegistry};
 use rust_i18n::t;
 
 #[cfg(not(target_family = "wasm"))]
-use crate::app::actions::{Quit, SelectLocale, SwitchTheme, SwitchThemeMode};
+use crate::app::actions::{About, Quit, SelectLocale, SwitchTheme, SwitchThemeMode};
 #[cfg(not(target_family = "wasm"))]
 use crate::app_state::AppState;
 
@@ -50,6 +50,8 @@ pub fn build_menus(title: SharedString, cx: &App) -> Vec<Menu> {
         Menu {
             name: title,
             items: vec![
+                MenuItem::action(t!("menu.app.about").to_string(), About),
+                MenuItem::Separator,
                 MenuItem::Submenu(Menu {
                     name: t!("menu.app.appearance").to_string().into(),
                     items: vec![
@@ -70,12 +72,36 @@ pub fn build_menus(title: SharedString, cx: &App) -> Vec<Menu> {
             ],
         },
         Menu {
-            name: t!("menu.window.title").to_string().into(),
+            name: t!("menu.file.title").to_string().into(),
+            items: vec![
+                MenuItem::action(t!("menu.file.close_window").to_string(), Quit),
+                MenuItem::Separator,
+                MenuItem::action(t!("menu.app.quit").to_string(), Quit),
+            ],
+        },
+        Menu {
+            name: t!("menu.edit.title").to_string().into(),
+            items: vec![
+                MenuItem::action(t!("menu.edit.undo").to_string(), About),
+                MenuItem::action(t!("menu.edit.redo").to_string(), About),
+            ],
+        },
+        Menu {
+            name: t!("menu.view.title").to_string().into(),
             items: vec![],
         },
         Menu {
+            name: t!("menu.window.title").to_string().into(),
+            items: vec![
+                MenuItem::action(t!("menu.window.close").to_string(), Quit),
+            ],
+        },
+        Menu {
             name: t!("menu.help.title").to_string().into(),
-            items: vec![],
+            items: vec![
+                MenuItem::action(t!("menu.help.about").to_string(), About),
+                MenuItem::action(t!("menu.help.open_website").to_string(), About),
+            ],
         },
     ]
 }

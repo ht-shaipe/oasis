@@ -10,6 +10,8 @@ actions!(
         Quit,
         /// Open file picker to set the window background image
         SetBackground,
+        /// Show about dialog
+        About,
     ]
 );
 

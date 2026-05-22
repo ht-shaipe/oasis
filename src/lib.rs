@@ -8,7 +8,7 @@ pub mod plugins;
 rust_i18n::i18n!("locales", fallback = "en");
 
 pub use app::{
-    actions::{Quit, SelectLocale, SwitchTheme, SwitchThemeMode},
+    actions::{About, Quit, SelectLocale, SwitchTheme, SwitchThemeMode},
     app_launcher, app_menus, app_state, background, dock, key_binding, system_tray, themes,
     title_bar,
 };
@@ -70,6 +70,11 @@ pub fn init_web() -> Result<(), JsValue> {
 
         cx.on_action(|_: &Quit, cx| {
             cx.quit();
+        });
+
+        cx.on_action(|_: &About, _cx| {
+            // Show about info in console for now
+            tracing::info!("oasis - 开发者绿洲 v1.0.0");
         });
 
         cx.open_window(WindowOptions::default(), |window, cx| {

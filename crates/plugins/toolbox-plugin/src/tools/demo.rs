@@ -13,9 +13,9 @@ pub fn schema_ui_schema_demo() -> UiSchema {
         .prop("title", serde_json::json!("总览"))
         .children(vec![
             UiNode::label("这页把 ui-schema 的模板函数和宿主已支持的组件放在一起，方便直接看渲染效果。"),
-            UiNode::info(&[("模板状态", "status_message"), ("总用户", "total_users"), ("今日活跃", "active_today")]),
-            UiNode::display("total_users").prop("style", serde_json::json!("large_number")),
-            UiNode::progress("completion"),
+            UiNode::info(&[("模板状态", "demo.status_message"), ("总用户", "demo.total_users"), ("今日活跃", "demo.active_today")]),
+            UiNode::display("demo.total_users").prop("style", serde_json::json!("large_number")),
+            UiNode::progress("demo.completion"),
             make_button_row(&[("返回主页", "Home"), ("重置样例", "demo:refresh"), ("切换文案", "demo:toggle")]),
         ]);
 
@@ -26,19 +26,19 @@ pub fn schema_ui_schema_demo() -> UiSchema {
             UiNode::new("flex-row").prop("gap", serde_json::json!(12)).children(vec![
                 UiNode::new("card")
                     .prop("title", serde_json::json!("指标卡"))
-                    .children(vec![UiNode::label("活跃用户"), UiNode::display("active_today").prop("style", serde_json::json!("large_number"))]),
+                    .children(vec![UiNode::label("活跃用户"), UiNode::display("demo.active_today").prop("style", serde_json::json!("large_number"))]),
                 UiNode::new("card")
                     .prop("title", serde_json::json!("进度条"))
-                    .children(vec![UiNode::label("当前完成度"), UiNode::progress("completion")]),
+                    .children(vec![UiNode::label("当前完成度"), UiNode::progress("demo.completion")]),
             ]),
-            UiNode::info(&[("姓名", "name"), ("邮箱", "email"), ("角色", "role")]),
-            UiNode::input("name", "姓名输入框"),
-            UiNode::input("email", "邮箱输入框"),
-            UiNode::new("table").bind("rows").prop("columns", serde_json::json!(["name", "kind", "owner", "status"])),
+            UiNode::info(&[("姓名", "demo.name"), ("邮箱", "demo.email"), ("角色", "demo.role")]),
+            UiNode::input("demo.name", "姓名输入框"),
+            UiNode::input("demo.email", "邮箱输入框"),
+            UiNode::new("table").bind("demo.rows").prop("columns", serde_json::json!(["name", "kind", "owner", "status"])),
             UiNode::split("row")
                 .prop("left_width", serde_json::json!(260))
                 .prop("gap", serde_json::json!(1))
-                .child(UiNode::tree("tree"))
+                .child(UiNode::tree("demo.tree"))
                 .child(
                     UiNode::new("card")
                         .prop("title", serde_json::json!("卡片容器"))
@@ -56,18 +56,18 @@ pub fn schema_ui_schema_demo() -> UiSchema {
                 "dashboard",
                 "看板模板",
                 dashboard(vec![
-                    DashboardCard { title: "总用户".into(), value_bind: "total_users".into(), value_style: "large_number".into(), subtitle: Some("示例指标".into()), width: 220, on_click: Some("demo:toggle".into()) },
-                    DashboardCard { title: "今日活跃".into(), value_bind: "active_today".into(), value_style: "large_number".into(), subtitle: Some("实时快照".into()), width: 220, on_click: None },
-                    DashboardCard { title: "收入".into(), value_bind: "revenue".into(), value_style: "large_number".into(), subtitle: Some("单位：元".into()), width: 220, on_click: None },
+                    DashboardCard { title: "总用户".into(), value_bind: "demo.total_users".into(), value_style: "large_number".into(), subtitle: Some("示例指标".into()), width: 220, on_click: Some("demo:toggle".into()) },
+                    DashboardCard { title: "今日活跃".into(), value_bind: "demo.active_today".into(), value_style: "large_number".into(), subtitle: Some("实时快照".into()), width: 220, on_click: None },
+                    DashboardCard { title: "收入".into(), value_bind: "demo.revenue".into(), value_style: "large_number".into(), subtitle: Some("单位：元".into()), width: 220, on_click: None },
                 ]),
             ),
             template_block(
                 "tree_table",
                 "树 + 表格模板",
                 tree_table(
-                    "tree",
+                    "demo.tree",
                     "demo:select_path",
-                    "rows",
+                    "demo.rows",
                     &["name", "kind", "owner", "status"],
                 ),
             ),
@@ -77,9 +77,9 @@ pub fn schema_ui_schema_demo() -> UiSchema {
                 form_page(FormPageOpts {
                     title: Some("项目设置".into()),
                     fields: vec![
-                        FormField::input("项目名称", "name").placeholder("请输入项目名称"),
-                        FormField::input("负责人邮箱", "email").placeholder("name@example.com"),
-                        FormField::input("标签", "role").placeholder("design / product / engineering"),
+                        FormField::input("项目名称", "demo.name").placeholder("请输入项目名称"),
+                        FormField::input("负责人邮箱", "demo.email").placeholder("name@example.com"),
+                        FormField::input("标签", "demo.role").placeholder("design / product / engineering"),
                     ],
                     actions: vec![("返回主页".into(), "Home".into()), ("重新加载".into(), "demo:refresh".into())],
                     bordered: true,

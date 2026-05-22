@@ -85,10 +85,50 @@ impl DynPluginView {
 
     /// 执行动作并刷新状态（由 on_click 通过 Entity::update 调用）
     fn handle_action(&mut self, action: String, cx: &mut Context<Self>) {
+        // 检测文件/目录选择动作，打开系统对话框
+        let is_pick_file = action.contains(":pick_file");
+        let is_pick_dir = action.contains(":pick_dir");
+
+        if is_pick_file || is_pick_dir {
+            let plugin = Arc::clone(&self.plugin);
+            let entity = cx.entity().downgrade();
+
+            gpui::App::spawn(cx, async move |async_cx| {
+                let title = if is_pick_dir { "选择目录" } else { "选择文件" };
+                let selected = smol::unblock(move || {
+                    if is_pick_dir {
+                        rfd::FileDialog::new().set_title(title).pick_folder()
+                    } else {
+                        rfd::FileDialog::new().set_title(title).pick_file()
+                    }
+                })
+                .await;
+
+                if let Some(path) = selected {
+                    let path_str = path.to_string_lossy().to_string();
+                    let params = serde_json::json!({"path": path_str});
+                    let new_state = plugin.handle_action(&action, params);
+                    if let Some(e) = entity.upgrade() {
+                        e.update(async_cx, |view, cx| {
+                            *view.state.borrow_mut() = new_state;
+                            view.ui_schema = view.plugin.ui_schema();
+                            cx.notify();
+                        })
+                        .ok();
+                    }
+                }
+            })
+            .detach();
+            return;
+        }
+
+        // 普通动作：同步处理
         let new_state = self.plugin.handle_action(&action, serde_json::Value::Null);
         *self.state.borrow_mut() = new_state;
+
         // 重新获取 ui_schema 以反映状态变化（如 selected_tool 改变）
         self.ui_schema = self.plugin.ui_schema();
+
         cx.notify();
     }
 }

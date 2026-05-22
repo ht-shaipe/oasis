@@ -11,6 +11,7 @@ use gpui::{
     ParentElement, Render, SharedString, StatefulInteractiveElement as _, Styled as _, Window,
 };
 use gpui_component::ActiveTheme as _;
+use gpui_component::button::Button;
 
 use super::wasm_runtime::WasmLoadedPlugin;
 use plugin_sdk::UiNode;
@@ -202,6 +203,8 @@ pub(crate) fn render_node(
         render_progress(node, state, ctx)
     } else if component == "button" {
         render_button(node, ctx, handler, node_idx)
+    } else if component == "nav-item" {
+        render_nav_item(node, ctx, handler, node_idx)
     } else if component == "button_row" {
         render_button_row(node, ctx, handler, node_idx)
     } else if component == "info" {
@@ -324,12 +327,17 @@ fn render_button(
     node_idx: usize,
 ) -> gpui::AnyElement {
     let label = ui_schema::prop_str_or(&node.props, "label", "Button").to_string();
-    let variant = ui_schema::prop_str_or(&node.props, "variant", "").to_string();
     let action = node.on_action.clone().unwrap_or_default();
 
-    let is_primary = variant == "primary" || !action.is_empty();
-    let bg = if is_primary { ctx.primary } else { ctx.muted };
-    let text_color = if is_primary { ctx.white } else { ctx.fg };
+    let has_action = !action.is_empty();
+    let bg = if has_action { ctx.primary } else { ctx.muted };
+    let text_color = if has_action && ctx.primary.l > 0.5 {
+        ctx.fg
+    } else if has_action {
+        ctx.white
+    } else {
+        ctx.fg
+    };
 
     let btn_id = SharedString::from(format!(
         "btn-{}-{}",
@@ -337,26 +345,88 @@ fn render_button(
         node_idx
     ));
 
-    div()
-        .id(btn_id)
-        .flex()
-        .items_center()
-        .justify_center()
-        .px(px(16.))
-        .py(px(8.))
+    let btn = Button::new(btn_id)
         .bg(bg)
         .rounded_lg()
-        .cursor_pointer()
-        .text_size(px(14.))
-        .text_color(text_color)
-        .child(label)
-        .on_click(move |_ev, _window, cx| {
+        .label(SharedString::from(label))
+        .text_color(text_color);
+
+    if has_action {
+        btn.on_click(move |_ev, _window, cx| {
             let action = action.clone();
             if !action.is_empty() {
                 handler.handle(action, cx);
             }
         })
-        .into_any_element()
+    } else {
+        btn
+    }
+    .into_any_element()
+}
+
+/// 导航菜单项：无背景、简洁文字、支持 active 高亮
+fn render_nav_item(
+    node: &UiNode,
+    ctx: &RenderContext,
+    handler: Arc<dyn ActionHandler>,
+    node_idx: usize,
+) -> gpui::AnyElement {
+    let label = ui_schema::prop_str_or(&node.props, "label", "").to_string();
+    let active = ui_schema::prop_bool(&node.props, "active").unwrap_or(false);
+    let action = node.on_action.clone().unwrap_or_default();
+
+    let bg = if active {
+        ctx.primary.opacity(0.12)
+    } else {
+        gpui::transparent_black()
+    };
+    let text_color = if active { ctx.primary } else { ctx.muted_fg };
+
+    let btn_id = SharedString::from(format!(
+        "nav-{}-{}",
+        node.id.as_deref().unwrap_or(&node_idx.to_string()),
+        node_idx
+    ));
+
+    let item = div()
+        .id(btn_id.clone())
+        .flex()
+        .w_full()
+        .px(px(12.))
+        .py(px(8.))
+        .rounded(px(6.))
+        .bg(bg)
+        .text_size(px(13.))
+        .cursor_pointer()
+        .hover(|style| {
+            if !active {
+                style.bg(ctx.muted.opacity(0.2))
+            } else {
+                style
+            }
+        })
+        .child(
+            div()
+                .text_color(text_color)
+                .font_weight(if active {
+                    gpui::FontWeight::MEDIUM
+                } else {
+                    gpui::FontWeight::NORMAL
+                })
+                .child(label),
+        );
+
+    if action.is_empty() {
+        return item.into_any_element();
+    }
+
+    item.on_click(move |_ev, _window, cx| {
+        let action = action.clone();
+        if !action.is_empty() {
+            handler.handle(action, cx);
+        }
+    })
+    .into_any_element()
 }
 
 fn render_button_row(
@@ -378,7 +448,7 @@ fn render_button_row(
         for (i, btn) in btns.iter().enumerate() {
             let label = btn.get("label").and_then(|v| v.as_str()).unwrap_or("").to_string();
             let action = btn.get("action").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let variant = btn.get("variant").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let variant = btn.get("variant").and_then(|v| v.as_str()).unwrap_or("");
 
             let is_primary = variant == "primary";
             let bg = if is_primary { ctx.primary } else { ctx.muted };
@@ -386,26 +456,23 @@ fn render_button_row(
             let handler = handler.clone();
             let btn_id = SharedString::from(format!("btn-row-{}-{}", node_idx, i));
 
+            let btn = Button::new(btn_id)
+                .bg(bg)
+                .rounded_lg()
+                .label(label)
+                .text_color(text_color);
+
             row = row.child(
-                div()
-                    .id(btn_id)
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .px(px(16.))
-                    .py(px(8.))
-                    .bg(bg)
-                    .rounded_lg()
-                    .cursor_pointer()
-                    .text_size(px(14.))
-                    .text_color(text_color)
-                    .child(label)
-                    .on_click(move |_ev, _window, cx| {
+                if !action.is_empty() {
+                    btn.on_click(move |_ev, _window, cx| {
                         let action = action.clone();
                         if !action.is_empty() {
                             handler.handle(action, cx);
                         }
-                    }),
+                    })
+                } else {
+                    btn
+                },
             );
         }
     }
@@ -652,10 +719,16 @@ fn render_container(
     };
 
     let gap = ui_schema::prop_i64(&node.props, "gap").map(|g| px(g as f32)).unwrap_or(px(8.));
+    let padding = ui_schema::prop_i64(&node.props, "padding").map(|p| px(p as f32));
 
     let mut container = div().flex().gap(gap);
     if direction == "col" {
-        container = container.flex_col();
+        container = container.flex_col().flex_1();
+    }
+
+    // 添加内边距
+    if let Some(padding) = padding {
+        container = container.p(padding);
     }
 
     for (i, child) in node.children.iter().enumerate() {
@@ -706,7 +779,7 @@ fn render_split(
 
     let is_row = direction == "row";
 
-    let mut container = div().flex().gap(px(gap));
+    let mut container = div().flex().flex_1().gap(px(gap));
     if !is_row {
         container = container.flex_col();
     }
@@ -716,9 +789,10 @@ fn render_split(
         container = container.child(
             div()
                 .w(px(left_width))
-                .min_w(px(200.))
-                .max_w(px(600.))
+                .min_w(px(150.))
                 .h_full()
+                .flex()
+                .flex_col()
                 .overflow_hidden()
                 .child(render_node(
                     children[0],
@@ -730,9 +804,12 @@ fn render_split(
         );
         container = container.child(
             div()
+                .id("plugin-split-right")
                 .flex_1()
                 .h_full()
-                .overflow_hidden()
+                .flex()
+                .flex_col()
+                .overflow_y_scroll()
                 .child(render_node(
                     children[1],
                     state,

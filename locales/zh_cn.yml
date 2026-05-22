@@ -12,6 +12,8 @@ menu.app.language: 语言
 menu.app.language.english: English
 menu.app.language.zh_cn: 简体中文
 menu.app.quit: 退出
+menu.file.title: 文件
+menu.file.close_window: 关闭窗口
 menu.edit.title: 编辑
 menu.edit.undo: 撤销
 menu.edit.redo: 重做
@@ -19,9 +21,11 @@ menu.edit.cut: 剪切
 menu.edit.copy: 复制
 menu.edit.paste: 粘贴
 menu.edit.select_all: 全选
+menu.view.title: 视图
 menu.window.title: 窗口
 menu.window.close: 关闭窗口
 menu.help.title: 帮助
+menu.help.about: 关于 oasis
 menu.help.open_website: 打开网站
 title_bar.font_size.label: 字体大小
 title_bar.font_size.large: 大

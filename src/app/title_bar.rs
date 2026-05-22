@@ -39,11 +39,12 @@ impl Render for AppTitleBar {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let is_dark = theme.mode.is_dark();
+        let now = chrono::Local::now();
+        let datetime_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
-		TitleBar::new()
-			.bg(cx.theme().transparent)
-			.border_color(gpui::rgba(0x00000000))
-			.child(div().child("child"))
+        TitleBar::new()
+            .bg(cx.theme().transparent)
+            .border_color(gpui::rgba(0x00000000))
             .child(
                 div()
                     .flex()
@@ -68,8 +69,15 @@ impl Render for AppTitleBar {
                     .items_center()
                     .justify_end()
                     .px_2()
-                    .gap(px(6.))
+                    .gap(px(10.))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                    // Date and time
+                    .child(
+                        div()
+                            .text_size(px(12.))
+                            .text_color(theme.colors.muted_foreground)
+                            .child(datetime_str),
+                    )
                     // Theme toggle
                     .child(
                         Button::new("theme-toggle")

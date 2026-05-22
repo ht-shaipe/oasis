@@ -22,7 +22,7 @@ impl ToolboxPlugin {
     }
 
     /// 构建左侧边栏菜单
-    fn build_sidebar(_current_tool: ToolId) -> plugin_sdk::UiNode {
+    fn build_sidebar(current_tool: ToolId) -> plugin_sdk::UiNode {
         use plugin_sdk::UiNode;
 
         let menu_items = vec![
@@ -40,7 +40,7 @@ impl ToolboxPlugin {
             ("UI 测试", ToolId::UiSchemaDemo),
         ];
 
-        let buttons: Vec<plugin_sdk::UiNode> = menu_items
+        let items: Vec<UiNode> = menu_items
             .into_iter()
             .map(|(label, tool_id)| {
                 let action = match tool_id {
@@ -58,15 +58,20 @@ impl ToolboxPlugin {
                     ToolId::UiSchemaDemo => "UiSchemaDemo",
                 };
 
-                // 创建菜单项按钮
-                UiNode::button(label.to_string(), action)
+                let is_active = tool_id == current_tool;
+
+                UiNode::new("nav-item")
+                    .prop("label", serde_json::json!(label))
+                    .prop("active", serde_json::json!(is_active))
+                    .on_action(action)
             })
             .collect();
 
-        // 直接返回菜单按钮组，不显示标题
+        // 返回带内边距的菜单容器
         UiNode::new("flex-col")
-            .prop("gap", serde_json::json!(8))
-            .children(buttons)
+            .prop("gap", serde_json::json!(4))
+            .prop("padding", serde_json::json!(12))
+            .children(items)
     }
 
     /// 根据当前选中工具返回对应 UiSchema
@@ -192,6 +197,7 @@ impl Plugin for ToolboxPlugin {
                 drop(state);
                 let result = csv::do_csv_split(&headers, &rows, col, &prefix);
                 self.state.write().unwrap().csv_split.input_file = Some(result);
+                return self.state();
             }
 
             // 批量重命名
@@ -407,7 +413,8 @@ impl Plugin for ToolboxPlugin {
             _ => {}
         }
 
-        self.state()
+        // 不要在持有写锁的情况下调用 self.state()，直接序列化
+        serde_json::to_value(&*state).unwrap_or_default()
     }
 
     fn ui_schema(&self) -> UiSchema {
@@ -418,6 +425,16 @@ impl Plugin for ToolboxPlugin {
         let content = self.tool_schema();
 
         // 使用 split 组件创建左右分栏（左侧固定宽度 200px，右侧自适应）
+        // 将工具的 gap / align_items 等布局属性传递到右侧容器
+        let mut right_container = UiNode::new("flex-col")
+            .children(content.children);
+        if content.gap > 0 {
+            right_container = right_container.prop("gap", serde_json::json!(content.gap));
+        }
+        if let Some(ref align) = content.align_items {
+            right_container = right_container.prop("align_items", serde_json::json!(align));
+        }
+
         UiSchema {
             layout: "flex-row".into(),
             children: vec![
@@ -425,11 +442,7 @@ impl Plugin for ToolboxPlugin {
                     .prop("left_width", serde_json::json!(200))
                     .prop("gap", serde_json::json!(1))
                     .child(sidebar)
-                    .child(
-                        // 右侧使用 flex-col 容器包裹所有内容
-                        UiNode::new("flex-col")
-                            .children(content.children),
-                    ),
+                    .child(right_container),
             ],
             ..Default::default()
         }
