@@ -1,4 +1,4 @@
-//! Toolbox Plugin — 工具箱插件（cdylib）
+//! Toolbox Plugin — 工具箱插件（rlib + 手动注册）
 //!
 //! 所有工具通过 UiSchema 声明式描述 UI，由宿主通用渲染器统一渲染。
 //! 状态以 JSON 存储在插件内，`handle_action` 处理所有用户操作。
@@ -14,11 +14,11 @@ use crate::plugin::ToolboxPlugin;
 pub use state::*;
 
 // ---------------------------------------------------------------------------
-// cdylib 导出入口
+// 视图工厂导出（供宿主 init() 手动注册调用）
 // ---------------------------------------------------------------------------
 
-#[unsafe(no_mangle)]
-unsafe extern "C" fn plugin_entry() -> Arc<dyn Plugin> {
+/// 创建 ToolboxPlugin 实例（返回 Arc<dyn Plugin>）
+pub fn create_toolbox_plugin() -> Arc<dyn Plugin> {
     Arc::new(ToolboxPlugin::new())
 }
 

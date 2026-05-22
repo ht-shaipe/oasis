@@ -84,6 +84,8 @@ pub struct RegisteredPlugin {
     pub create_view: Option<fn(&mut Window, &mut App) -> AnyView>,
     /// dylib 插件实例（cdylib 加载，保持 Library 句柄活跃）
     pub dyn_plugin: Option<(Library, Arc<dyn Plugin>)>,
+    /// rlib 插件实例（静态链接，无需 Library 句柄）
+    pub rlib_plugin: Option<Arc<dyn Plugin>>,
     pub is_wasm: bool,
     /// 子进程插件：可执行文件路径（相对于 plugins/ 目录或绝对路径）
     pub subprocess_exec: Option<String>,
@@ -118,6 +120,7 @@ impl PluginRegistry {
                             icon_emoji: None,
                             create_view: Some(entry.create_view),
                             dyn_plugin: None,
+                            rlib_plugin: None,
                             is_wasm: false,
                             subprocess_exec: None,
                             subprocess: None,
@@ -160,6 +163,7 @@ impl PluginRegistry {
                 icon_emoji: Some("📝".to_string()),
                 create_view: Some(md_editor_plugin::create_aster_view),
                 dyn_plugin: None,
+                            rlib_plugin: None,
                 is_wasm: false,
                 subprocess_exec: None,
                 subprocess: None,
@@ -167,6 +171,31 @@ impl PluginRegistry {
             tracing::info!("✅ 注册 rlib 插件: md-editor-plugin");
         } else {
             tracing::info!("⏭️  rlib md-editor-plugin 跳过（子进程版本已注册）");
+        }
+
+        // Toolbox 插件（rlib + Arc<dyn Plugin>，UiSchema 渲染）
+        let has_subprocess_toolbox = plugins.iter().any(|p| p.manifest.id == "toolbox");
+        if !has_subprocess_toolbox {
+            let toolbox_plugin = toolbox_plugin::create_toolbox_plugin();
+            plugins.push(RegisteredPlugin {
+                manifest: PluginManifest {
+                    id: "toolbox".to_string(),
+                    display_name: "工具箱".to_string(),
+                    description: "实用工具集：CSV 统计/分割、批量重命名、网络扫描等".to_string(),
+                    icon: "toolbox-plugin.svg".to_string(),
+                    window_width: 900.0,
+                    window_height: 700.0,
+                },
+                icon_svg: String::new(),
+                icon_emoji: Some("🧰".to_string()),
+                create_view: None,
+                dyn_plugin: None,
+                is_wasm: false,
+                subprocess_exec: None,
+                subprocess: None,
+                rlib_plugin: Some(toolbox_plugin),
+            });
+            tracing::info!("✅ 注册 rlib 插件: toolbox");
         }
 
         cx.set_global(Self {
@@ -188,6 +217,7 @@ impl PluginRegistry {
             window_height,
             create_view_fn,
             dyn_plugin_ref,
+            rlib_plugin_ref,
             subprocess_exec,
         ) = {
             let registry = cx.global::<Self>();
@@ -206,6 +236,7 @@ impl PluginRegistry {
                 registered.manifest.window_height,
                 registered.create_view,
                 registered.dyn_plugin.as_ref().map(|(lib, p)| (lib, Arc::clone(p))),
+                registered.rlib_plugin.clone(),
                 registered.subprocess_exec.clone(),
             )
         };
@@ -235,12 +266,17 @@ impl PluginRegistry {
             }
         }
 
-        // 内嵌模式：create_view > dyn_plugin
+        // 内嵌模式：create_view > rlib_plugin > dyn_plugin
         let content: AnyView = if let Some(create_view) = create_view_fn {
             tracing::info!("Creating plugin '{}' from create_view", id);
             create_view(window, cx)
+        } else if let Some(plugin) = rlib_plugin_ref {
+            // rlib 插件：静态链接，无 Library 句柄
+            tracing::info!("Creating plugin '{}' from rlib_plugin (DynPluginView)", id);
+            cx.new(|_cx| dyn_plugin_view::DynPluginView::create_from_plugin(plugin))
+                .into()
         } else if let Some((_, plugin)) = dyn_plugin_ref {
-            // 使用 DynPluginView 来渲染 dylib 插件
+            // dylib 插件：保持 Library 句柄
             tracing::info!("Creating plugin '{}' from DynPluginView", id);
             cx.new(|_cx| dyn_plugin_view::DynPluginView::create_from_plugin(plugin))
                 .into()
@@ -345,6 +381,7 @@ impl PluginRegistry {
             icon_emoji: Some(icon_emoji),
             create_view: Some(create_view),
             dyn_plugin: None,
+                            rlib_plugin: None,
             is_wasm: true,
             subprocess_exec: None,
             subprocess: None,
@@ -381,6 +418,7 @@ impl PluginRegistry {
             is_wasm: false,
             subprocess_exec: None,
             subprocess: None,
+            rlib_plugin: None,
         });
         tracing::info!("✅ 注册 dylib 插件: {}", id);
     }
@@ -448,6 +486,7 @@ impl PluginRegistry {
                     icon_emoji: None,
                     create_view: None,
                     dyn_plugin: None,
+                            rlib_plugin: None,
                     is_wasm: false,
                     subprocess_exec: exec_path.map(|p| p.to_string_lossy().to_string()),
                     subprocess: None,
@@ -503,6 +542,7 @@ impl PluginRegistry {
                     is_wasm: false,
                     subprocess_exec: None,
                     subprocess: None,
+                    rlib_plugin: None,
                 });
                 tracing::info!("✅ 加载 dylib 插件: {}", plugin_id);
             }

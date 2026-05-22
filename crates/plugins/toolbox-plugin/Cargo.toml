@@ -6,15 +6,16 @@ license.workspace = true
 repository.workspace = true
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["rlib"]
 
 [dependencies]
 plugin-sdk = { path = "../plugin-sdk" }
 ui-schema = { path = "../../ui-schema" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+inventory = "0.3"
 
-# 纯逻辑依赖（可跨 cdylib 边界）
+# 纯逻辑依赖
 csv = "1"
 calamine = "0.26"
 reqwest = { version = "0.12", features = ["json"] }

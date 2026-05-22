@@ -45,6 +45,7 @@ inventory = "0.3"
 log = "0.4"
 lsp-types = "0.97"
 md-editor-plugin = {path = "crates/plugins/md-editor-plugin"}
+toolbox-plugin = {path = "crates/plugins/toolbox-plugin"}
 plugin-sdk = {path = "crates/plugins/plugin-sdk"}
 ropey = "1.6"
 rust-i18n = "3"

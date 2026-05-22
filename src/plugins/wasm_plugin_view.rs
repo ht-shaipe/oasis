@@ -11,7 +11,6 @@ use gpui::{
     ParentElement, Render, SharedString, StatefulInteractiveElement as _, Styled as _, Window,
 };
 use gpui_component::ActiveTheme as _;
-use gpui_component::button::Button;
 
 use super::wasm_runtime::WasmLoadedPlugin;
 use plugin_sdk::UiNode;
@@ -129,6 +128,8 @@ pub(crate) struct RenderContext {
     pub muted_fg: Hsla,
     pub muted: Hsla,
     pub primary: Hsla,
+    pub primary_hover: Hsla,
+    pub primary_foreground: Hsla,
     pub white: Hsla,
     pub background: Hsla,
     pub border: Hsla,
@@ -142,6 +143,8 @@ impl RenderContext {
             muted_fg: theme.colors.muted_foreground,
             muted: theme.colors.muted,
             primary: theme.colors.primary,
+            primary_hover: theme.colors.primary_hover,
+            primary_foreground: theme.colors.primary_foreground,
             white: gpui::rgb(0xffffff).into(),
             background: theme.colors.background,
             border: theme.colors.border,
@@ -330,14 +333,9 @@ fn render_button(
     let action = node.on_action.clone().unwrap_or_default();
 
     let has_action = !action.is_empty();
-    let bg = if has_action { ctx.primary } else { ctx.muted };
-    let text_color = if has_action && ctx.primary.l > 0.5 {
-        ctx.fg
-    } else if has_action {
-        ctx.white
-    } else {
-        ctx.fg
-    };
+    let bg = if has_action { ctx.primary } else { ctx.muted.opacity(0.3) };
+    let hover_bg = if has_action { ctx.primary_hover } else { ctx.muted.opacity(0.5) };
+    let text_color = if has_action { ctx.primary_foreground } else { ctx.muted_fg };
 
     let btn_id = SharedString::from(format!(
         "btn-{}-{}",
@@ -345,23 +343,33 @@ fn render_button(
         node_idx
     ));
 
-    let btn = Button::new(btn_id)
-        .bg(bg)
+    let btn = div()
+        .id(btn_id)
+        .flex()
+        .items_center()
+        .justify_center()
+        .px(px(16.))
+        .py(px(8.))
         .rounded_lg()
-        .label(SharedString::from(label))
-        .text_color(text_color);
+        .bg(bg)
+        .cursor_pointer()
+        .text_size(px(14.))
+        .text_color(text_color)
+        .hover(|style| style.bg(hover_bg))
+        .child(label);
 
     if has_action {
+        let handler = handler.clone();
         btn.on_click(move |_ev, _window, cx| {
             let action = action.clone();
             if !action.is_empty() {
                 handler.handle(action, cx);
             }
         })
+        .into_any_element()
     } else {
-        btn
+        btn.into_any_element()
     }
-    .into_any_element()
 }
 
 /// 导航菜单项：无背景、简洁文字、支持 active 高亮
@@ -441,8 +449,9 @@ fn render_button_row(
     let mut row = div()
         .flex()
         .flex_row()
-        .gap(px(16.))
-        .justify_center();
+        .gap(px(8.))
+        .items_center()
+        .flex_wrap();
 
     if let Some(btns) = buttons {
         for (i, btn) in btns.iter().enumerate() {
@@ -450,28 +459,39 @@ fn render_button_row(
             let action = btn.get("action").and_then(|v| v.as_str()).unwrap_or("").to_string();
             let variant = btn.get("variant").and_then(|v| v.as_str()).unwrap_or("");
 
-            let is_primary = variant == "primary";
-            let bg = if is_primary { ctx.primary } else { ctx.muted };
-            let text_color = if is_primary { ctx.white } else { ctx.fg };
+            let is_primary = variant == "primary" || !action.is_empty();
+            let bg = if is_primary { ctx.primary } else { ctx.muted.opacity(0.3) };
+            let hover_bg = if is_primary { ctx.primary_hover } else { ctx.muted.opacity(0.5) };
+            let text_color = if is_primary { ctx.primary_foreground } else { ctx.muted_fg };
             let handler = handler.clone();
             let btn_id = SharedString::from(format!("btn-row-{}-{}", node_idx, i));
 
-            let btn = Button::new(btn_id)
-                .bg(bg)
+            let btn_el = div()
+                .id(btn_id)
+                .flex()
+                .items_center()
+                .justify_center()
+                .px(px(14.))
+                .py(px(6.))
                 .rounded_lg()
-                .label(label)
-                .text_color(text_color);
+                .bg(bg)
+                .cursor_pointer()
+                .text_size(px(13.))
+                .text_color(text_color)
+                .hover(|style| style.bg(hover_bg))
+                .child(label.clone());
 
             row = row.child(
                 if !action.is_empty() {
-                    btn.on_click(move |_ev, _window, cx| {
+                    btn_el.on_click(move |_ev, _window, cx| {
                         let action = action.clone();
                         if !action.is_empty() {
                             handler.handle(action, cx);
                         }
                     })
+                    .into_any_element()
                 } else {
-                    btn
+                    btn_el.into_any_element()
                 },
             );
         }
@@ -479,9 +499,7 @@ fn render_button_row(
 
     // 同时渲染 children 中的 button 节点
     for (i, child) in node.children.iter().enumerate() {
-        if child.component == "button" {
-            row = row.child(render_button(child, ctx, handler.clone(), node_idx * 100 + i));
-        }
+        row = row.child(render_button(child, ctx, handler.clone(), node_idx * 100 + i));
     }
 
     row.into_any_element()

@@ -27,6 +27,7 @@ use gpui_component::{
     ActiveTheme, TitleBar,
 };
 use gpui_component::{dock::register_panel, Root};
+use toolbox_plugin as _; // 强制链接 rlib 插件 crate
 
 #[cfg(target_family = "wasm")]
 use wasm_bindgen::prelude::*;
