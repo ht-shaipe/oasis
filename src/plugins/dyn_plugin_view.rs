@@ -4,15 +4,18 @@
 //! 与 WasmPluginView 共用 render_node + ActionHandler，渲染逻辑完全一致。
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{
-    div, px, Context, IntoElement, ParentElement, Render, Styled as _, Window,
+    div, px, AppContext as _, Context, Entity, IntoElement, ParentElement, Render, SharedString,
+    Styled as _, Subscription, Window,
 };
 use gpui_component::ActiveTheme as _;
+use gpui_component::input::{Input, InputEvent, InputState};
+use plugin_sdk::Plugin;
 
 use super::wasm_plugin_view::{render_header, render_node, ActionHandler, RenderContext};
-use plugin_sdk::Plugin;
 
 // ---------------------------------------------------------------------------
 // TestPluginView — 测试视图（跳过 cdylib Plugin）
@@ -38,7 +41,7 @@ impl Render for TestPluginView {
             .child(render_header("Test Plugin", "🔧", "test", &ctx))
             .children(
                 self.schema.children.iter().enumerate().map(|(idx, node)| {
-                    render_node(node, &self.state, &ctx, Arc::new(NoopHandler), idx)
+                    render_node(node, &self.state, &ctx, Arc::new(NoopHandler), idx, None)
                 }),
             )
     }
@@ -62,6 +65,10 @@ pub struct DynPluginView {
     ui_schema: ui_schema::UiSchema,
     /// 插件元数据（仅用于标题栏渲染）
     meta: plugin_sdk::PluginMeta,
+    /// 输入框状态（按 bind 路径索引）
+    input_states: RefCell<HashMap<String, Entity<InputState>>>,
+    /// InputState 变更订阅（保持存活）
+    _input_subscriptions: RefCell<Vec<Subscription>>,
 }
 
 impl DynPluginView {
@@ -80,6 +87,59 @@ impl DynPluginView {
             state: RefCell::new(state),
             ui_schema,
             meta,
+            input_states: RefCell::new(HashMap::new()),
+            _input_subscriptions: RefCell::new(Vec::new()),
+        }
+    }
+
+    /// 确保 ui_schema 中所有 input 节点都有对应的 InputState
+    fn ensure_input_states(&self, window: &mut Window, cx: &mut Context<Self>) {
+        let state = self.state.borrow();
+        let mut new_binds: Vec<(String, String, String)> = Vec::new();
+        collect_input_binds(&self.ui_schema.children, &state, &mut new_binds);
+        drop(state);
+
+        let mut input_states = self.input_states.borrow_mut();
+
+        // 移除不存在的 bind
+        let bind_set: std::collections::HashSet<String> =
+            new_binds.iter().map(|(b, _, _)| b.clone()).collect();
+        input_states.retain(|bind, _| bind_set.contains(bind));
+
+        // 为新 bind 创建 InputState
+        for (bind, placeholder, initial_value) in new_binds {
+            if input_states.contains_key(&bind) {
+                continue;
+            }
+
+            let input_state = cx.new(|cx| {
+                let mut s = InputState::new(window, cx);
+                if !placeholder.is_empty() {
+                    s.set_placeholder(SharedString::from(placeholder), window, cx);
+                }
+                if !initial_value.is_empty() {
+                    s.set_value(&initial_value, window, cx);
+                }
+                s
+            });
+
+            // 订阅文本变更 → 更新插件状态
+            let plugin = Arc::clone(&self.plugin);
+            let bind_clone = bind.clone();
+            let weak_self = cx.entity().downgrade();
+            let sub = cx.subscribe(&input_state, move |_view, source, event, cx| {
+                if matches!(event, InputEvent::Change) {
+                    let text = source.read(cx).text().to_string();
+                    let action = format!("set_bind:{}", bind_clone);
+                    let params = serde_json::json!({"bind": &bind_clone, "value": text});
+                    let new_state = plugin.handle_action(&action, params);
+                    *_view.state.borrow_mut() = new_state;
+                    // 不重建 ui_schema，避免打断输入
+                }
+            });
+
+            self._input_subscriptions.borrow_mut().push(sub);
+            input_states.insert(bind, input_state);
         }
     }
 
@@ -153,23 +213,44 @@ impl ActionHandler for DynActionHandler {
 }
 
 // ---------------------------------------------------------------------------
+// 递归收集 input 节点
+// ---------------------------------------------------------------------------
+
+fn collect_input_binds(
+    children: &[ui_schema::UiNode],
+    state: &serde_json::Value,
+    result: &mut Vec<(String, String, String)>,
+) {
+    for node in children {
+        if node.component == "input" {
+            if let Some(bind) = &node.bind {
+                let placeholder =
+                    ui_schema::prop_str_or(&node.props, "placeholder", "").to_string();
+                let initial_value = ui_schema::state_get_str(state, bind);
+                result.push((bind.clone(), placeholder, initial_value));
+            }
+        }
+        collect_input_binds(&node.children, state, result);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 
 impl Render for DynPluginView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        tracing::info!("🧪 DynPluginView::render START for '{}'", self.meta.name);
+        // 确保所有 input 节点都有 InputState
+        self.ensure_input_states(_window, cx);
+
         let theme = cx.theme();
-        tracing::info!("🧪 DynPluginView::render got theme");
         let ctx = RenderContext::from_theme(&theme);
-        tracing::info!("🧪 DynPluginView::render got ctx");
         let state = self.state.borrow();
-        tracing::info!("🧪 DynPluginView::render state borrowed, children={}", self.ui_schema.children.len());
 
         let action_handler: Arc<dyn ActionHandler> =
             Arc::new(DynActionHandler { entity: cx.entity().downgrade() });
 
-        tracing::info!("🧪 DynPluginView::render building div");
+        let input_states = self.input_states.borrow();
 
         // 根据 ui_schema 的 layout 属性创建容器
         let is_row = self.ui_schema.layout == "flex-row";
@@ -213,13 +294,11 @@ impl Render for DynPluginView {
         }
 
         let element = container
-            // 逐个渲染 schema children（不显示标题栏）
             .children(
                 self.ui_schema.children.iter().enumerate().map(|(idx, node)| {
-                    render_node(node, &*state, &ctx, action_handler.clone(), idx)
+                    render_node(node, &*state, &ctx, action_handler.clone(), idx, Some(&*input_states))
                 }),
             );
-        tracing::info!("🧪 DynPluginView::render DONE");
         element
     }
 }

@@ -396,8 +396,8 @@ where
         },
         |window, cx| {
             let view = crate_view_fn(window, cx);
-            // 直接使用 DockRoot，不包装在 Root 中
-            cx.new(|cx| DockRoot::new(title.clone(), view, window, cx))
+            let dock_root = cx.new(|cx| DockRoot::new(title.clone(), view, window, cx));
+            cx.new(|cx| Root::new(dock_root, window, cx))
         },
     )
     .expect("failed to open window")

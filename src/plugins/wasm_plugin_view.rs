@@ -188,12 +188,18 @@ pub(crate) fn render_header(title: &str, icon: &str, badge: &str, ctx: &RenderCo
 // ---------------------------------------------------------------------------
 
 #[allow(clippy::too_many_arguments)]
+use gpui_component::input::{Input, InputEvent, InputState};
+
+use std::collections::HashMap;
+use gpui::Entity;
+
 pub(crate) fn render_node(
     node: &UiNode,
     state: &serde_json::Value,
     ctx: &RenderContext,
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
+    input_states: Option<&HashMap<String, Entity<InputState>>>,
 ) -> gpui::AnyElement {
     let component = node.component.clone();
     let component = component.as_str();
@@ -215,15 +221,15 @@ pub(crate) fn render_node(
     } else if component == "divider" {
         render_divider(ctx)
     } else if component == "input" {
-        render_input(node, state, ctx, handler, node_idx)
+        render_input(node, state, ctx, handler, node_idx, input_states)
     } else if component == "table" {
         render_table(node, state, ctx)
     } else if component == "card" {
-        render_card(node, state, ctx, handler, node_idx)
+        render_card(node, state, ctx, handler, node_idx, input_states)
     } else if component == "split" {
-        render_split(node, state, ctx, handler, node_idx)
+        render_split(node, state, ctx, handler, node_idx, input_states)
     } else if component == "tree" {
-        render_tree(node, state, ctx, handler, node_idx)
+        render_tree(node, state, ctx, handler, node_idx, input_states)
     } else if component == "form"
         || component == "container"
         || component == "flex"
@@ -232,7 +238,7 @@ pub(crate) fn render_node(
         || component == "flex-row"
         || component == "tab"
     {
-        render_container(node, state, ctx, handler, node_idx)
+        render_container(node, state, ctx, handler, node_idx, input_states)
     } else {
         render_unsupported(component, ctx)
     }
@@ -554,6 +560,7 @@ fn render_input(
     ctx: &RenderContext,
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
+    input_states: Option<&HashMap<String, Entity<InputState>>>,
 ) -> gpui::AnyElement {
     let placeholder = ui_schema::prop_str_or(&node.props, "placeholder", "").to_string();
     let bind = node.bind.clone().unwrap_or_default();
@@ -562,7 +569,6 @@ fn render_input(
     } else {
         String::new()
     };
-    let _action = node.on_action.clone();
 
     let input_id = SharedString::from(format!(
         "input-{}-{}",
@@ -570,6 +576,25 @@ fn render_input(
         node_idx
     ));
 
+    // 优先使用 InputState（可编辑输入框）
+    if let Some(states) = input_states {
+        if let Some(input_state) = states.get(&bind) {
+            return div()
+                .id(input_id.clone())
+                .flex()
+                .items_center()
+                .px(px(12.))
+                .py(px(8.))
+                .bg(ctx.muted.opacity(0.3))
+                .rounded_lg()
+                .border_1()
+                .border_color(ctx.border)
+                .child(Input::new(input_state).appearance(false))
+                .into_any_element();
+        }
+    }
+
+    // Fallback: 只读显示
     div()
         .id(input_id)
         .flex()
@@ -595,7 +620,6 @@ fn render_input(
             },
         )
         .into_any_element()
-    // TODO: 接入 gpui-component Input 组件后替换此简易占位
 }
 
 fn render_table(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -> gpui::AnyElement {
@@ -693,6 +717,7 @@ fn render_card(
     ctx: &RenderContext,
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
+    input_states: Option<&HashMap<String, Entity<InputState>>>,
 ) -> gpui::AnyElement {
     let title = ui_schema::prop_str_or(&node.props, "title", "").to_string();
 
@@ -717,7 +742,7 @@ fn render_card(
     }
 
     for (i, child) in node.children.iter().enumerate() {
-        card = card.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i));
+        card = card.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i, input_states));
     }
 
     card.into_any_element()
@@ -730,6 +755,7 @@ fn render_container(
     ctx: &RenderContext,
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
+    input_states: Option<&HashMap<String, Entity<InputState>>>,
 ) -> gpui::AnyElement {
     let direction = match node.component.as_str() {
         "flex_row" | "flex-row" => "row",
@@ -750,7 +776,7 @@ fn render_container(
     }
 
     for (i, child) in node.children.iter().enumerate() {
-        container = container.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i));
+        container = container.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i, input_states));
     }
 
     container.into_any_element()
@@ -782,6 +808,7 @@ fn render_split(
     ctx: &RenderContext,
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
+    input_states: Option<&HashMap<String, Entity<InputState>>>,
 ) -> gpui::AnyElement {
     let direction = ui_schema::prop_str_or(&node.props, "direction", "row");
     let left_width = ui_schema::prop_i64(&node.props, "left_width").unwrap_or(300) as f32;
@@ -818,6 +845,7 @@ fn render_split(
                     ctx,
                     handler.clone(),
                     node_idx * 100 + 0,
+                    input_states,
                 )),
         );
         container = container.child(
@@ -834,6 +862,7 @@ fn render_split(
                     ctx,
                     handler.clone(),
                     node_idx * 100 + 1,
+                    input_states,
                 )),
         );
     } else {
@@ -852,6 +881,7 @@ fn render_split(
                             ctx,
                             handler.clone(),
                             node_idx * 100 + i,
+                            input_states,
                         )),
                 );
             } else {
@@ -871,6 +901,7 @@ fn render_split(
                             ctx,
                             handler.clone(),
                             node_idx * 100 + i,
+                            input_states,
                         )),
                 );
             }
@@ -890,6 +921,7 @@ fn render_tree(
     ctx: &RenderContext,
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
+    _input_states: Option<&HashMap<String, Entity<InputState>>>,
 ) -> gpui::AnyElement {
     let bind = node.bind.clone().unwrap_or_default();
     let tree_data: Vec<&serde_json::Value> = if !bind.is_empty() {
