@@ -214,6 +214,30 @@ impl UiNode {
         }
     }
 
+    /// 创建下拉选择节点
+    /// `bind`: state 中当前选中值的 key
+    /// `options`: 选项列表，每项 { label, value }
+    /// `on_action`: 选择变更时触发的 action
+    pub fn select(
+        bind: impl Into<String>,
+        options: &[(impl ToString, impl ToString)],
+    ) -> Self {
+        let opts: Vec<serde_json::Value> = options
+            .iter()
+            .map(|(label, value)| {
+                serde_json::json!({ "label": label.to_string(), "value": value.to_string() })
+            })
+            .collect();
+        Self {
+            component: "select".into(),
+            props: serde_json::json!({ "options": opts }),
+            children: Vec::new(),
+            bind: Some(bind.into()),
+            on_action: None,
+            id: None,
+        }
+    }
+
     /// 设置 props 中的单个字段
     pub fn prop(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
         if self.props.is_null() {

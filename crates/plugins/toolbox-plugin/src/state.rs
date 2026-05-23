@@ -147,6 +147,16 @@ pub struct NetworkScanState {
     pub timeout: u64,
     pub loading: bool,
     pub results: Vec<ScanResultItem>,
+    /// 消息提示（成功/错误信息）
+    pub message: Option<String>,
+    /// 消息类型: true=成功, false=错误
+    pub message_ok: bool,
+    /// 已扫描数量
+    pub scanned: usize,
+    /// 总扫描目标数
+    pub total: usize,
+    /// 全选状态
+    pub select_all: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -155,6 +165,10 @@ pub struct ScanResultItem {
     pub port: u16,
     pub status: String,
     pub latency_ms: Option<u64>,
+    /// 是否选中
+    pub selected: bool,
+    /// 主机名
+    pub hostname: Option<String>,
 }
 
 /// 插件完整状态
@@ -239,9 +253,14 @@ impl Default for ToolboxState {
             network_scan: NetworkScanState {
                 ip_range: String::new(),
                 ports: String::new(),
-                timeout: 1000,
+                timeout: 500,
                 loading: false,
                 results: vec![],
+                message: None,
+                message_ok: true,
+                scanned: 0,
+                total: 0,
+                select_all: false,
             },
             demo: UiSchemaDemoState {
                 total_users: 12_840,

@@ -8,8 +8,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{
-    div, px, AppContext as _, Context, Entity, IntoElement, ParentElement, Render, SharedString,
-    Styled as _, Subscription, Window,
+    div, px, AppContext as _, Context, Entity, InteractiveElement as _, IntoElement, MouseButton,
+    MouseMoveEvent, Pixels, ParentElement, Point, Render, SharedString,
+    StatefulInteractiveElement as _, Styled as _, Subscription, Window,
 };
 use gpui_component::ActiveTheme as _;
 use gpui_component::input::{Input, InputEvent, InputState};
@@ -69,6 +70,14 @@ pub struct DynPluginView {
     input_states: RefCell<HashMap<String, Entity<InputState>>>,
     /// InputState 变更订阅（保持存活）
     _input_subscriptions: RefCell<Vec<Subscription>>,
+    /// 左侧边栏宽度
+    sidebar_width: RefCell<f32>,
+    /// 是否正在调整侧边栏宽度
+    resizing: RefCell<bool>,
+    /// resize 起始鼠标 X 坐标
+    resize_start_x: RefCell<Pixels>,
+    /// resize 起始侧边栏宽度
+    resize_start_width: RefCell<f32>,
 }
 
 impl DynPluginView {
@@ -82,6 +91,16 @@ impl DynPluginView {
         let ui_schema = plugin.ui_schema();
         tracing::info!("🧪 ui_schema acquired, children: {}", ui_schema.children.len());
         tracing::info!("✅ cdylib 插件视图创建: {} ({})", meta.name, meta.id);
+        // 从 split 节点读取默认侧边栏宽度
+        let default_sidebar_width = if ui_schema.children.len() == 1
+            && ui_schema.children[0].component == "split"
+        {
+            ui_schema::prop_i64(&ui_schema.children[0].props, "left_width")
+                .unwrap_or(200) as f32
+        } else {
+            200.
+        };
+
         Self {
             plugin,
             state: RefCell::new(state),
@@ -89,6 +108,10 @@ impl DynPluginView {
             meta,
             input_states: RefCell::new(HashMap::new()),
             _input_subscriptions: RefCell::new(Vec::new()),
+            sidebar_width: RefCell::new(default_sidebar_width),
+            resizing: RefCell::new(false),
+            resize_start_x: RefCell::new(px(0.)),
+            resize_start_width: RefCell::new(default_sidebar_width),
         }
     }
 
@@ -243,6 +266,30 @@ impl Render for DynPluginView {
         // 确保所有 input 节点都有 InputState
         self.ensure_input_states(_window, cx);
 
+        // 每次渲染都从 plugin 读取最新状态（后台线程可能已更新）
+        let latest_state = self.plugin.state();
+
+        // 检测 loading 状态，扫描中时定时重绘（模拟轮询）
+        let is_loading = latest_state
+            .get("network_scan")
+            .and_then(|v| v.get("loading"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        if is_loading {
+            let weak = cx.entity().downgrade();
+            // 500ms 后重绘，让用户看到进度
+            cx.spawn(async move |mut this, cx| {
+                cx.background_executor().timer(std::time::Duration::from_millis(500)).await;
+                if weak.upgrade().is_some() {
+                    this.update(cx, |_, cx| cx.notify()).ok();
+                }
+            })
+            .detach();
+        }
+
+        *self.state.borrow_mut() = latest_state;
+
         let theme = cx.theme();
         let ctx = RenderContext::from_theme(&theme);
         let state = self.state.borrow();
@@ -252,7 +299,123 @@ impl Render for DynPluginView {
 
         let input_states = self.input_states.borrow();
 
-        // 根据 ui_schema 的 layout 属性创建容器
+        // 检测顶层 split 节点，用自定义左右分栏渲染（支持 resize）
+        if self.ui_schema.children.len() == 1 && self.ui_schema.children[0].component == "split" {
+            let split_node = &self.ui_schema.children[0];
+            let direction = ui_schema::prop_str_or(&split_node.props, "direction", "row");
+            let is_row_split = direction == "row";
+
+            if is_row_split && split_node.children.len() >= 2 {
+                let sidebar_w = *self.sidebar_width.borrow();
+                let is_resizing = *self.resizing.borrow();
+
+                // 左侧面板
+                let left = div()
+                    .w(px(sidebar_w))
+                    .min_w(px(120.))
+                    .max_w(px(500.))
+                    .h_full()
+                    .flex()
+                    .flex_col()
+                    .overflow_hidden()
+                    .child(render_node(
+                        &split_node.children[0],
+                        &*state,
+                        &ctx,
+                        action_handler.clone(),
+                        0,
+                        Some(&*input_states),
+                    ));
+
+                // resize handle
+                let entity = cx.entity().downgrade();
+                let resize_handle = div()
+                    .id(SharedString::from("sidebar-resize-handle"))
+                    .w(px(4.))
+                    .h_full()
+                    .cursor_col_resize()
+                    .bg(if is_resizing { ctx.primary.opacity(0.6) } else { ctx.border.opacity(0.3) })
+                    .hover(|s| s.bg(ctx.primary.opacity(0.5)))
+                    .on_mouse_down(gpui::MouseButton::Left, move |ev: &gpui::MouseDownEvent, _window, cx| {
+                        if let Some(e) = entity.upgrade() {
+                            e.update(cx, |view, cx| {
+                                *view.resizing.borrow_mut() = true;
+                                *view.resize_start_x.borrow_mut() = ev.position.x;
+                                *view.resize_start_width.borrow_mut() = *view.sidebar_width.borrow();
+                                cx.notify();
+                            });
+                        }
+                    });
+
+                // 右侧内容区（4px padding）
+                let right = div()
+                    .id("plugin-split-right")
+                    .flex_1()
+                    .h_full()
+                    .flex()
+                    .flex_col()
+                    .overflow_y_scroll()
+                    .p(px(4.))
+                    .child(render_node(
+                        &split_node.children[1],
+                        &*state,
+                        &ctx,
+                        action_handler.clone(),
+                        1,
+                        Some(&*input_states),
+                    ));
+
+                // 如果正在 resize，container 需要 id 才能挂 mouse move/up
+                if is_resizing {
+                    let entity = cx.entity().downgrade();
+                    let entity_up = cx.entity().downgrade();
+                    return div()
+                        .id("plugin-split-container")
+                        .flex()
+                        .flex_row()
+                        .size_full()
+                        .overflow_hidden()
+                        .bg(theme.colors.background)
+                        .on_mouse_move(move |ev: &MouseMoveEvent, _window, cx| {
+                            if let Some(e) = entity.upgrade() {
+                                e.update(cx, |view, cx| {
+                                    let start_x = *view.resize_start_x.borrow();
+                                    let start_w = *view.resize_start_width.borrow();
+                                    let delta = f32::from(ev.position.x - start_x);
+                                    let new_w = (start_w + delta).clamp(120., 500.);
+                                    *view.sidebar_width.borrow_mut() = new_w;
+                                    cx.notify();
+                                });
+                            }
+                        })
+                        .on_mouse_up(gpui::MouseButton::Left, move |_ev, _window, cx| {
+                            if let Some(e) = entity_up.upgrade() {
+                                e.update(cx, |view, cx| {
+                                    *view.resizing.borrow_mut() = false;
+                                    cx.notify();
+                                });
+                            }
+                        })
+                        .child(left)
+                        .child(resize_handle)
+                        .child(right)
+                        .into_any_element();
+                } else {
+                    return div()
+                        .flex()
+                        .flex_row()
+                        .size_full()
+                        .overflow_hidden()
+                        .bg(theme.colors.background)
+                        .child(left)
+                        .child(resize_handle)
+                        .child(right)
+                        .into_any_element();
+                }
+            }
+        }
+
+        // 非分栏布局：通用渲染
         let is_row = self.ui_schema.layout == "flex-row";
         let gap = px(self.ui_schema.gap as f32);
 
@@ -263,14 +426,12 @@ impl Render for DynPluginView {
             .overflow_hidden()
             .bg(theme.colors.background);
 
-        // 设置布局方向
         if is_row {
             container = container.flex_row();
         } else {
             container = container.flex_col();
         }
 
-        // 设置对齐方式
         if let Some(align) = &self.ui_schema.align_items {
             match align.as_str() {
                 "center" => { container = container.items_center(); }
@@ -281,7 +442,6 @@ impl Render for DynPluginView {
             }
         }
 
-        // 设置主轴对齐
         if let Some(justify) = &self.ui_schema.justify_content {
             match justify.as_str() {
                 "center" => { container = container.justify_center(); }
@@ -293,12 +453,12 @@ impl Render for DynPluginView {
             }
         }
 
-        let element = container
+        container
             .children(
                 self.ui_schema.children.iter().enumerate().map(|(idx, node)| {
                     render_node(node, &*state, &ctx, action_handler.clone(), idx, Some(&*input_states))
                 }),
-            );
-        element
+            )
+            .into_any_element()
     }
 }

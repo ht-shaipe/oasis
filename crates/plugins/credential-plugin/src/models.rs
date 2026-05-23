@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Credential {
     pub id: String,
     pub name: String,
+    pub credential_type: String,
     pub platform: String,
     pub category: String,
     pub username: String,
@@ -23,6 +24,7 @@ pub struct Credential {
 impl Credential {
     pub fn new(
         name: String,
+        credential_type: String,
         platform: String,
         category: String,
         username: String,
@@ -32,6 +34,7 @@ impl Credential {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             name,
+            credential_type,
             platform,
             category,
             username,

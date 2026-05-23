@@ -41,6 +41,7 @@ pub struct CredentialDetailState {
 pub struct CredentialEditState {
     pub credential: CredentialItem,
     pub is_new: bool,
+    pub is_active_display: String,
     pub validation_errors: Vec<String>,
     pub saving: bool,
 }
@@ -48,7 +49,7 @@ pub struct CredentialEditState {
 /// 导入导出状态
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ImportExportState {
-    pub import_file: Option<String>,
+    pub import_path: String,
     pub export_format: String,
     pub import_result: String,
     pub export_result: String,
@@ -75,11 +76,76 @@ pub struct SettingsState {
     pub saving: bool,
 }
 
+/// 凭证类型
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CredentialType {
+    ApiKey,
+    WebsiteUser,
+    SshKey,
+    Database,
+    Certificate,
+    Token,
+}
+
+impl Default for CredentialType {
+    fn default() -> Self {
+        Self::ApiKey
+    }
+}
+
+impl CredentialType {
+    pub fn label(&self) -> &str {
+        match self {
+            Self::ApiKey => "接口密钥",
+            Self::WebsiteUser => "网站用户",
+            Self::SshKey => "SSH 密钥",
+            Self::Database => "数据库",
+            Self::Certificate => "证书",
+            Self::Token => "令牌",
+        }
+    }
+
+    pub fn value(&self) -> &str {
+        match self {
+            Self::ApiKey => "api_key",
+            Self::WebsiteUser => "website_user",
+            Self::SshKey => "ssh_key",
+            Self::Database => "database",
+            Self::Certificate => "certificate",
+            Self::Token => "token",
+        }
+    }
+
+    pub fn from_value(v: &str) -> Self {
+        match v {
+            "website_user" => Self::WebsiteUser,
+            "ssh_key" => Self::SshKey,
+            "database" => Self::Database,
+            "certificate" => Self::Certificate,
+            "token" => Self::Token,
+            _ => Self::ApiKey,
+        }
+    }
+
+    pub fn all() -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("接口密钥", "api_key"),
+            ("网站用户", "website_user"),
+            ("SSH 密钥", "ssh_key"),
+            ("数据库", "database"),
+            ("证书", "certificate"),
+            ("令牌", "token"),
+        ]
+    }
+}
+
 /// 凭证项（用于 UI 展示）
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CredentialItem {
     pub id: String,
     pub name: String,
+    pub credential_type: CredentialType,
     pub platform: String,
     pub category: String,
     pub username: String,
@@ -91,6 +157,50 @@ pub struct CredentialItem {
     pub expires_at: Option<i64>,
     pub tags: String,
     pub extra_fields: String,
+    // 类型特有字段
+    pub api_key_value: String,
+    pub api_secret: String,
+    pub api_endpoint: String,
+    pub ssh_private_key: String,
+    pub ssh_public_key: String,
+    pub db_host: String,
+    pub db_port: String,
+    pub db_name: String,
+    pub cert_path: String,
+    pub token_value: String,
+    pub token_expiry: Option<i64>,
+}
+
+impl Default for CredentialItem {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            credential_type: CredentialType::default(),
+            platform: String::new(),
+            category: String::new(),
+            username: String::new(),
+            password_masked: String::new(),
+            notes: String::new(),
+            is_active: true,
+            created_at: 0,
+            updated_at: 0,
+            expires_at: None,
+            tags: String::new(),
+            extra_fields: String::new(),
+            api_key_value: String::new(),
+            api_secret: String::new(),
+            api_endpoint: String::new(),
+            ssh_private_key: String::new(),
+            ssh_public_key: String::new(),
+            db_host: String::new(),
+            db_port: String::new(),
+            db_name: String::new(),
+            cert_path: String::new(),
+            token_value: String::new(),
+            token_expiry: None,
+        }
+    }
 }
 
 /// 审计日志项
@@ -138,27 +248,14 @@ impl Default for CredentialPluginState {
                 loading: false,
             },
             credential_edit: CredentialEditState {
-                credential: CredentialItem {
-                    id: String::new(),
-                    name: String::new(),
-                    platform: String::new(),
-                    category: String::new(),
-                    username: String::new(),
-                    password_masked: String::new(),
-                    notes: String::new(),
-                    is_active: true,
-                    created_at: 0,
-                    updated_at: 0,
-                    expires_at: None,
-                    tags: String::new(),
-                    extra_fields: String::new(),
-                },
+                credential: CredentialItem::default(),
                 is_new: true,
+                is_active_display: "启用".to_string(),
                 validation_errors: vec![],
                 saving: false,
             },
             import_export: ImportExportState {
-                import_file: None,
+                import_path: String::new(),
                 export_format: "json".to_string(),
                 import_result: String::new(),
                 export_result: String::new(),

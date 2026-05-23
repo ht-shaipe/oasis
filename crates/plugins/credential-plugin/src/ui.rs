@@ -1,6 +1,6 @@
 //! 凭证管理插件 - UI 界面定义（声明式 UiSchema）
 
-use crate::state::{CredentialPluginState, ToolId};
+use crate::state::{CredentialPluginState, CredentialType, ToolId};
 use plugin_sdk::UiNode;
 
 // ---------------------------------------------------------------------------
@@ -44,44 +44,36 @@ pub fn schema_credential_list() -> plugin_sdk::UiSchema {
         .child(UiNode::input("search_query", "搜索凭证...").prop("width", serde_json::json!("100%")))
         .child(UiNode::button("搜索", "search_credentials").prop("variant", serde_json::json!("primary")));
 
-    let platform_options = serde_json::json!([
-        {"label": "全部", "value": ""},
-        {"label": "GitHub", "value": "github"},
-        {"label": "GitLab", "value": "gitlab"},
-        {"label": "Docker Hub", "value": "docker"},
-        {"label": "AWS", "value": "aws"},
-        {"label": "GCP", "value": "gcp"},
-        {"label": "Azure", "value": "azure"}
-    ]);
+    let platform_buttons = UiNode::new("flex-row")
+        .prop("gap", serde_json::json!(4))
+        .prop("margin_top", serde_json::json!(8))
+        .child(UiNode::button("全部", "filter_platform_all"))
+        .child(UiNode::button("GitHub", "filter_platform_github"))
+        .child(UiNode::button("GitLab", "filter_platform_gitlab"))
+        .child(UiNode::button("Docker", "filter_platform_docker"))
+        .child(UiNode::button("AWS", "filter_platform_aws"));
 
-    let category_options = serde_json::json!([
-        {"label": "全部", "value": ""},
-        {"label": "开发", "value": "development"},
-        {"label": "生产", "value": "production"},
-        {"label": "测试", "value": "testing"},
-        {"label": "个人", "value": "personal"}
-    ]);
+    let category_buttons = UiNode::new("flex-row")
+        .prop("gap", serde_json::json!(4))
+        .prop("margin_top", serde_json::json!(4))
+        .child(UiNode::button("全部", "filter_category_all"))
+        .child(UiNode::button("开发", "filter_category_development"))
+        .child(UiNode::button("生产", "filter_category_production"))
+        .child(UiNode::button("测试", "filter_category_testing"))
+        .child(UiNode::button("个人", "filter_category_personal"));
 
-    let filter_row = UiNode::new("flex-row")
-        .prop("gap", serde_json::json!(8))
+    let filter_row = UiNode::new("flex-col")
+        .prop("gap", serde_json::json!(4))
         .prop("margin_top", serde_json::json!(12))
+        .child(UiNode::label("平台筛选"))
+        .child(platform_buttons)
+        .child(UiNode::label("分类筛选"))
+        .child(category_buttons)
         .child(
-            UiNode::new("select")
-                .prop("label", serde_json::json!("平台"))
-                .bind("selected_platform")
-                .on_action("filter_by_platform")
-                .prop("options", platform_options)
-        )
-        .child(
-            UiNode::new("select")
-                .prop("label", serde_json::json!("分类"))
-                .bind("selected_category")
-                .on_action("filter_by_category")
-                .prop("options", category_options)
-        )
-        .child(
-            UiNode::button("新建凭证", "create_credential")
-                .prop("variant", serde_json::json!("primary"))
+            UiNode::new("flex-row")
+                .prop("margin_top", serde_json::json!(8))
+                .child(UiNode::button("新建凭证", "create_credential")
+                    .prop("variant", serde_json::json!("primary")))
         );
 
     let table = UiNode::table("credentials", vec!["名称", "平台", "用户名", "分类", "状态", "更新时间", "操作"])
@@ -107,16 +99,16 @@ pub fn schema_credential_detail() -> plugin_sdk::UiSchema {
     let info_card = UiNode::new("card")
         .prop("title", serde_json::json!("凭证详情"))
         .child(UiNode::info(&[
-            ("名称", "credential.name"),
-            ("平台", "credential.platform"),
-            ("分类", "credential.category"),
-            ("用户名", "credential.username"),
-            ("密码", "credential.password_masked"),
-            ("标签", "credential.tags"),
-            ("备注", "credential.notes"),
-            ("状态", "credential.is_active"),
-            ("创建时间", "credential.created_at"),
-            ("更新时间", "credential.updated_at"),
+            ("名称", "credential_detail.credential.name"),
+            ("平台", "credential_detail.credential.platform"),
+            ("分类", "credential_detail.credential.category"),
+            ("用户名", "credential_detail.credential.username"),
+            ("密码", "credential_detail.credential.password_masked"),
+            ("标签", "credential_detail.credential.tags"),
+            ("备注", "credential_detail.credential.notes"),
+            ("状态", "credential_detail.credential.is_active"),
+            ("创建时间", "credential_detail.credential.created_at"),
+            ("更新时间", "credential_detail.credential.updated_at"),
         ]));
 
     let actions = UiNode::new("flex-row")
@@ -143,49 +135,124 @@ pub fn schema_credential_detail() -> plugin_sdk::UiSchema {
 // 凭证编辑/创建页
 // ---------------------------------------------------------------------------
 
-pub fn schema_credential_edit(is_new: bool) -> plugin_sdk::UiSchema {
+pub fn schema_credential_edit(is_new: bool, cred_type: &CredentialType) -> plugin_sdk::UiSchema {
     let title = if is_new { "新建凭证" } else { "编辑凭证" };
 
-    let form = UiNode::new("form")
+    // 通用字段：名称 + 类型
+    let common_fields = UiNode::new("card")
         .prop("title", serde_json::json!(title))
         .prop("gap", serde_json::json!(12))
         .child(
             UiNode::new("flex-row")
                 .prop("gap", serde_json::json!(8))
-                .child(UiNode::input("credential.name", "名称").prop("required", serde_json::json!(true)).prop("width", serde_json::json!("50%")))
-                .child(UiNode::input("credential.platform", "平台").prop("required", serde_json::json!(true)).prop("width", serde_json::json!("50%")))
-        )
-        .child(
-            UiNode::new("flex-row")
-                .prop("gap", serde_json::json!(8))
-                .child(UiNode::input("credential.category", "分类").prop("width", serde_json::json!("50%")))
-                .child(UiNode::input("credential.username", "用户名").prop("required", serde_json::json!(true)).prop("width", serde_json::json!("50%")))
-        )
-        .child(UiNode::input("credential.password_masked", "密码").prop("required", serde_json::json!(true)).prop("type", serde_json::json!("password")))
-        .child(UiNode::input("credential.tags", "标签（逗号分隔）"))
-        .child(
-            UiNode::new("textarea")
-                .prop("label", serde_json::json!("备注"))
-                .bind("credential.notes")
-                .prop("rows", serde_json::json!(4))
-        )
-        .child(
-            UiNode::new("flex-row")
-                .prop("gap", serde_json::json!(8))
-                .child(UiNode::new("switch").prop("label", serde_json::json!("启用")).bind("credential.is_active"))
+                .child(UiNode::input("credential_edit.credential.name", "名称").prop("required", serde_json::json!(true)).prop("width", serde_json::json!("50%")))
+                .child(UiNode::select(
+                    "credential_edit.credential.credential_type",
+                    &CredentialType::all(),
+                ).prop("placeholder", serde_json::json!("选择类型")).prop("width", serde_json::json!("50%"))
+                    .on_action("change_credential_type"))
         );
 
-    let action_buttons = UiNode::new("flex-row")
+    // 根据类型生成不同的字段
+    let type_specific_fields = match cred_type {
+        CredentialType::ApiKey => UiNode::new("card")
+            .prop("title", serde_json::json!("接口密钥"))
+            .prop("gap", serde_json::json!(12))
+            .child(UiNode::input("credential_edit.credential.api_key_value", "API Key").prop("required", serde_json::json!(true)))
+            .child(UiNode::input("credential_edit.credential.api_secret", "API Secret").prop("type", serde_json::json!("password")))
+            .child(UiNode::input("credential_edit.credential.api_endpoint", "接口地址"))
+            .child(UiNode::input("credential_edit.credential.tags", "标签（逗号分隔）"))
+            .child(UiNode::input("credential_edit.credential.notes", "备注")),
+
+        CredentialType::WebsiteUser => UiNode::new("card")
+            .prop("title", serde_json::json!("网站用户"))
+            .prop("gap", serde_json::json!(12))
+            .child(
+                UiNode::new("flex-row")
+                    .prop("gap", serde_json::json!(8))
+                    .child(UiNode::input("credential_edit.credential.platform", "网站/平台").prop("required", serde_json::json!(true)).prop("width", serde_json::json!("50%")))
+                    .child(UiNode::input("credential_edit.credential.category", "分类").prop("width", serde_json::json!("50%")))
+            )
+            .child(
+                UiNode::new("flex-row")
+                    .prop("gap", serde_json::json!(8))
+                    .child(UiNode::input("credential_edit.credential.username", "用户名").prop("required", serde_json::json!(true)).prop("width", serde_json::json!("50%")))
+                    .child(UiNode::input("credential_edit.credential.password_masked", "密码").prop("required", serde_json::json!(true)).prop("type", serde_json::json!("password")).prop("width", serde_json::json!("50%")))
+            )
+            .child(UiNode::input("credential_edit.credential.tags", "标签（逗号分隔）"))
+            .child(UiNode::input("credential_edit.credential.notes", "备注")),
+
+        CredentialType::SshKey => UiNode::new("card")
+            .prop("title", serde_json::json!("SSH 密钥"))
+            .prop("gap", serde_json::json!(12))
+            .child(UiNode::input("credential_edit.credential.ssh_private_key", "私钥").prop("required", serde_json::json!(true)))
+            .child(UiNode::input("credential_edit.credential.ssh_public_key", "公钥"))
+            .child(UiNode::input("credential_edit.credential.username", "用户名"))
+            .child(UiNode::input("credential_edit.credential.api_endpoint", "主机地址"))
+            .child(UiNode::input("credential_edit.credential.tags", "标签（逗号分隔）"))
+            .child(UiNode::input("credential_edit.credential.notes", "备注")),
+
+        CredentialType::Database => UiNode::new("card")
+            .prop("title", serde_json::json!("数据库"))
+            .prop("gap", serde_json::json!(12))
+            .child(
+                UiNode::new("flex-row")
+                    .prop("gap", serde_json::json!(8))
+                    .child(UiNode::input("credential_edit.credential.db_host", "主机").prop("required", serde_json::json!(true)).prop("width", serde_json::json!("60%")))
+                    .child(UiNode::input("credential_edit.credential.db_port", "端口").prop("width", serde_json::json!("20%")))
+                    .child(UiNode::input("credential_edit.credential.db_name", "数据库名").prop("width", serde_json::json!("20%")))
+            )
+            .child(
+                UiNode::new("flex-row")
+                    .prop("gap", serde_json::json!(8))
+                    .child(UiNode::input("credential_edit.credential.username", "用户名").prop("required", serde_json::json!(true)).prop("width", serde_json::json!("50%")))
+                    .child(UiNode::input("credential_edit.credential.password_masked", "密码").prop("required", serde_json::json!(true)).prop("type", serde_json::json!("password")).prop("width", serde_json::json!("50%")))
+            )
+            .child(UiNode::input("credential_edit.credential.tags", "标签（逗号分隔）"))
+            .child(UiNode::input("credential_edit.credential.notes", "备注")),
+
+        CredentialType::Certificate => UiNode::new("card")
+            .prop("title", serde_json::json!("证书"))
+            .prop("gap", serde_json::json!(12))
+            .child(UiNode::input("credential_edit.credential.cert_path", "证书路径").prop("required", serde_json::json!(true)))
+            .child(UiNode::input("credential_edit.credential.password_masked", "证书密码").prop("type", serde_json::json!("password")))
+            .child(UiNode::input("credential_edit.credential.tags", "标签（逗号分隔）"))
+            .child(UiNode::input("credential_edit.credential.notes", "备注")),
+
+        CredentialType::Token => UiNode::new("card")
+            .prop("title", serde_json::json!("令牌"))
+            .prop("gap", serde_json::json!(12))
+            .child(UiNode::input("credential_edit.credential.token_value", "Token").prop("required", serde_json::json!(true)))
+            .child(UiNode::input("credential_edit.credential.platform", "平台/服务"))
+            .child(UiNode::input("credential_edit.credential.tags", "标签（逗号分隔）"))
+            .child(UiNode::input("credential_edit.credential.notes", "备注")),
+    };
+
+    // 启用状态 + 操作按钮
+    let bottom = UiNode::new("flex-row")
         .prop("gap", serde_json::json!(8))
-        .prop("justify_content", serde_json::json!("flex-end"))
+        .prop("align_items", serde_json::json!("center"))
+        .prop("justify_content", serde_json::json!("space-between"))
         .prop("margin_top", serde_json::json!(16))
-        .child(UiNode::button("取消", "cancel_edit"))
-        .child(UiNode::button("保存", "save_credential").prop("variant", serde_json::json!("primary")));
+        .child(
+            UiNode::new("flex-row")
+                .prop("gap", serde_json::json!(8))
+                .prop("align_items", serde_json::json!("center"))
+                .child(UiNode::label("启用状态："))
+                .child(UiNode::display("credential_edit.is_active_display").prop("style", serde_json::json!("text")))
+                .child(UiNode::button("切换", "toggle_active_status"))
+        )
+        .child(
+            UiNode::new("flex-row")
+                .prop("gap", serde_json::json!(8))
+                .child(UiNode::button("取消", "cancel_edit"))
+                .child(UiNode::button("保存", "save_credential").prop("variant", serde_json::json!("primary")))
+        );
 
     plugin_sdk::UiSchema {
         layout: "flex-col".into(),
         gap: 12,
-        children: vec![form, action_buttons],
+        children: vec![common_fields, type_specific_fields, bottom],
         ..Default::default()
     }
 }
@@ -195,31 +262,19 @@ pub fn schema_credential_edit(is_new: bool) -> plugin_sdk::UiSchema {
 // ---------------------------------------------------------------------------
 
 pub fn schema_import_export() -> plugin_sdk::UiSchema {
-    let format_options = serde_json::json!([
-        {"label": "JSON", "value": "json"},
-        {"label": "CSV", "value": "csv"}
-    ]);
-
     let import_section = UiNode::new("card")
         .prop("title", serde_json::json!("导入凭证"))
         .child(
             UiNode::new("flex-col")
                 .prop("gap", serde_json::json!(12))
+                .child(UiNode::input("import_export.import_path", "文件路径（.json / .csv）"))
                 .child(
-                    UiNode::new("file-picker")
-                        .prop("label", serde_json::json!("选择文件"))
-                        .bind("import_file")
-                        .on_action("select_import_file")
-                        .prop("accept", serde_json::json!(".json,.csv"))
+                    UiNode::new("flex-row")
+                        .prop("gap", serde_json::json!(8))
+                        .child(UiNode::button("导入 JSON", "import_json").prop("variant", serde_json::json!("primary")))
+                        .child(UiNode::button("导入 CSV", "import_csv"))
                 )
-                .child(
-                    UiNode::new("select")
-                        .prop("label", serde_json::json!("格式"))
-                        .bind("export_format")
-                        .prop("options", format_options.clone())
-                )
-                .child(UiNode::button("导入", "import_credentials").prop("variant", serde_json::json!("primary")))
-                .child(UiNode::display("import_result").prop("type", serde_json::json!("info")))
+                .child(UiNode::display("import_export.import_result").prop("type", serde_json::json!("info")))
         );
 
     let export_section = UiNode::new("card")
@@ -229,14 +284,18 @@ pub fn schema_import_export() -> plugin_sdk::UiSchema {
             UiNode::new("flex-col")
                 .prop("gap", serde_json::json!(12))
                 .child(
-                    UiNode::new("select")
-                        .prop("label", serde_json::json!("格式"))
-                        .bind("export_format")
-                        .prop("options", format_options)
+                    UiNode::new("flex-row")
+                        .prop("gap", serde_json::json!(8))
+                        .child(UiNode::button("导出全部 JSON", "export_all_json").prop("variant", serde_json::json!("primary")))
+                        .child(UiNode::button("导出全部 CSV", "export_all_csv"))
                 )
-                .child(UiNode::button("导出全部", "export_all_credentials").prop("variant", serde_json::json!("primary")))
-                .child(UiNode::button("导出选中", "export_selected_credentials"))
-                .child(UiNode::display("export_result").prop("type", serde_json::json!("info")))
+                .child(
+                    UiNode::new("flex-row")
+                        .prop("gap", serde_json::json!(8))
+                        .child(UiNode::button("导出选中 JSON", "export_selected_json"))
+                        .child(UiNode::button("导出选中 CSV", "export_selected_csv"))
+                )
+                .child(UiNode::display("import_export.export_result").prop("type", serde_json::json!("info")))
         );
 
     plugin_sdk::UiSchema {
@@ -252,25 +311,23 @@ pub fn schema_import_export() -> plugin_sdk::UiSchema {
 // ---------------------------------------------------------------------------
 
 pub fn schema_audit_logs() -> plugin_sdk::UiSchema {
-    let action_options = serde_json::json!([
-        {"label": "全部", "value": ""},
-        {"label": "创建", "value": "CREATE"},
-        {"label": "读取", "value": "READ"},
-        {"label": "更新", "value": "UPDATE"},
-        {"label": "删除", "value": "DELETE"}
-    ]);
-
-    let filter_row = UiNode::new("flex-row")
+    let filter_row = UiNode::new("flex-col")
         .prop("gap", serde_json::json!(8))
-        .prop("align_items", serde_json::json!("center"))
+        .child(UiNode::label("操作类型筛选"))
         .child(
-            UiNode::new("select")
-                .prop("label", serde_json::json!("操作类型"))
-                .bind("filter_action")
-                .on_action("filter_logs_by_action")
-                .prop("options", action_options)
+            UiNode::new("flex-row")
+                .prop("gap", serde_json::json!(4))
+                .child(UiNode::button("全部", "filter_logs_all"))
+                .child(UiNode::button("创建", "filter_logs_create"))
+                .child(UiNode::button("读取", "filter_logs_read"))
+                .child(UiNode::button("更新", "filter_logs_update"))
+                .child(UiNode::button("删除", "filter_logs_delete"))
         )
-        .child(UiNode::button("清除过期日志", "clear_old_logs"));
+        .child(
+            UiNode::new("flex-row")
+                .prop("gap", serde_json::json!(8))
+                .child(UiNode::button("清除过期日志", "clear_old_logs"))
+        );
 
     let table = UiNode::table("logs", vec!["时间", "凭证", "操作", "IP地址", "结果"]);
 
@@ -292,10 +349,10 @@ pub fn schema_settings() -> plugin_sdk::UiSchema {
         .child(
             UiNode::new("flex-col")
                 .prop("gap", serde_json::json!(12))
-                .child(UiNode::input("change_password", "新密码").prop("type", serde_json::json!("password")))
-                .child(UiNode::input("confirm_password", "确认密码").prop("type", serde_json::json!("password")))
+                .child(UiNode::input("settings.change_password", "新密码").prop("type", serde_json::json!("password")))
+                .child(UiNode::input("settings.confirm_password", "确认密码").prop("type", serde_json::json!("password")))
                 .child(UiNode::button("修改密码", "change_master_password").prop("variant", serde_json::json!("primary")))
-                .child(UiNode::display("password_error").prop("type", serde_json::json!("error")))
+                .child(UiNode::display("settings.password_error").prop("type", serde_json::json!("error")))
         );
 
     let info_card = UiNode::new("card")

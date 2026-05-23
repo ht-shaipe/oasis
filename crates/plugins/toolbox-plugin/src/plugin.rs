@@ -1,6 +1,6 @@
 //! ToolboxPlugin 结构体 + Plugin trait 实现
 
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use plugin_sdk::{Plugin, PluginMeta, UiSchema};
 
@@ -9,12 +9,12 @@ use crate::tools::*;
 
 /// 工具箱插件
 pub struct ToolboxPlugin {
-    state: RwLock<ToolboxState>,
+    state: Arc<RwLock<ToolboxState>>,
 }
 
 impl ToolboxPlugin {
     pub fn new() -> Self {
-        Self { state: RwLock::new(ToolboxState::default()) }
+        Self { state: Arc::new(RwLock::new(ToolboxState::default())) }
     }
 
     fn selected_tool(&self) -> ToolId {
@@ -397,17 +397,131 @@ impl Plugin for ToolboxPlugin {
                 }
             }
             "net_scan:start" => {
-                let ip_range = state.network_scan.ip_range.clone();
-                let ports_str = state.network_scan.ports.clone();
-                let timeout = state.network_scan.timeout;
+                // 正在扫描中则忽略
+                if state.network_scan.loading {
+                    return serde_json::to_value(&*state).unwrap_or_default();
+                }
+
+                // 使用默认值
+                let ip_range = if state.network_scan.ip_range.is_empty() {
+                    let detected = network::detect_local_subnet()
+                        .unwrap_or_else(|| "192.168.1.1-254".to_string());
+                    state.network_scan.ip_range = detected.clone();
+                    detected
+                } else {
+                    state.network_scan.ip_range.clone()
+                };
+                let ports_str = if state.network_scan.ports.is_empty() {
+                    let default_ports = "80,443,22".to_string();
+                    state.network_scan.ports = default_ports.clone();
+                    default_ports
+                } else {
+                    state.network_scan.ports.clone()
+                };
+                let timeout = if state.network_scan.timeout == 0 {
+                    state.network_scan.timeout = 500;
+                    500
+                } else {
+                    state.network_scan.timeout
+                };
+
+                // 验证参数
+                if let Err(e) = network::parse_ip_range(&ip_range) {
+                    state.network_scan.message = Some(format!("IP 范围解析失败: {e}"));
+                    state.network_scan.message_ok = false;
+                    return serde_json::to_value(&*state).unwrap_or_default();
+                }
+                if let Err(e) = network::parse_ports(&ports_str) {
+                    state.network_scan.message = Some(format!("端口解析失败: {e}"));
+                    state.network_scan.message_ok = false;
+                    return serde_json::to_value(&*state).unwrap_or_default();
+                }
+
+                // 标记 loading
                 state.network_scan.loading = true;
                 state.network_scan.results.clear();
+                state.network_scan.scanned = 0;
+                state.network_scan.total = 0;
+                state.network_scan.message = Some("正在扫描...".to_string());
+                state.network_scan.message_ok = true;
                 drop(state);
-                let results = network::do_network_scan(&ip_range, &ports_str, timeout);
-                let mut state = self.state.write().unwrap();
-                state.network_scan.loading = false;
-                state.network_scan.results = results;
-                return serde_json::to_value(&*state).unwrap_or_default();
+
+                // 后台线程执行扫描，直接写入 self.state 的 network_scan 字段
+                let shared_state = self.state.clone();
+                network::spawn_network_scan(shared_state, ip_range, ports_str, timeout);
+
+                return self.state();
+            }
+            "net_scan:clear" => {
+                state.network_scan.results.clear();
+                state.network_scan.scanned = 0;
+                state.network_scan.total = 0;
+                state.network_scan.select_all = false;
+                state.network_scan.message = Some("已清空扫描结果".to_string());
+                state.network_scan.message_ok = true;
+            }
+            "net_scan:reset" => {
+                let detected = network::detect_local_subnet()
+                    .unwrap_or_else(|| "192.168.1.1-254".to_string());
+                state.network_scan.ip_range = detected;
+                state.network_scan.ports = "80,443,22".to_string();
+                state.network_scan.timeout = 500;
+                state.network_scan.results.clear();
+                state.network_scan.scanned = 0;
+                state.network_scan.total = 0;
+                state.network_scan.select_all = false;
+                state.network_scan.message = Some("已重置为默认设置".to_string());
+                state.network_scan.message_ok = true;
+            }
+            "net_scan:toggle_select_all" => {
+                let new_select = !state.network_scan.select_all;
+                state.network_scan.select_all = new_select;
+                for r in state.network_scan.results.iter_mut() {
+                    r.selected = new_select;
+                }
+                let selected_count = state.network_scan.results.iter().filter(|r| r.selected).count();
+                state.network_scan.message = Some(if new_select {
+                    format!("已全选 {} 项", selected_count)
+                } else {
+                    "已取消全选".to_string()
+                });
+                state.network_scan.message_ok = true;
+            }
+            "net_scan:toggle_select" => {
+                // 来自 table 行点击，action 格式: net_scan:toggle_select:ROW_INDEX
+                // 也支持直接调用（无 index 参数）
+                let idx: Option<usize> = params.get("index").and_then(|v| v.as_u64()).map(|v| v as usize);
+                if let Some(idx) = idx {
+                    if idx < state.network_scan.results.len() {
+                        state.network_scan.results[idx].selected = !state.network_scan.results[idx].selected;
+                        state.network_scan.select_all = state.network_scan.results.iter().all(|r| r.selected);
+                    }
+                }
+            }
+            // table 行点击格式: "net_scan:toggle_select:ROW_INDEX"
+            a if a.starts_with("net_scan:toggle_select:") => {
+                if let Ok(idx) = a.trim_start_matches("net_scan:toggle_select:").parse::<usize>() {
+                    if idx < state.network_scan.results.len() {
+                        state.network_scan.results[idx].selected = !state.network_scan.results[idx].selected;
+                        state.network_scan.select_all = state.network_scan.results.iter().all(|r| r.selected);
+                    }
+                }
+            }
+            "net_scan:open_selected" => {
+                let results = state.network_scan.results.clone();
+                drop(state);
+                match network::open_selected_in_browser(&results) {
+                    Ok(count) => {
+                        self.state.write().unwrap().network_scan.message =
+                            Some(format!("已在浏览器中打开 {} 个地址", count));
+                        self.state.write().unwrap().network_scan.message_ok = true;
+                    }
+                    Err(e) => {
+                        self.state.write().unwrap().network_scan.message = Some(e);
+                        self.state.write().unwrap().network_scan.message_ok = false;
+                    }
+                }
+                return self.state();
             }
 
             _ => {}

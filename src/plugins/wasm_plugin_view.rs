@@ -223,13 +223,15 @@ pub(crate) fn render_node(
     } else if component == "input" {
         render_input(node, state, ctx, handler, node_idx, input_states)
     } else if component == "table" {
-        render_table(node, state, ctx)
+        render_table(node, state, ctx, handler, node_idx)
     } else if component == "card" {
         render_card(node, state, ctx, handler, node_idx, input_states)
     } else if component == "split" {
         render_split(node, state, ctx, handler, node_idx, input_states)
     } else if component == "tree" {
         render_tree(node, state, ctx, handler, node_idx, input_states)
+    } else if component == "select" {
+        render_select(node, state, ctx, handler, node_idx)
     } else if component == "form"
         || component == "container"
         || component == "flex"
@@ -622,9 +624,10 @@ fn render_input(
         .into_any_element()
 }
 
-fn render_table(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -> gpui::AnyElement {
+fn render_table(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext, handler: Arc<dyn ActionHandler>, node_idx: usize) -> gpui::AnyElement {
     let bind = node.bind.clone().unwrap_or_default();
     let columns = ui_schema::prop_array(&node.props, "columns");
+    let on_row_click = node.on_action.clone();
 
     let mut table = div()
         .flex()
@@ -662,31 +665,50 @@ fn render_table(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -
     // 数据行
     if !bind.is_empty() {
         if let Some(rows) = state_get(state, &bind).and_then(|v| v.as_array()) {
-            for row in rows {
+            for (row_idx, row) in rows.iter().enumerate() {
                 let mut row_div = div()
                     .flex()
                     .flex_row()
                     .border_b_1()
-                    .border_color(ctx.border.opacity(0.5));
+                    .border_color(ctx.border.opacity(0.5))
+                    .cursor_pointer()
+                    .hover(|style| style.bg(ctx.muted.opacity(0.1)));
 
-                if let Some(cols) = columns {
-                    for col in cols {
+                // 检查是否有 selected 字段
+                let is_selected = row.get("selected").and_then(|v| v.as_bool()).unwrap_or(false);
+
+                if let Some(cols) = &columns {
+                    for col in cols.iter() {
                         let col_key = col.as_str().unwrap_or("");
-                        let cell_val = row.get(col_key)
-                            .map(|v| match v {
-                                serde_json::Value::String(s) => s.clone(),
-                                serde_json::Value::Number(n) => n.to_string(),
-                                serde_json::Value::Bool(b) => b.to_string(),
-                                _ => v.to_string(),
-                            })
-                            .unwrap_or_default();
+
+                        // 选中列特殊处理：显示 ✓/✗
+                        let cell_val = if col_key == "选中" || col_key == "selected" {
+                            if is_selected { "✓".to_string() } else { "✗".to_string() }
+                        } else {
+                            row.get(col_key)
+                                .map(|v| match v {
+                                    serde_json::Value::String(s) => s.clone(),
+                                    serde_json::Value::Number(n) => n.to_string(),
+                                    serde_json::Value::Bool(b) => b.to_string(),
+                                    _ => v.to_string(),
+                                })
+                                .unwrap_or_default()
+                        };
+
+                        // 状态列颜色高亮
+                        let text_color = if col_key == "状态" && cell_val == "开放" {
+                            gpui::rgb(0x22C55E).into() // green-500
+                        } else {
+                            ctx.fg
+                        };
+
                         row_div = row_div.child(
                             div()
                                 .flex_1()
                                 .px(px(12.))
                                 .py(px(6.))
                                 .text_size(px(12.))
-                                .text_color(ctx.fg)
+                                .text_color(text_color)
                                 .child(cell_val),
                         );
                     }
@@ -703,7 +725,26 @@ fn render_table(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -
                     );
                 }
 
-                table = table.child(row_div);
+                // 选中行背景高亮
+                if is_selected {
+                    row_div = row_div.bg(ctx.primary.opacity(0.08));
+                }
+
+                // 行点击：如果有 on_action，发送 toggle_select
+                let row_id = SharedString::from(format!("table-row-{}-{}", node_idx, row_idx));
+
+                if let Some(ref action_prefix) = on_row_click {
+                    let action_prefix = action_prefix.clone();
+                    let click_handler = handler.clone();
+                    table = table.child(
+                        row_div.id(row_id).on_click(move |_ev, _window, cx| {
+                            let action = format!("{}:{}", action_prefix, row_idx);
+                            click_handler.handle(action, cx);
+                        })
+                    );
+                } else {
+                    table = table.child(row_div);
+                }
             }
         }
     }
@@ -783,6 +824,117 @@ fn render_container(
 }
 
 /// 未识别组件 → 占位符
+fn render_select(
+    node: &UiNode,
+    state: &serde_json::Value,
+    ctx: &RenderContext,
+    handler: Arc<dyn ActionHandler>,
+    node_idx: usize,
+) -> gpui::AnyElement {
+    let bind = node.bind.as_deref().unwrap_or("");
+    let current_value = ui_schema::state_get_str(state, bind);
+    let placeholder = ui_schema::prop_str_or(&node.props, "placeholder", "请选择");
+    let on_action = node.on_action.clone().unwrap_or_else(|| format!("select_{}", bind.replace('.', "_")));
+
+    let options: Vec<(String, String)> = ui_schema::prop_array(&node.props, "options")
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|opt| {
+                    let label = opt.get("label").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let value = opt.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    if label.is_empty() && value.is_empty() {
+                        None
+                    } else {
+                        Some((label, value))
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // 找到当前选中项的 label
+    let selected_label = options
+        .iter()
+        .find(|(_, v)| v == &current_value)
+        .map(|(l, _)| l.clone())
+        .unwrap_or_else(|| placeholder.to_string());
+
+    // 选项按钮组（始终显示，类似 radio 按钮组）
+    let options_container = div()
+        .flex()
+        .flex_row()
+        .flex_wrap()
+        .gap(px(4.))
+        .mt(px(4.))
+        .children(
+            options.iter().enumerate().map(|(i, (label, value))| {
+                let is_selected = value == &current_value;
+                let btn_handler = handler.clone();
+                let action_str = format!("{}:{}", on_action, value);
+                let btn_id = SharedString::from(format!("select-opt-{}-{}", node_idx, i));
+                let fg = ctx.fg;
+                let primary = ctx.primary;
+                let border = ctx.border;
+                let muted = ctx.muted;
+                let action_str = action_str.clone();
+                div()
+                    .id(btn_id)
+                    .px(px(10.))
+                    .py(px(4.))
+                    .rounded(px(4.))
+                    .cursor_pointer()
+                    .text_sm()
+                    .bg(if is_selected { primary.opacity(0.15) } else { muted })
+                    .border_1()
+                    .border_color(if is_selected { primary } else { border })
+                    .text_color(if is_selected { primary } else { fg })
+                    .on_click(move |_ev, _window, cx| {
+                        btn_handler.handle(action_str.clone(), cx);
+                    })
+                    .child(label.clone())
+                    .into_any_element()
+            })
+        );
+
+    // 标题 + 当前选中值 + 选项列表
+    let trigger_id = SharedString::from(format!("select-trigger-{}", node_idx));
+    div()
+        .flex()
+        .flex_col()
+        .w_full()
+        .child(
+            div()
+                .id(trigger_id)
+                .flex()
+                .flex_row()
+                .items_center()
+                .justify_between()
+                .w_full()
+                .h(px(28.))
+                .px(px(8.))
+                .rounded(px(4.))
+                .border_1()
+                .border_color(ctx.border)
+                .bg(ctx.card)
+                .cursor_pointer()
+                .hover(|s| s.border_color(ctx.primary))
+                .child(
+                    div()
+                        .text_sm()
+                        .text_color(if current_value.is_empty() { ctx.muted_fg } else { ctx.fg })
+                        .child(selected_label)
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(ctx.muted_fg)
+                        .child("▾")
+                )
+        )
+        .child(options_container)
+        .into_any_element()
+}
+
 fn render_unsupported(component: &str, ctx: &RenderContext) -> gpui::AnyElement {
     div()
         .flex()
