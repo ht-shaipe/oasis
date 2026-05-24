@@ -168,6 +168,29 @@ impl UiNode {
         }
     }
 
+    /// 创建表格节点（带字段映射）
+    /// `columns`: 每项为 (显示列名, JSON字段名)，如 ("名称", "name")
+    /// 字段名为空字符串表示该列不取数据（用于操作列等）
+    pub fn table_mapped(
+        bind: impl Into<String>,
+        columns: impl IntoIterator<Item = (impl Into<String>, impl Into<String>)>,
+    ) -> Self {
+        let cols: Vec<serde_json::Value> = columns
+            .into_iter()
+            .map(|(label, field)| {
+                serde_json::json!({"label": label.into(), "field": field.into()})
+            })
+            .collect();
+        Self {
+            component: "table".into(),
+            props: serde_json::json!({ "columns": cols }),
+            children: Vec::new(),
+            bind: Some(bind.into()),
+            on_action: None,
+            id: None,
+        }
+    }
+
     /// 创建分栏容器（左右/上下分割）
     /// `direction`: "row"（左右）或 "col"（上下）
     /// `sizes`: 各栏宽度比例，如 &[300, 700] 或 &[1, 2]

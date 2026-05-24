@@ -1,4 +1,5 @@
 pub mod dyn_plugin_view;
+pub(crate) mod plugin_render;
 pub mod plugin_window;
 pub mod wasm_example;
 pub mod wasm_host;
@@ -79,6 +80,7 @@ struct PluginManifestFile {
 pub struct RegisteredPlugin {
     pub manifest: PluginManifest,
     pub icon_svg: String,
+    pub icon_svg_path: Option<String>,
     pub icon_emoji: Option<String>,
     /// 静态（inventory/手动注册）插件的视图工厂
     pub create_view: Option<fn(&mut Window, &mut App) -> AnyView>,
@@ -117,6 +119,7 @@ impl PluginRegistry {
                         plugins.push(RegisteredPlugin {
                             manifest,
                             icon_svg: entry.icon_svg.to_string(),
+                            icon_svg_path: None,
                             icon_emoji: None,
                             create_view: Some(entry.create_view),
                             dyn_plugin: None,
@@ -160,6 +163,7 @@ impl PluginRegistry {
                     window_height: 700.0,
                 },
                 icon_svg: String::new(),
+                icon_svg_path: None,
                 icon_emoji: Some("📝".to_string()),
                 create_view: Some(md_editor_plugin::create_aster_view),
                 dyn_plugin: None,
@@ -187,6 +191,7 @@ impl PluginRegistry {
                     window_height: 700.0,
                 },
                 icon_svg: String::new(),
+                icon_svg_path: None,
                 icon_emoji: Some("🧰".to_string()),
                 create_view: None,
                 dyn_plugin: None,
@@ -378,6 +383,7 @@ impl PluginRegistry {
         let plugin = RegisteredPlugin {
             manifest,
             icon_svg: String::new(),
+            icon_svg_path: None,
             icon_emoji: Some(icon_emoji),
             create_view: Some(create_view),
             dyn_plugin: None,
@@ -412,6 +418,7 @@ impl PluginRegistry {
         self.plugins.push(RegisteredPlugin {
             manifest,
             icon_svg: String::new(),
+            icon_svg_path: None,
             icon_emoji: None,
             create_view: None,
             dyn_plugin: Some((lib, plugin)),
@@ -464,10 +471,15 @@ impl PluginRegistry {
             // 读取 icon.svg（可选）
             let icon_svg_path = dir_path.join("icon.svg");
             let icon_svg = if icon_svg_path.exists() {
-                std::fs::read_to_string(&icon_svg_path).unwrap_or_default()
-            } else {
-                String::new()
-            };
+                    std::fs::read_to_string(&icon_svg_path).unwrap_or_default()
+                } else {
+                    String::new()
+                };
+                let icon_svg_path_str = if icon_svg_path.exists() {
+                    Some(icon_svg_path.to_string_lossy().to_string())
+                } else {
+                    None
+                };
 
             // 优先检测子进程可执行文件
             let exec_path = Self::find_executable(&dir_path, &plugin_id);
@@ -483,6 +495,7 @@ impl PluginRegistry {
                 plugins.push(RegisteredPlugin {
                     manifest,
                     icon_svg,
+                    icon_svg_path: icon_svg_path_str.clone(),
                     icon_emoji: None,
                     create_view: None,
                     dyn_plugin: None,
@@ -536,6 +549,7 @@ impl PluginRegistry {
                 plugins.push(RegisteredPlugin {
                     manifest,
                     icon_svg,
+                    icon_svg_path: icon_svg_path_str,
                     icon_emoji: Some(meta.icon.clone()),
                     create_view: None,
                     dyn_plugin: Some((lib, plugin)),

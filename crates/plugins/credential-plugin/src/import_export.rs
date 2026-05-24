@@ -93,9 +93,13 @@ impl ImportExportService {
                     .as_str()
                     .ok_or_else(|| anyhow::anyhow!("Missing platform"))?
                     .to_string(),
+                credential_type: cred_json["credential_type"]
+                    .as_str()
+                    .unwrap_or("api_key")
+                    .to_string(),
                 category: cred_json["category"]
                     .as_str()
-                    .ok_or_else(|| anyhow::anyhow!("Missing category"))?
+                    .unwrap_or_default()
                     .to_string(),
                 username: cred_json["username"]
                     .as_str()
@@ -140,8 +144,8 @@ impl ImportExportService {
             }
 
             let fields = Self::parse_csv_line(line)?;
-            if fields.len() < 13 {
-                anyhow::bail!("Invalid CSV format: expected at least 13 fields");
+            if fields.len() < 14 {
+                anyhow::bail!("Invalid CSV format: expected at least 14 fields");
             }
 
             let cred = Credential {
@@ -149,6 +153,7 @@ impl ImportExportService {
                 name: fields[1].clone(),
                 platform: fields[2].clone(),
                 category: fields[3].clone(),
+                credential_type: fields[12].clone(),
                 username: fields[4].clone(),
                 password_encrypted: fields[5].clone(),
                 extra_fields: fields[6].clone(),

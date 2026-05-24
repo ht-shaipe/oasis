@@ -1,6 +1,7 @@
 use gpui::{
-    div, px, App, ClickEvent, Context, InteractiveElement as _, IntoElement, ParentElement,
-    Render, SharedString, StatefulInteractiveElement as _, Styled, Window,
+    div, img, px, App, ClickEvent, Context, InteractiveElement as _, IntoElement, ObjectFit,
+    ParentElement, Render, SharedString, StatefulInteractiveElement as _, Styled, StyledImage,
+    Window,
 };
 use gpui::prelude::FluentBuilder;
 use gpui_component::ActiveTheme as _;
@@ -119,6 +120,8 @@ impl Render for FloatingDock {
                             let plugin_id = plugin.manifest.id.clone();
                             let display_name = plugin.manifest.display_name.clone();
 
+                            // SVG 图标路径（如有则优先渲染 SVG），否则回退 emoji/首字母
+                            let icon_svg_path = plugin.icon_svg_path.clone();
                             // 使用 emoji 如果可用，否则使用首字母
                             let display_icon = if let Some(emoji) = plugin.icon_emoji.as_ref() {
                                 emoji.clone()
@@ -176,11 +179,19 @@ impl Render for FloatingDock {
                                                 .bg(icon_bg_copy)
                                                 .when(is_hovered, |el| el.shadow_xl())
                                                 .child(
-                                                    div()
-                                                        .text_size(if is_hovered { px(52.) } else { px(40.) })
-                                                        .text_color(icon_fg_copy)
-                                                        .font_weight(gpui::FontWeight::SEMIBOLD)
-                                                        .child(display_icon),
+                                                    if let Some(ref svg_path) = icon_svg_path {
+                                                        img(std::path::PathBuf::from(svg_path))
+                                                            .object_fit(ObjectFit::Contain)
+                                                            .size(if is_hovered { px(52.) } else { px(40.) })
+                                                            .into_any_element()
+                                                    } else {
+                                                        div()
+                                                            .text_size(if is_hovered { px(52.) } else { px(40.) })
+                                                            .text_color(icon_fg_copy)
+                                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                            .child(display_icon)
+                                                            .into_any_element()
+                                                    },
                                                 ),
                                         ),
                                 )

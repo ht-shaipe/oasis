@@ -77,6 +77,7 @@ impl CredentialService {
                 updated_at: row.get(10)?,
                 expires_at: row.get(11)?,
                 tags: row.get(12)?,
+                credential_type: "api_key".to_string(),
             })
         })?;
 
@@ -146,6 +147,7 @@ impl CredentialService {
                 updated_at: row.get(10)?,
                 expires_at: row.get(11)?,
                 tags: row.get(12)?,
+                credential_type: "api_key".to_string(),
             })
         })?;
 
@@ -192,6 +194,7 @@ impl CredentialService {
                     updated_at: row.get(10)?,
                     expires_at: row.get(11)?,
                     tags: row.get(12)?,
+                    credential_type: "api_key".to_string(),
                 })
             },
         )?;
@@ -227,6 +230,7 @@ impl CredentialService {
                 updated_at: row.get(10)?,
                 expires_at: row.get(11)?,
                 tags: row.get(12)?,
+                credential_type: "api_key".to_string(),
             })
         })?;
 
@@ -261,6 +265,7 @@ impl CredentialService {
                 updated_at: row.get(10)?,
                 expires_at: row.get(11)?,
                 tags: row.get(12)?,
+                credential_type: "api_key".to_string(),
             })
         })?;
 
@@ -299,6 +304,7 @@ impl CredentialService {
                     updated_at: row.get(10)?,
                     expires_at: row.get(11)?,
                     tags: row.get(12)?,
+                    credential_type: "api_key".to_string(),
                 })
             })?;
 

@@ -42,6 +42,7 @@ pub struct CredentialEditState {
     pub credential: CredentialItem,
     pub is_new: bool,
     pub is_active_display: String,
+    pub type_display: String,
     pub validation_errors: Vec<String>,
     pub saving: bool,
 }
@@ -128,6 +129,18 @@ impl CredentialType {
         }
     }
 
+    pub fn from_label(label: &str) -> Self {
+        match label {
+            "接口密钥" => Self::ApiKey,
+            "网站用户" => Self::WebsiteUser,
+            "SSH 密钥" => Self::SshKey,
+            "数据库" => Self::Database,
+            "证书" => Self::Certificate,
+            "令牌" => Self::Token,
+            _ => Self::ApiKey,
+        }
+    }
+
     pub fn all() -> Vec<(&'static str, &'static str)> {
         vec![
             ("接口密钥", "api_key"),
@@ -203,6 +216,19 @@ impl Default for CredentialItem {
     }
 }
 
+impl Default for CredentialEditState {
+    fn default() -> Self {
+        Self {
+            credential: CredentialItem::default(),
+            is_new: true,
+            is_active_display: "已启用".to_string(),
+            type_display: CredentialType::default().label().to_string(),
+            validation_errors: Vec::new(),
+            saving: false,
+        }
+    }
+}
+
 /// 审计日志项
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AuditLogItem {
@@ -251,6 +277,7 @@ impl Default for CredentialPluginState {
                 credential: CredentialItem::default(),
                 is_new: true,
                 is_active_display: "启用".to_string(),
+                type_display: CredentialType::default().label().to_string(),
                 validation_errors: vec![],
                 saving: false,
             },

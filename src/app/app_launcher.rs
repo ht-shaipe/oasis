@@ -1,6 +1,6 @@
 use gpui::{
-    div, px, App, ClickEvent, InteractiveElement as _, IntoElement, KeyDownEvent,
-    ParentElement, SharedString, StatefulInteractiveElement as _, Styled,
+    div, img, px, App, ClickEvent, InteractiveElement as _, IntoElement, KeyDownEvent,
+    ObjectFit, ParentElement, SharedString, StatefulInteractiveElement as _, Styled, StyledImage,
 };
 use gpui_component::ActiveTheme as _;
 use rust_i18n::t;
@@ -112,6 +112,7 @@ pub fn render_launcher(cx: &mut App) -> impl IntoElement {
                             plugins.iter().map(|plugin| {
                                 let plugin_id = plugin.manifest.id.clone();
                                 let display_name = plugin.manifest.display_name.clone();
+                                let icon_svg_path = plugin.icon_svg_path.clone();
                                 let display_icon = if let Some(emoji) = plugin.icon_emoji.as_ref() {
                                     emoji.clone()
                                 } else {
@@ -150,10 +151,18 @@ pub fn render_launcher(cx: &mut App) -> impl IntoElement {
                                             .rounded_xl()
                                             .bg(icon_bg_c)
                                             .child(
+                                            if let Some(ref svg_path) = icon_svg_path {
+                                                img(std::path::PathBuf::from(svg_path))
+                                                    .object_fit(ObjectFit::Contain)
+                                                    .size(px(48.))
+                                                    .into_any_element()
+                                            } else {
                                                 div()
                                                     .text_size(px(32.))
-                                                    .child(display_icon),
-                                            ),
+                                                    .child(display_icon)
+                                                    .into_any_element()
+                                            },
+                                        ),
                                     )
                                     .child(
                                         // 名称

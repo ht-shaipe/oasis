@@ -1,6 +1,6 @@
 //! 凭证管理插件 - UI 界面定义（声明式 UiSchema）
 
-use crate::state::{CredentialPluginState, CredentialType, ToolId};
+use crate::state::{CredentialType, ToolId};
 use plugin_sdk::UiNode;
 
 // ---------------------------------------------------------------------------
@@ -44,19 +44,19 @@ pub fn schema_credential_list() -> plugin_sdk::UiSchema {
         .child(UiNode::input("search_query", "搜索凭证...").prop("width", serde_json::json!("100%")))
         .child(UiNode::button("搜索", "search_credentials").prop("variant", serde_json::json!("primary")));
 
-    let platform_buttons = UiNode::new("flex-row")
+    let platform_buttons = UiNode::new("button_group")
         .prop("gap", serde_json::json!(4))
         .prop("margin_top", serde_json::json!(8))
-        .child(UiNode::button("全部", "filter_platform_all"))
+        .child(UiNode::button("全部", "filter_platform_all").prop("variant", serde_json::json!("primary")))
         .child(UiNode::button("GitHub", "filter_platform_github"))
         .child(UiNode::button("GitLab", "filter_platform_gitlab"))
         .child(UiNode::button("Docker", "filter_platform_docker"))
         .child(UiNode::button("AWS", "filter_platform_aws"));
 
-    let category_buttons = UiNode::new("flex-row")
+    let category_buttons = UiNode::new("button_group")
         .prop("gap", serde_json::json!(4))
         .prop("margin_top", serde_json::json!(4))
-        .child(UiNode::button("全部", "filter_category_all"))
+        .child(UiNode::button("全部", "filter_category_all").prop("variant", serde_json::json!("primary")))
         .child(UiNode::button("开发", "filter_category_development"))
         .child(UiNode::button("生产", "filter_category_production"))
         .child(UiNode::button("测试", "filter_category_testing"))
@@ -76,7 +76,15 @@ pub fn schema_credential_list() -> plugin_sdk::UiSchema {
                     .prop("variant", serde_json::json!("primary")))
         );
 
-    let table = UiNode::table("credentials", vec!["名称", "平台", "用户名", "分类", "状态", "更新时间", "操作"])
+    let table = UiNode::table_mapped("credentials", vec![
+        ("名称", "name"),
+        ("平台", "platform"),
+        ("用户名", "username"),
+        ("分类", "category"),
+        ("状态", "is_active"),
+        ("更新时间", "updated_at"),
+        ("操作", ""),
+    ])
         .prop("row_actions", serde_json::json!([
             {"label": "查看", "action": "view_credential"},
             {"label": "编辑", "action": "edit_credential"},
@@ -121,7 +129,12 @@ pub fn schema_credential_detail() -> plugin_sdk::UiSchema {
     let audit_logs = UiNode::new("card")
         .prop("title", serde_json::json!("审计日志"))
         .prop("margin_top", serde_json::json!(16))
-        .child(UiNode::table("audit_logs", vec!["时间", "操作", "IP地址", "结果"]));
+        .child(UiNode::table_mapped("audit_logs", vec![
+            ("时间", "timestamp"),
+            ("操作", "action"),
+            ("IP地址", "ip_address"),
+            ("结果", "result"),
+        ]));
 
     plugin_sdk::UiSchema {
         layout: "flex-col".into(),
@@ -138,20 +151,44 @@ pub fn schema_credential_detail() -> plugin_sdk::UiSchema {
 pub fn schema_credential_edit(is_new: bool, cred_type: &CredentialType) -> plugin_sdk::UiSchema {
     let title = if is_new { "新建凭证" } else { "编辑凭证" };
 
-    // 通用字段：名称 + 类型
+    // 通用字段：名称
+    let name_field = UiNode::input("credential_edit.credential.name", "名称")
+        .prop("required", serde_json::json!(true))
+        .prop("width", serde_json::json!("100%"));
+
+    // 类型选择按钮组
+    let type_buttons: Vec<UiNode> = CredentialType::all()
+        .iter()
+        .map(|(label, _value)| {
+            let is_active = cred_type.label() == *label;
+            let variant = if is_active {
+                serde_json::json!("primary")
+            } else {
+                serde_json::json!("outline")
+            };
+            UiNode::button(*label, &format!("change_type_to_{}", *label))
+                .prop("variant", variant)
+        })
+        .collect();
+
+    let type_button_group = UiNode::new("button_group")
+        .prop("gap", serde_json::json!(6))
+        .prop("margin_top", serde_json::json!(8))
+        .children(type_buttons);
+
+    // 说明文字（显示当前类型）
+    let type_hint = UiNode::new("flex-row")
+        .prop("gap", serde_json::json!(8))
+        .prop("align_items", serde_json::json!("center"))
+        .child(UiNode::label("当前类型："))
+        .child(UiNode::display("credential_edit.type_display"));
+
     let common_fields = UiNode::new("card")
         .prop("title", serde_json::json!(title))
         .prop("gap", serde_json::json!(12))
-        .child(
-            UiNode::new("flex-row")
-                .prop("gap", serde_json::json!(8))
-                .child(UiNode::input("credential_edit.credential.name", "名称").prop("required", serde_json::json!(true)).prop("width", serde_json::json!("50%")))
-                .child(UiNode::select(
-                    "credential_edit.credential.credential_type",
-                    &CredentialType::all(),
-                ).prop("placeholder", serde_json::json!("选择类型")).prop("width", serde_json::json!("50%"))
-                    .on_action("change_credential_type"))
-        );
+        .child(name_field)
+        .child(type_button_group)
+        .child(type_hint);
 
     // 根据类型生成不同的字段
     let type_specific_fields = match cred_type {
@@ -228,26 +265,28 @@ pub fn schema_credential_edit(is_new: bool, cred_type: &CredentialType) -> plugi
             .child(UiNode::input("credential_edit.credential.notes", "备注")),
     };
 
-    // 启用状态 + 操作按钮
-    let bottom = UiNode::new("flex-row")
+    // 启用状态
+    let status_row = UiNode::new("flex-row")
         .prop("gap", serde_json::json!(8))
         .prop("align_items", serde_json::json!("center"))
-        .prop("justify_content", serde_json::json!("space-between"))
         .prop("margin_top", serde_json::json!(16))
+        .child(UiNode::label("启用状态"))
         .child(
-            UiNode::new("flex-row")
-                .prop("gap", serde_json::json!(8))
-                .prop("align_items", serde_json::json!("center"))
-                .child(UiNode::label("启用状态："))
-                .child(UiNode::display("credential_edit.is_active_display").prop("style", serde_json::json!("text")))
-                .child(UiNode::button("切换", "toggle_active_status"))
-        )
-        .child(
-            UiNode::new("flex-row")
-                .prop("gap", serde_json::json!(8))
-                .child(UiNode::button("取消", "cancel_edit"))
-                .child(UiNode::button("保存", "save_credential").prop("variant", serde_json::json!("primary")))
+            UiNode::new("switch")
+                .bind("credential_edit.is_active")
+                .on_action("toggle_active_status")
         );
+
+    // 操作按钮
+    let action_buttons = UiNode::new("flex-row")
+        .prop("gap", serde_json::json!(8))
+        .prop("justify_content", serde_json::json!("flex_end"))
+        .prop("margin_top", serde_json::json!(12))
+        .child(UiNode::button("取消", "cancel_edit"))
+        .child(UiNode::button("保存", "save_credential").prop("variant", serde_json::json!("primary")));
+
+    let bottom = UiNode::new("flex-col")
+        .children(vec![status_row, action_buttons]);
 
     plugin_sdk::UiSchema {
         layout: "flex-col".into(),
@@ -315,9 +354,9 @@ pub fn schema_audit_logs() -> plugin_sdk::UiSchema {
         .prop("gap", serde_json::json!(8))
         .child(UiNode::label("操作类型筛选"))
         .child(
-            UiNode::new("flex-row")
+            UiNode::new("button_group")
                 .prop("gap", serde_json::json!(4))
-                .child(UiNode::button("全部", "filter_logs_all"))
+                .child(UiNode::button("全部", "filter_logs_all").prop("variant", serde_json::json!("primary")))
                 .child(UiNode::button("创建", "filter_logs_create"))
                 .child(UiNode::button("读取", "filter_logs_read"))
                 .child(UiNode::button("更新", "filter_logs_update"))
@@ -329,7 +368,13 @@ pub fn schema_audit_logs() -> plugin_sdk::UiSchema {
                 .child(UiNode::button("清除过期日志", "clear_old_logs"))
         );
 
-    let table = UiNode::table("logs", vec!["时间", "凭证", "操作", "IP地址", "结果"]);
+    let table = UiNode::table_mapped("logs", vec![
+        ("时间", "timestamp"),
+        ("凭证", "credential_name"),
+        ("操作", "action"),
+        ("IP地址", "ip_address"),
+        ("结果", "result"),
+    ]);
 
     plugin_sdk::UiSchema {
         layout: "flex-col".into(),

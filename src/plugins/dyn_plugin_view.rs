@@ -16,7 +16,7 @@ use gpui_component::ActiveTheme as _;
 use gpui_component::input::{Input, InputEvent, InputState};
 use plugin_sdk::Plugin;
 
-use super::wasm_plugin_view::{render_header, render_node, ActionHandler, RenderContext};
+use super::plugin_render::{render_header, render_node, ActionHandler, RenderContext};
 
 // ---------------------------------------------------------------------------
 // TestPluginView — 测试视图（跳过 cdylib Plugin）

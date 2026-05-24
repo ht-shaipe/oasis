@@ -2,8 +2,8 @@
 
 use crate::init::CredentialManagerInit;
 use crate::service::CredentialService;
-use crate::state::{CredentialPluginState, ToolId};
-use crate::ui::{build_sidebar, schema_credential_list};
+use crate::state::{CredentialPluginState, CredentialType, ToolId};
+use crate::ui::{build_sidebar, schema_audit_logs, schema_credential_detail, schema_credential_edit, schema_credential_list, schema_import_export, schema_settings};
 use plugin_sdk::{Plugin, PluginMeta, UiNode, UiSchema};
 use std::sync::{Arc, Mutex};
 
@@ -51,6 +51,8 @@ impl CredentialPlugin {
                 expires_at: cred.expires_at,
                 tags: cred.tags,
                 extra_fields: cred.extra_fields,
+                credential_type: CredentialType::from_value(&cred.credential_type),
+                ..Default::default()
             })
             .collect();
 
@@ -86,6 +88,8 @@ impl CredentialPlugin {
                 expires_at: cred.expires_at,
                 tags: cred.tags,
                 extra_fields: cred.extra_fields,
+                credential_type: CredentialType::from_value(&cred.credential_type),
+                ..Default::default()
             })
             .collect();
 
@@ -121,12 +125,43 @@ impl Plugin for CredentialPlugin {
         log::debug!("Credential plugin action: {} params: {:?}", action, params);
 
         match action {
+            // ---- 侧边栏导航 ----
             "select_credential_list" => {
-                let _ = self.state.lock().map(|mut s| {
-                    s.selected_tool = ToolId::CredentialList;
-                });
+                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialList);
                 self.load_credential_list();
             }
+            "select_credential_create" => {
+                let _ = self.state.lock().map(|mut s| {
+                    s.selected_tool = ToolId::CredentialCreate;
+                    s.credential_edit.is_new = true;
+                    s.credential_edit.credential = Default::default();
+                    s.credential_edit.type_display = CredentialType::default().label().to_string();
+                });
+            }
+            "select_credential_edit" => {
+                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialEdit);
+            }
+            "select_import_export" => {
+                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::ImportExport);
+            }
+            "select_audit_logs" => {
+                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::AuditLogs);
+            }
+            "select_settings" => {
+                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::Settings);
+            }
+
+            // ---- 凭证类型切换 ----
+            a if a.starts_with("change_type_to_") => {
+                let type_label = a.strip_prefix("change_type_to_").unwrap_or("");
+                let new_type = CredentialType::from_label(type_label);
+                let _ = self.state.lock().map(|mut s| {
+                    s.credential_edit.credential.credential_type = new_type.clone();
+                    s.credential_edit.type_display = new_type.label().to_string();
+                });
+            }
+
+            // ---- 搜索 ----
             "search_credentials" => {
                 let query = self
                     .state
@@ -136,6 +171,8 @@ impl Plugin for CredentialPlugin {
                     .unwrap_or_default();
                 self.search_credentials(&query);
             }
+
+            // ---- 查看/编辑/删除 ----
             "view_credential" => {
                 if let Some(_id) = params.get("id").and_then(|v| v.as_str()) {
                     let _ = self.state.lock().map(|mut s| {
@@ -148,6 +185,7 @@ impl Plugin for CredentialPlugin {
                     let _ = self.state.lock().map(|mut s| {
                         s.selected_tool = ToolId::CredentialEdit;
                         s.credential_edit.is_new = false;
+                        s.credential_edit.type_display = s.credential_edit.credential.credential_type.label().to_string();
                     });
                 }
             }
@@ -161,10 +199,33 @@ impl Plugin for CredentialPlugin {
             }
             "create_credential" => {
                 let _ = self.state.lock().map(|mut s| {
-                    s.selected_tool = ToolId::CredentialEdit;
+                    s.selected_tool = ToolId::CredentialCreate;
                     s.credential_edit.is_new = true;
+                    s.credential_edit.credential = Default::default();
+                    s.credential_edit.type_display = CredentialType::default().label().to_string();
                 });
             }
+
+            // ---- 保存/取消 ----
+            "save_credential" => {
+                // TODO: 将 CredentialItem 转为 Credential 并调用 service.create / update
+                log::info!("save_credential called");
+                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialList);
+                self.load_credential_list();
+            }
+            "cancel_edit" => {
+                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialList);
+            }
+
+            // ---- 启用状态切换 ----
+            "toggle_active_status" => {
+                let _ = self.state.lock().map(|mut s| {
+                    s.credential_edit.credential.is_active = !s.credential_edit.credential.is_active;
+                    s.credential_edit.is_active_display =
+                        if s.credential_edit.credential.is_active { "已启用" } else { "已禁用" }.to_string();
+                });
+            }
+
             _ => {
                 log::warn!("Unknown action: {}", action);
             }
@@ -174,15 +235,24 @@ impl Plugin for CredentialPlugin {
     }
 
     fn ui_schema(&self) -> UiSchema {
-        let current_tool = self.state.lock().map(|s| s.selected_tool.clone()).unwrap_or(ToolId::CredentialList);
+        let (current_tool, cred_type, is_new) = self.state.lock().map(|s| {
+            let ct = s.credential_edit.credential.credential_type.clone();
+            let is_new = s.credential_edit.is_new;
+            (s.selected_tool.clone(), ct, is_new)
+        }).unwrap_or((ToolId::CredentialList, CredentialType::default(), true));
+
         let sidebar = build_sidebar(current_tool.clone());
 
-        let content = match current_tool {
+        let content = match &current_tool {
             ToolId::CredentialList => schema_credential_list(),
-            _ => schema_credential_list(), // 暂时都用列表页
+            ToolId::CredentialCreate => schema_credential_edit(true, &cred_type),
+            ToolId::CredentialEdit => schema_credential_edit(is_new, &cred_type),
+            ToolId::CredentialDetail => schema_credential_detail(),
+            ToolId::ImportExport => schema_import_export(),
+            ToolId::AuditLogs => schema_audit_logs(),
+            ToolId::Settings => schema_settings(),
         };
 
-        // 使用 split 组件创建左右分栏（参考 toolbox-plugin）
         let mut right_container = UiNode::new("flex-col")
             .children(content.children);
         if content.gap > 0 {
