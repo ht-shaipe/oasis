@@ -273,7 +273,7 @@ pub fn schema_credential_edit(is_new: bool, cred_type: &CredentialType) -> plugi
         .child(UiNode::label("启用状态"))
         .child(
             UiNode::new("switch")
-                .bind("credential_edit.is_active")
+                .bind("credential_edit.credential.is_active")
                 .on_action("toggle_active_status")
         );
 

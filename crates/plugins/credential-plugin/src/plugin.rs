@@ -226,6 +226,73 @@ impl Plugin for CredentialPlugin {
                 });
             }
 
+            // ---- 平台筛选 ----
+            a if a.starts_with("filter_platform_") => {
+                let platform = a.strip_prefix("filter_platform_").unwrap_or("");
+                let _ = self.state.lock().map(|mut s| {
+                    s.credential_list.selected_platform = platform.to_string();
+                });
+                self.load_credential_list();
+            }
+
+            // ---- 分类筛选 ----
+            a if a.starts_with("filter_category_") => {
+                let category = a.strip_prefix("filter_category_").unwrap_or("");
+                let _ = self.state.lock().map(|mut s| {
+                    s.credential_list.selected_category = category.to_string();
+                });
+            }
+
+            // ---- 审计日志筛选 ----
+            a if a.starts_with("filter_logs_") => {
+                let filter = a.strip_prefix("filter_logs_").unwrap_or("");
+                let _ = self.state.lock().map(|mut s| {
+                    s.audit_logs.filter_action = filter.to_string();
+                });
+            }
+
+            // ---- 详情页操作 ----
+            "edit_current_credential" => {
+                let _ = self.state.lock().map(|mut s| {
+                    s.selected_tool = ToolId::CredentialEdit;
+                    s.credential_edit.is_new = false;
+                    s.credential_edit.type_display = s.credential_edit.credential.credential_type.label().to_string();
+                });
+            }
+            "delete_current_credential" => {
+                if let Some(service) = &self.credential_service {
+                    let id = self.state.lock().ok()
+                        .and_then(|s| s.credential_detail.credential.as_ref().map(|c| c.id.clone()))
+                        .unwrap_or_default();
+                    if !id.is_empty() {
+                        let _ = service.delete(&id);
+                    }
+                }
+                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialList);
+                self.load_credential_list();
+            }
+            "toggle_password_visibility" => {
+                let _ = self.state.lock().map(|mut s| {
+                    s.credential_detail.show_password = !s.credential_detail.show_password;
+                });
+            }
+
+            // ---- 导入导出 ----
+            "import_json" | "import_csv" | "export_all_json" | "export_all_csv"
+            | "export_selected_json" | "export_selected_csv" => {
+                log::info!("{} called (TODO: implement)", action);
+            }
+
+            // ---- 审计日志 ----
+            "clear_old_logs" => {
+                log::info!("clear_old_logs called (TODO: implement)");
+            }
+
+            // ---- 设置 ----
+            "change_master_password" => {
+                log::info!("change_master_password called (TODO: implement)");
+            }
+
             _ => {
                 log::warn!("Unknown action: {}", action);
             }

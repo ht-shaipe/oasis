@@ -427,14 +427,22 @@ fn render_switch(
 
     let track_color = if is_checked { ctx.primary } else { ctx.muted };
 
+    // 外层容器包裹 track 和 thumb，click handler 在外层以避免 thumb 拦截事件
     let switch_el = div()
         .id(switch_id.clone())
         .cursor_pointer()
         .relative()
         .w(px(track_width))
         .h(px(track_height))
-        .rounded_lg()
-        .bg(track_color)
+        // track 背景
+        .child(
+            div()
+                .absolute()
+                .inset_0()
+                .rounded_lg()
+                .bg(track_color)
+        )
+        // thumb
         .child(
             div()
                 .absolute()
@@ -471,16 +479,16 @@ fn render_button_group(
     node_idx: usize,
 ) -> gpui::AnyElement {
     let justify_content = ui_schema::prop_str_or(&node.props, "justify_content", "flex_start");
+    let gap_val = ui_schema::prop_i64(&node.props, "gap").unwrap_or(0) as f32;
 
-    // 按钮组特性：无间隙，共享边框，特殊圆角处理
     let children_count = node.children.len();
 
     let mut container = div()
         .flex()
         .flex_row()
-        .items_center();
+        .items_center()
+        .gap(px(gap_val)); // 默认 0 实现分段效果，可通过 gap prop 覆盖
 
-    // 设置主轴对齐
     if justify_content == "start" || justify_content == "flex_start" {
         container = container.justify_start();
     } else if justify_content == "end" || justify_content == "flex_end" {
@@ -493,10 +501,9 @@ fn render_button_group(
         container = container.justify_around();
     }
 
-    // 渲染所有子节点，为按钮组添加特殊样式
     for (i, child) in node.children.iter().enumerate() {
         if child.component == "button" {
-            let btn_element = render_button_in_group(child, ctx, handler.clone(), node_idx * 100 + i, i, children_count);
+            let btn_element = render_button_in_group(child, ctx, handler.clone(), node_idx * 100 + i, i, children_count, gap_val > 0.0);
             container = container.child(btn_element);
         } else {
             container = container.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i, None));
@@ -514,6 +521,7 @@ fn render_button_in_group(
     node_idx: usize,
     position: usize,
     total_count: usize,
+    has_gap: bool,
 ) -> gpui::AnyElement {
     let label = ui_schema::prop_str_or(&node.props, "label", "Button").to_string();
     let action = node.on_action.clone().unwrap_or_default();
@@ -541,15 +549,7 @@ fn render_button_in_group(
     let is_first = position == 0;
     let is_last = position == total_count - 1;
 
-    // 圆角处理：首尾有圆角，中间无圆角
-    let border_radius = if is_first {
-        px(6.) // 左圆角
-    } else if is_last {
-        px(6.) // 右圆角
-    } else {
-        px(0.) // 中间无圆角
-    };
-
+    // 分段按钮组圆角：首按钮左圆角，尾按钮右圆角，中间无圆角
     let mut btn = div()
         .id(btn_id)
         .flex()
@@ -559,8 +559,16 @@ fn render_button_in_group(
         .py(px(6.))
         .cursor_pointer()
         .text_size(px(13.))
-        .text_color(text_color)
-        .rounded(border_radius);
+        .text_color(text_color);
+
+    // 有间距 → 工具栏样式（全部圆角）；零间距 → 分段样式（首左尾右，中间零圆角）
+    if has_gap {
+        btn = btn.rounded(px(6.));
+    } else if is_first {
+        btn = btn.rounded_l(px(6.));
+    } else if is_last {
+        btn = btn.rounded_r(px(6.));
+    }
 
     // 设置背景色（如果有）
     if let Some(bg_color) = bg {
@@ -570,11 +578,10 @@ fn render_button_in_group(
     // 设置边框
     if let Some(border_color) = border {
         if is_outline || (!is_primary && !is_danger) {
-            // outline 或 default 样式：完整边框
             btn = btn.border_1().border_color(border_color);
         }
-    } else {
-        // primary/danger 样式：右边框分隔（除了最后一个）
+    } else if !has_gap {
+        // 分段样式：primary/danger 右边框分隔（除了最后一个）
         if !is_last {
             btn = btn.border_r_1().border_color(ctx.border.opacity(0.3));
         }
