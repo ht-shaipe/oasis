@@ -5,12 +5,13 @@ use crate::models::{Credential, MasterKeyConfig};
 use anyhow::Result;
 use rusqlite::{params, OptionalExtension};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 /// 凭证服务
+#[derive(Clone)]
 pub struct CredentialService {
     db_path: PathBuf,
-    conn: Mutex<rusqlite::Connection>,
+    conn: Arc<Mutex<rusqlite::Connection>>,
 }
 
 impl CredentialService {
@@ -19,7 +20,7 @@ impl CredentialService {
         let conn = ensure_db_exists(&db_path)?;
         Ok(Self {
             db_path,
-            conn: Mutex::new(conn),
+            conn: Arc::new(Mutex::new(conn)),
         })
     }
 

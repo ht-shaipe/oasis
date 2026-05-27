@@ -14,19 +14,20 @@ use gpui_component::input::{Input, InputState};
 use plugin_sdk::UiNode;
 use ui_schema::{state_get, state_get_i64, state_get_str, state_interpolate};
 
-use gpui_component::checkbox::Checkbox;
-use gpui_component::radio::Radio;
-use gpui_component::tag::Tag;
-use gpui_component::badge::Badge;
-use gpui_component::spinner::Spinner;
-use gpui_component::skeleton::Skeleton;
-use gpui_component::alert::{Alert, AlertVariant};
-use gpui_component::link::Link;
-use gpui_component::kbd::Kbd;
 use gpui_component::accordion::Accordion;
+use gpui_component::alert::{Alert, AlertVariant};
+use gpui_component::badge::Badge;
+use gpui_component::button::{Button, ButtonGroup, ButtonVariants as _};
+use gpui_component::checkbox::Checkbox;
 use gpui_component::collapsible::Collapsible;
 use gpui_component::group_box::GroupBox;
-
+use gpui_component::kbd::Kbd;
+use gpui_component::link::Link;
+use gpui_component::radio::Radio;
+use gpui_component::skeleton::Skeleton;
+use gpui_component::spinner::Spinner;
+use gpui_component::switch::Switch;
+use gpui_component::tag::Tag;
 
 pub(crate) trait ActionHandler: 'static + Send + Sync {
     fn handle(&self, action: String, cx: &mut gpui::App);
@@ -70,7 +71,12 @@ impl RenderContext {
 // 标题栏渲染
 // ---------------------------------------------------------------------------
 
-pub(crate) fn render_header(title: &str, icon: &str, badge: &str, ctx: &RenderContext) -> gpui::AnyElement {
+pub(crate) fn render_header(
+    title: &str,
+    icon: &str,
+    badge: &str,
+    ctx: &RenderContext,
+) -> gpui::AnyElement {
     div()
         .flex()
         .items_center()
@@ -197,7 +203,9 @@ fn render_checkbox(
 ) -> gpui::AnyElement {
     let bind = node.bind.as_deref().unwrap_or("");
     let checked = if !bind.is_empty() {
-        state_get(state, bind).and_then(|v| v.as_bool()).unwrap_or(false)
+        state_get(state, bind)
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
     } else {
         false
     };
@@ -205,8 +213,7 @@ fn render_checkbox(
     let action = node.on_action.clone().unwrap_or_default();
     let checkbox_id = SharedString::from(format!("checkbox-{}", node_idx));
 
-    let cb = Checkbox::new(checkbox_id.clone())
-        .checked(checked);
+    let cb = Checkbox::new(checkbox_id.clone()).checked(checked);
 
     let cb = if !label.is_empty() {
         cb.label(label.to_string())
@@ -235,7 +242,9 @@ fn render_radio(
 ) -> gpui::AnyElement {
     let bind = node.bind.as_deref().unwrap_or("");
     let checked = if !bind.is_empty() {
-        state_get(state, bind).and_then(|v| v.as_bool()).unwrap_or(false)
+        state_get(state, bind)
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
     } else {
         false
     };
@@ -243,8 +252,7 @@ fn render_radio(
     let action = node.on_action.clone().unwrap_or_default();
     let radio_id = SharedString::from(format!("radio-{}", node_idx));
 
-    let r = Radio::new(radio_id)
-        .checked(checked);
+    let r = Radio::new(radio_id).checked(checked);
 
     let r = if !label.is_empty() {
         r.label(label.to_string())
@@ -264,16 +272,13 @@ fn render_radio(
 }
 
 /// Tag 标签组件 — 基于 gpui_component::tag::Tag
-fn render_tag(
-    node: &UiNode,
-    state: &serde_json::Value,
-    ctx: &RenderContext,
-) -> gpui::AnyElement {
+fn render_tag(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -> gpui::AnyElement {
     let text = ui_schema::prop_str_or(&node.props, "text", "");
-    let resolved = if !text.is_empty() { 
-        text.to_string() 
+    let resolved = if !text.is_empty() {
+        text.to_string()
     } else {
-        node.bind.as_deref()
+        node.bind
+            .as_deref()
             .and_then(|b| state_get(state, b))
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .unwrap_or_default()
@@ -282,16 +287,13 @@ fn render_tag(
 }
 
 /// Badge 徽标组件
-fn render_badge(
-    node: &UiNode,
-    state: &serde_json::Value,
-    ctx: &RenderContext,
-) -> gpui::AnyElement {
+fn render_badge(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -> gpui::AnyElement {
     let text = ui_schema::prop_str_or(&node.props, "text", "");
-    let resolved = if !text.is_empty() { 
-        text.to_string() 
+    let resolved = if !text.is_empty() {
+        text.to_string()
     } else {
-        node.bind.as_deref()
+        node.bind
+            .as_deref()
             .and_then(|b| state_get(state, b))
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .unwrap_or_default()
@@ -300,18 +302,12 @@ fn render_badge(
 }
 
 /// Spinner 加载指示器 — 基于 gpui_component::spinner::Spinner
-fn render_spinner(
-    node: &UiNode,
-    ctx: &RenderContext,
-) -> gpui::AnyElement {
+fn render_spinner(node: &UiNode, ctx: &RenderContext) -> gpui::AnyElement {
     Spinner::new().into_any_element()
 }
 
 /// Skeleton 骨架屏 — 基于 gpui_component::skeleton::Skeleton
-fn render_skeleton(
-    node: &UiNode,
-    ctx: &RenderContext,
-) -> gpui::AnyElement {
+fn render_skeleton(node: &UiNode, ctx: &RenderContext) -> gpui::AnyElement {
     let secondary = ui_schema::prop_bool(&node.props, "secondary").unwrap_or(false);
     let mut sk = Skeleton::new();
     if secondary {
@@ -357,10 +353,11 @@ fn render_link(
     node_idx: usize,
 ) -> gpui::AnyElement {
     let text = ui_schema::prop_str_or(&node.props, "text", "");
-    let resolved = if !text.is_empty() { 
-        text.to_string() 
+    let resolved = if !text.is_empty() {
+        text.to_string()
     } else {
-        node.bind.as_deref()
+        node.bind
+            .as_deref()
             .and_then(|b| state_get(state, b))
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .unwrap_or_default()
@@ -383,16 +380,13 @@ fn render_link(
 }
 
 /// Kbd 键盘快捷键组件 — 基于 gpui_component::kbd::Kbd
-fn render_kbd(
-    node: &UiNode,
-    state: &serde_json::Value,
-    ctx: &RenderContext,
-) -> gpui::AnyElement {
+fn render_kbd(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -> gpui::AnyElement {
     let key = ui_schema::prop_str_or(&node.props, "key", "");
-    let resolved = if !key.is_empty() { 
-        key.to_string() 
+    let resolved = if !key.is_empty() {
+        key.to_string()
     } else {
-        node.bind.as_deref()
+        node.bind
+            .as_deref()
             .and_then(|b| state_get(state, b))
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .unwrap_or_default()
@@ -401,17 +395,19 @@ fn render_kbd(
     Kbd::new(stroke).into_any_element()
 }
 
-/// Switch 开关组件
+/// Switch 开关组件 — 使用 gpui_component::switch::Switch
 fn render_switch(
     node: &UiNode,
     state: &serde_json::Value,
-    ctx: &RenderContext,
+    _ctx: &RenderContext,
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
 ) -> gpui::AnyElement {
     let bind = node.bind.as_deref().unwrap_or("");
     let is_checked = if !bind.is_empty() {
-        state_get(state, bind).and_then(|v| v.as_bool()).unwrap_or(false)
+        state_get(state, bind)
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
     } else {
         false
     };
@@ -419,202 +415,157 @@ fn render_switch(
     let action = node.on_action.clone().unwrap_or_default();
     let switch_id = SharedString::from(format!("switch-{}", node_idx));
 
-    // 使用 div 自己实现简单的 switch，避免 gpui-component Switch 的内部状态管理问题
-    let track_width = 36.0;
-    let track_height = 20.0;
-    let thumb_size = 16.0;
-    let thumb_offset = if is_checked { track_width - thumb_size - 2.0 } else { 2.0 };
+    let mut switch = Switch::new(switch_id).checked(is_checked);
 
-    let track_color = if is_checked { ctx.primary } else { ctx.muted };
-
-    // 外层容器包裹 track 和 thumb，click handler 在外层以避免 thumb 拦截事件
-    let switch_el = div()
-        .id(switch_id.clone())
-        .cursor_pointer()
-        .relative()
-        .w(px(track_width))
-        .h(px(track_height))
-        // track 背景
-        .child(
-            div()
-                .absolute()
-                .inset_0()
-                .rounded_lg()
-                .bg(track_color)
-        )
-        // thumb
-        .child(
-            div()
-                .absolute()
-                .left(px(thumb_offset))
-                .top(px((track_height - thumb_size) / 2.0))
-                .w(px(thumb_size))
-                .h(px(thumb_size))
-                .rounded_md()
-                .bg(ctx.white)
-                .shadow_lg()
-        );
-
+    // 只在有 action 时添加点击处理
     if !action.is_empty() {
         let handler = handler.clone();
-        switch_el
-            .on_click(move |_ev, _window, cx| {
-                let action = action.clone();
-                if !action.is_empty() {
-                    handler.handle(action, cx);
-                }
-            })
-            .into_any_element()
-    } else {
-        switch_el.into_any_element()
-    }
-}
-
-/// Button Group 按钮组组件
-fn render_button_group(
-    node: &UiNode,
-    state: &serde_json::Value,
-    ctx: &RenderContext,
-    handler: Arc<dyn ActionHandler>,
-    node_idx: usize,
-) -> gpui::AnyElement {
-    let justify_content = ui_schema::prop_str_or(&node.props, "justify_content", "flex_start");
-    let gap_val = ui_schema::prop_i64(&node.props, "gap").unwrap_or(0) as f32;
-
-    let children_count = node.children.len();
-
-    let mut container = div()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(gap_val)); // 默认 0 实现分段效果，可通过 gap prop 覆盖
-
-    if justify_content == "start" || justify_content == "flex_start" {
-        container = container.justify_start();
-    } else if justify_content == "end" || justify_content == "flex_end" {
-        container = container.justify_end();
-    } else if justify_content == "center" {
-        container = container.justify_center();
-    } else if justify_content == "space_between" {
-        container = container.justify_between();
-    } else if justify_content == "space_around" {
-        container = container.justify_around();
-    }
-
-    for (i, child) in node.children.iter().enumerate() {
-        if child.component == "button" {
-            let btn_element = render_button_in_group(child, ctx, handler.clone(), node_idx * 100 + i, i, children_count, gap_val > 0.0);
-            container = container.child(btn_element);
-        } else {
-            container = container.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i, None));
-        }
-    }
-
-    container.into_any_element()
-}
-
-/// 在按钮组中渲染单个按钮，处理圆角和边框
-fn render_button_in_group(
-    node: &UiNode,
-    ctx: &RenderContext,
-    handler: Arc<dyn ActionHandler>,
-    node_idx: usize,
-    position: usize,
-    total_count: usize,
-    has_gap: bool,
-) -> gpui::AnyElement {
-    let label = ui_schema::prop_str_or(&node.props, "label", "Button").to_string();
-    let action = node.on_action.clone().unwrap_or_default();
-    let variant = ui_schema::prop_str_or(&node.props, "variant", "");
-
-    // 根据 variant 属性决定样式
-    let is_primary = variant == "primary";
-    let is_danger = variant == "danger";
-    let is_outline = variant == "outline";
-    let has_action = !action.is_empty();
-
-    let (bg, hover_bg, text_color, border) = if is_primary {
-        (Some(ctx.primary), Some(ctx.primary_hover), ctx.primary_foreground, None)
-    } else if is_danger {
-        (Some(gpui::rgb(0xEF4444).into()), Some(gpui::rgb(0xDC2626).into()), ctx.white, None)
-    } else if is_outline {
-        (None, Some(ctx.primary.opacity(0.08)), ctx.primary, Some(ctx.primary))
-    } else {
-        (None, Some(ctx.muted.opacity(0.1)), ctx.muted_fg, Some(ctx.border))
-    };
-
-    let btn_id = SharedString::from(format!("btn-{}-{}", node_idx, position));
-
-    // 按钮组中的按钮特殊处理
-    let is_first = position == 0;
-    let is_last = position == total_count - 1;
-
-    // 分段按钮组圆角：首按钮左圆角，尾按钮右圆角，中间无圆角
-    let mut btn = div()
-        .id(btn_id)
-        .flex()
-        .items_center()
-        .justify_center()
-        .px(px(12.))
-        .py(px(6.))
-        .cursor_pointer()
-        .text_size(px(13.))
-        .text_color(text_color);
-
-    // 有间距 → 工具栏样式（全部圆角）；零间距 → 分段样式（首左尾右，中间零圆角）
-    if has_gap {
-        btn = btn.rounded(px(6.));
-    } else if is_first {
-        btn = btn.rounded_l(px(6.));
-    } else if is_last {
-        btn = btn.rounded_r(px(6.));
-    }
-
-    // 设置背景色（如果有）
-    if let Some(bg_color) = bg {
-        btn = btn.bg(bg_color);
-    }
-
-    // 设置边框
-    if let Some(border_color) = border {
-        if is_outline || (!is_primary && !is_danger) {
-            btn = btn.border_1().border_color(border_color);
-        }
-    } else if !has_gap {
-        // 分段样式：primary/danger 右边框分隔（除了最后一个）
-        if !is_last {
-            btn = btn.border_r_1().border_color(ctx.border.opacity(0.3));
-        }
-    }
-
-    // 设置hover效果
-    if let Some(hover_color) = hover_bg {
-        btn = btn.hover(move |style| {
-            if bg.is_some() {
-                style.bg(hover_color)
-            } else {
-                style.bg(hover_color)
-            }
+        switch = switch.on_click(move |_checked, _window, cx| {
+            handler.handle(action.clone(), cx);
         });
     }
 
-    let btn = btn.child(label);
-
-    if has_action {
-        let handler = handler.clone();
-        btn.on_click(move |_ev, _window, cx| {
-            let action = action.clone();
-            if !action.is_empty() {
-                handler.handle(action, cx);
-            }
-        })
-        .into_any_element()
-    } else {
-        btn.into_any_element()
-    }
+    switch.into_any_element()
 }
 
-fn render_display(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -> gpui::AnyElement {
+/// 从flex-row容器渲染ButtonGroup - 保持按钮点击功能
+fn render_button_group_from_flex_row(
+    node: &UiNode,
+    _ctx: &RenderContext,
+    handler: Arc<dyn ActionHandler>,
+    node_idx: usize,
+) -> gpui::AnyElement {
+    let mut button_group = ButtonGroup::new(SharedString::from(format!("btn-group-{}", node_idx)));
+
+    for (i, child) in node.children.iter().enumerate() {
+        if child.component == "button" {
+            let label = ui_schema::prop_str_or(&child.props, "label", "Button").to_string();
+            let action = child.on_action.clone().unwrap_or_default();
+            let variant = ui_schema::prop_str_or(&child.props, "variant", "");
+            let btn_id = SharedString::from(format!("btn-{}-{}", node_idx, i));
+
+            let mut btn = Button::new(btn_id).label(label);
+
+            // 设置variant样式
+            if variant == "primary" {
+                btn = btn.primary();
+            } else if variant == "danger" {
+                btn = btn.danger();
+            } else if variant == "outline" {
+                btn = btn.outline();
+            } else {
+                btn = btn.ghost();
+            }
+
+            // 添加点击处理
+            if !action.is_empty() {
+                let handler = handler.clone();
+                let action_clone = action.clone();
+                btn = btn.on_click(move |_event, _window, cx| {
+                    handler.handle(action_clone.clone(), cx);
+                });
+            }
+
+            button_group = button_group.child(btn);
+        }
+    }
+
+    button_group.into_any_element()
+}
+
+/// Button Group 按钮组组件 - 处理flex-row中的按钮容器
+fn render_button_group(
+    node: &UiNode,
+    _state: &serde_json::Value,
+    _ctx: &RenderContext,
+    handler: Arc<dyn ActionHandler>,
+    node_idx: usize,
+) -> gpui::AnyElement {
+    // 处理flex-row中的按钮 - 这是credential_list使用的结构
+    if node.component == "flex-row" {
+        let mut button_group = ButtonGroup::new(SharedString::from(format!("btn-group-{}", node_idx)));
+
+        for (i, child) in node.children.iter().enumerate() {
+            if child.component == "button" {
+                let label = ui_schema::prop_str_or(&child.props, "label", "Button").to_string();
+                let action = child.on_action.clone().unwrap_or_default();
+                let variant = ui_schema::prop_str_or(&child.props, "variant", "");
+                let btn_id = SharedString::from(format!("btn-{}-{}", node_idx, i));
+
+                let mut btn = Button::new(btn_id).label(label);
+
+                // 设置variant样式
+                if variant == "primary" {
+                    btn = btn.primary();
+                } else if variant == "danger" {
+                    btn = btn.danger();
+                } else if variant == "outline" {
+                    btn = btn.outline();
+                } else {
+                    btn = btn.ghost();
+                }
+
+                // 添加点击处理
+                if !action.is_empty() {
+                    let handler = handler.clone();
+                    let action_clone = action.clone();
+                    btn = btn.on_click(move |_selected_indices, _window, cx| {
+                        handler.handle(action_clone.clone(), cx);
+                    });
+                }
+
+                button_group = button_group.child(btn);
+            }
+        }
+
+        return button_group.into_any_element();
+    }
+
+    // 原有的button_group组件处理逻辑
+    let group_id = SharedString::from(format!("btn-group-{}", node_idx));
+    let mut button_group = ButtonGroup::new(group_id);
+
+    for (i, child) in node.children.iter().enumerate() {
+        if child.component == "button" {
+            let label = ui_schema::prop_str_or(&child.props, "label", "Button").to_string();
+            let action = child.on_action.clone().unwrap_or_default();
+            let variant = ui_schema::prop_str_or(&child.props, "variant", "");
+            let btn_id = SharedString::from(format!("btn-{}-{}", node_idx, i));
+
+            let mut btn = Button::new(btn_id).label(label);
+
+            // 设置variant样式
+            if variant == "primary" {
+                btn = btn.primary();
+            } else if variant == "danger" {
+                btn = btn.danger();
+            } else if variant == "outline" {
+                btn = btn.outline();
+            } else {
+                btn = btn.ghost();
+            }
+
+            // 添加点击处理
+            if !action.is_empty() {
+                let handler = handler.clone();
+                let action_clone = action.clone();
+                btn = btn.on_click(move |_selected_indices, _window, cx| {
+                    handler.handle(action_clone.clone(), cx);
+                });
+            }
+
+            button_group = button_group.child(btn);
+        }
+    }
+
+    button_group.into_any_element()
+}
+
+fn render_display(
+    node: &UiNode,
+    state: &serde_json::Value,
+    ctx: &RenderContext,
+) -> gpui::AnyElement {
     let field = node.bind.as_deref().unwrap_or("");
     let style = ui_schema::prop_str_or(&node.props, "style", "");
 
@@ -654,7 +605,9 @@ fn render_display(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext)
 fn render_label(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -> gpui::AnyElement {
     let text = ui_schema::prop_str_or(&node.props, "text", "");
     let interpolated = state_interpolate(state, text);
-    let text_size = ui_schema::prop_i64(&node.props, "size").map(|s| px(s as f32)).unwrap_or(px(14.));
+    let text_size = ui_schema::prop_i64(&node.props, "size")
+        .map(|s| px(s as f32))
+        .unwrap_or(px(14.));
 
     div()
         .flex()
@@ -668,7 +621,11 @@ fn render_label(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -
         .into_any_element()
 }
 
-fn render_progress(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) -> gpui::AnyElement {
+fn render_progress(
+    node: &UiNode,
+    state: &serde_json::Value,
+    ctx: &RenderContext,
+) -> gpui::AnyElement {
     let field = node.bind.as_deref().unwrap_or("progress");
     let pct = state_get_i64(state, field) as f32;
     let bar_width = 240.0_f32;
@@ -697,7 +654,7 @@ fn render_progress(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext
 
 fn render_button(
     node: &UiNode,
-    ctx: &RenderContext,
+    _ctx: &RenderContext,
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
 ) -> gpui::AnyElement {
@@ -705,81 +662,34 @@ fn render_button(
     let action = node.on_action.clone().unwrap_or_default();
     let variant = ui_schema::prop_str_or(&node.props, "variant", "");
 
-    // 根据 variant 属性决定样式
-    let is_primary = variant == "primary";
-    let is_danger = variant == "danger";
-    let is_outline = variant == "outline";
-    let has_action = !action.is_empty();
-
-    let (bg, hover_bg, text_color, border) = if is_primary {
-        // Primary 按钮：主题背景色（更明显）
-        (Some(ctx.primary), Some(ctx.primary_hover), ctx.primary_foreground, None)
-    } else if is_danger {
-        // Danger 按钮：红色背景
-        (Some(gpui::rgb(0xEF4444).into()), Some(gpui::rgb(0xDC2626).into()), ctx.white, None)
-    } else if is_outline {
-        // Outline 按钮：无背景，有明显边框
-        (None, Some(ctx.primary.opacity(0.08)), ctx.primary, Some(ctx.primary))
-    } else {
-        // Default 按钮：透明背景，淡边框
-        (None, Some(ctx.muted.opacity(0.1)), ctx.muted_fg, Some(ctx.border))
-    };
-
     let btn_id = SharedString::from(format!(
         "btn-{}-{}",
         node.id.as_deref().unwrap_or(&node_idx.to_string()),
         node_idx
     ));
 
-    let mut btn = div()
-        .id(btn_id)
-        .flex()
-        .items_center()
-        .justify_center()
-        .px(px(16.))
-        .py(px(8.))
-        .rounded_lg()
-        .cursor_pointer()
-        .text_size(px(14.))
-        .text_color(text_color);
+    let mut btn = Button::new(btn_id).label(label);
 
-    // 设置背景色（如果有）
-    if let Some(bg_color) = bg {
-        btn = btn.bg(bg_color);
+    // 直接按照 API 使用，不做任何"修复"
+    if variant == "primary" {
+        btn = btn.primary();
+    } else if variant == "danger" {
+        btn = btn.danger();
+    } else if variant == "outline" {
+        btn = btn.outline();
+    } else {
+        btn = btn.ghost();
     }
 
-    // 设置边框（如果有）
-    if let Some(border_color) = border {
-        btn = btn.border_1().border_color(border_color);
-    }
-
-    // 设置hover效果
-    if let Some(hover_color) = hover_bg {
-        btn = btn.hover(move |style| {
-            if bg.is_some() {
-                // 如果有背景色，就改变背景色
-                style.bg(hover_color)
-            } else {
-                // 如果没有背景色，添加hover背景
-                style.bg(hover_color)
-            }
+    // 添加点击处理
+    if !action.is_empty() {
+        let handler = handler.clone();
+        btn = btn.on_click(move |_event, _window, cx| {
+            handler.handle(action.clone(), cx);
         });
     }
 
-    let btn = btn.child(label);
-
-    if has_action {
-        let handler = handler.clone();
-        btn.on_click(move |_ev, _window, cx| {
-            let action = action.clone();
-            if !action.is_empty() {
-                handler.handle(action, cx);
-            }
-        })
-        .into_any_element()
-    } else {
-        btn.into_any_element()
-    }
+    btn.into_any_element()
 }
 
 /// 导航菜单项：无背景、简洁文字、支持 active 高亮
@@ -849,7 +759,7 @@ fn render_nav_item(
 
 fn render_button_row(
     node: &UiNode,
-    ctx: &RenderContext,
+    _ctx: &RenderContext,
     handler: Arc<dyn ActionHandler>,
     node_idx: usize,
 ) -> gpui::AnyElement {
@@ -865,51 +775,49 @@ fn render_button_row(
 
     if let Some(btns) = buttons {
         for (i, btn) in btns.iter().enumerate() {
-            let label = btn.get("label").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let action = btn.get("action").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let label = btn
+                .get("label")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let action = btn
+                .get("action")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             let variant = btn.get("variant").and_then(|v| v.as_str()).unwrap_or("");
 
-            let is_primary = variant == "primary" || !action.is_empty();
-            let bg = if is_primary { ctx.primary } else { ctx.muted.opacity(0.3) };
-            let hover_bg = if is_primary { ctx.primary_hover } else { ctx.muted.opacity(0.5) };
-            let text_color = if is_primary { ctx.primary_foreground } else { ctx.muted_fg };
-            let handler = handler.clone();
             let btn_id = SharedString::from(format!("btn-row-{}-{}", node_idx, i));
 
-            let btn_el = div()
-                .id(btn_id)
-                .flex()
-                .items_center()
-                .justify_center()
-                .px(px(14.))
-                .py(px(6.))
-                .rounded_lg()
-                .bg(bg)
-                .cursor_pointer()
-                .text_size(px(13.))
-                .text_color(text_color)
-                .hover(|style| style.bg(hover_bg))
-                .child(label.clone());
+            let mut btn = Button::new(btn_id).label(label);
 
-            row = row.child(
-                if !action.is_empty() {
-                    btn_el.on_click(move |_ev, _window, cx| {
-                        let action = action.clone();
-                        if !action.is_empty() {
-                            handler.handle(action, cx);
-                        }
-                    })
-                    .into_any_element()
-                } else {
-                    btn_el.into_any_element()
-                },
-            );
+            // 直接按照 API 使用，不做任何"修复"
+            if variant == "primary" || !action.is_empty() {
+                btn = btn.primary();
+            } else {
+                btn = btn.ghost();
+            }
+
+            // 添加点击处理
+            if !action.is_empty() {
+                let handler = handler.clone();
+                btn = btn.on_click(move |_event, _window, cx| {
+                    handler.handle(action.clone(), cx);
+                });
+            }
+
+            row = row.child(btn);
         }
     }
 
     // 同时渲染 children 中的 button 节点
     for (i, child) in node.children.iter().enumerate() {
-        row = row.child(render_button(child, ctx, handler.clone(), node_idx * 100 + i));
+        row = row.child(render_button(
+            child,
+            _ctx,
+            handler.clone(),
+            node_idx * 100 + i,
+        ));
     }
 
     row.into_any_element()
@@ -951,11 +859,7 @@ fn render_info(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext) ->
 }
 
 fn render_divider(ctx: &RenderContext) -> gpui::AnyElement {
-    div()
-        .w_full()
-        .h(px(1.))
-        .bg(ctx.border)
-        .into_any_element()
+    div().w_full().h(px(1.)).bg(ctx.border).into_any_element()
 }
 
 fn render_input(
@@ -983,7 +887,10 @@ fn render_input(
     // 处理 width 属性
     let width_str = ui_schema::prop_str_or(&node.props, "width", "100%");
     let width = if width_str.ends_with('%') {
-        let pct = width_str.trim_end_matches('%').parse::<f32>().unwrap_or(100.0);
+        let pct = width_str
+            .trim_end_matches('%')
+            .parse::<f32>()
+            .unwrap_or(100.0);
         pct / 100.0
     } else {
         1.0
@@ -1036,23 +943,25 @@ fn render_input(
         input_div = input_div.flex_1();
     }
 
-    input_div.child(
-        if value.is_empty() {
+    input_div
+        .child(if value.is_empty() {
             div()
                 .text_size(px(14.))
                 .text_color(ctx.muted_fg)
                 .child(placeholder)
         } else {
-            div()
-                .text_size(px(14.))
-                .text_color(ctx.fg)
-                .child(value)
-        },
-    )
-    .into_any_element()
+            div().text_size(px(14.)).text_color(ctx.fg).child(value)
+        })
+        .into_any_element()
 }
 
-fn render_table(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext, handler: Arc<dyn ActionHandler>, node_idx: usize) -> gpui::AnyElement {
+fn render_table(
+    node: &UiNode,
+    state: &serde_json::Value,
+    ctx: &RenderContext,
+    handler: Arc<dyn ActionHandler>,
+    node_idx: usize,
+) -> gpui::AnyElement {
     let bind = node.bind.clone().unwrap_or_default();
     let columns = ui_schema::prop_array(&node.props, "columns");
     let on_row_click = node.on_action.clone();
@@ -1073,8 +982,16 @@ fn render_table(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext, h
             if let Some(s) = col.as_str() {
                 (s.to_string(), s.to_string())
             } else {
-                let label = col.get("label").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let field = col.get("field").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let label = col
+                    .get("label")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let field = col
+                    .get("field")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
                 (label, field)
             }
         })
@@ -1115,14 +1032,21 @@ fn render_table(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext, h
                     .hover(|style| style.bg(ctx.muted.opacity(0.1)));
 
                 // 检查是否有 selected 字段
-                let is_selected = row.get("selected").and_then(|v| v.as_bool()).unwrap_or(false);
+                let is_selected = row
+                    .get("selected")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
 
                 for (col_label, col_field) in &col_specs {
                     // 空 field 表示操作列，跳过数据渲染
                     let cell_val = if col_field.is_empty() {
                         String::new()
                     } else if col_field == "selected" {
-                        if is_selected { "✓".to_string() } else { "✗".to_string() }
+                        if is_selected {
+                            "✓".to_string()
+                        } else {
+                            "✗".to_string()
+                        }
                     } else {
                         row.get(col_field.as_str())
                             .map(|v| match v {
@@ -1167,12 +1091,10 @@ fn render_table(node: &UiNode, state: &serde_json::Value, ctx: &RenderContext, h
                 if let Some(ref action_prefix) = on_row_click {
                     let action_prefix = action_prefix.clone();
                     let click_handler = handler.clone();
-                    table = table.child(
-                        row_div.id(row_id).on_click(move |_ev, _window, cx| {
-                            let action = format!("{}:{}", action_prefix, row_idx);
-                            click_handler.handle(action, cx);
-                        })
-                    );
+                    table = table.child(row_div.id(row_id).on_click(move |_ev, _window, cx| {
+                        let action = format!("{}:{}", action_prefix, row_idx);
+                        click_handler.handle(action, cx);
+                    }));
                 } else {
                     table = table.child(row_div);
                 }
@@ -1214,7 +1136,14 @@ fn render_card(
     }
 
     for (i, child) in node.children.iter().enumerate() {
-        card = card.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i, input_states));
+        card = card.child(render_node(
+            child,
+            state,
+            ctx,
+            handler.clone(),
+            node_idx * 100 + i,
+            input_states,
+        ));
     }
 
     card.into_any_element()
@@ -1234,8 +1163,19 @@ fn render_container(
         _ => "col",
     };
 
-    let gap = ui_schema::prop_i64(&node.props, "gap").map(|g| px(g as f32)).unwrap_or(px(8.));
+    // 检测flex-row中的纯按钮容器，渲染为ButtonGroup以保持点击功能
+    if direction == "row" && !node.children.is_empty() {
+        let all_buttons = node.children.iter().all(|child| child.component == "button");
+        if all_buttons {
+            return render_button_group_from_flex_row(node, ctx, handler, node_idx);
+        }
+    }
+
+    let gap = ui_schema::prop_i64(&node.props, "gap")
+        .map(|g| px(g as f32))
+        .unwrap_or(px(8.));
     let padding = ui_schema::prop_i64(&node.props, "padding").map(|p| px(p as f32));
+    let margin_left = ui_schema::prop_str_or(&node.props, "margin_left", "");
 
     let mut container = div().flex().gap(gap);
     if direction == "col" {
@@ -1247,8 +1187,20 @@ fn render_container(
         container = container.p(padding);
     }
 
+    // 添加左边距（用于"auto"实现push效果）
+    if margin_left == "auto" {
+        container = container.flex_1();
+    }
+
     for (i, child) in node.children.iter().enumerate() {
-        container = container.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i, input_states));
+        container = container.child(render_node(
+            child,
+            state,
+            ctx,
+            handler.clone(),
+            node_idx * 100 + i,
+            input_states,
+        ));
     }
 
     container.into_any_element()
@@ -1265,14 +1217,25 @@ fn render_select(
     let bind = node.bind.as_deref().unwrap_or("");
     let current_value = ui_schema::state_get_str(state, bind);
     let placeholder = ui_schema::prop_str_or(&node.props, "placeholder", "请选择");
-    let on_action = node.on_action.clone().unwrap_or_else(|| format!("select_{}", bind.replace('.', "_")));
+    let on_action = node
+        .on_action
+        .clone()
+        .unwrap_or_else(|| format!("select_{}", bind.replace('.', "_")));
 
     let options: Vec<(String, String)> = ui_schema::prop_array(&node.props, "options")
         .map(|arr| {
             arr.iter()
                 .filter_map(|opt| {
-                    let label = opt.get("label").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                    let value = opt.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let label = opt
+                        .get("label")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let value = opt
+                        .get("value")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
                     if label.is_empty() && value.is_empty() {
                         None
                     } else {
@@ -1297,35 +1260,37 @@ fn render_select(
         .flex_wrap()
         .gap(px(4.))
         .mt(px(4.))
-        .children(
-            options.iter().enumerate().map(|(i, (label, value))| {
-                let is_selected = value == &current_value;
-                let btn_handler = handler.clone();
-                let action_str = format!("{}:{}", on_action, value);
-                let btn_id = SharedString::from(format!("select-opt-{}-{}", node_idx, i));
-                let fg = ctx.fg;
-                let primary = ctx.primary;
-                let border = ctx.border;
-                let muted = ctx.muted;
-                let action_str = action_str.clone();
-                div()
-                    .id(btn_id)
-                    .px(px(10.))
-                    .py(px(4.))
-                    .rounded(px(4.))
-                    .cursor_pointer()
-                    .text_sm()
-                    .bg(if is_selected { primary.opacity(0.15) } else { muted })
-                    .border_1()
-                    .border_color(if is_selected { primary } else { border })
-                    .text_color(if is_selected { primary } else { fg })
-                    .on_click(move |_ev, _window, cx| {
-                        btn_handler.handle(action_str.clone(), cx);
-                    })
-                    .child(label.clone())
-                    .into_any_element()
-            })
-        );
+        .children(options.iter().enumerate().map(|(i, (label, value))| {
+            let is_selected = value == &current_value;
+            let btn_handler = handler.clone();
+            let action_str = format!("{}:{}", on_action, value);
+            let btn_id = SharedString::from(format!("select-opt-{}-{}", node_idx, i));
+            let fg = ctx.fg;
+            let primary = ctx.primary;
+            let border = ctx.border;
+            let muted = ctx.muted;
+            let action_str = action_str.clone();
+            div()
+                .id(btn_id)
+                .px(px(10.))
+                .py(px(4.))
+                .rounded(px(4.))
+                .cursor_pointer()
+                .text_sm()
+                .bg(if is_selected {
+                    primary.opacity(0.15)
+                } else {
+                    muted
+                })
+                .border_1()
+                .border_color(if is_selected { primary } else { border })
+                .text_color(if is_selected { primary } else { fg })
+                .on_click(move |_ev, _window, cx| {
+                    btn_handler.handle(action_str.clone(), cx);
+                })
+                .child(label.clone())
+                .into_any_element()
+        }));
 
     // 标题 + 当前选中值 + 选项列表
     let trigger_id = SharedString::from(format!("select-trigger-{}", node_idx));
@@ -1352,15 +1317,14 @@ fn render_select(
                 .child(
                     div()
                         .text_sm()
-                        .text_color(if current_value.is_empty() { ctx.muted_fg } else { ctx.fg })
-                        .child(selected_label)
+                        .text_color(if current_value.is_empty() {
+                            ctx.muted_fg
+                        } else {
+                            ctx.fg
+                        })
+                        .child(selected_label),
                 )
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(ctx.muted_fg)
-                        .child("▾")
-                )
+                .child(div().text_xs().text_color(ctx.muted_fg).child("▾")),
         )
         .child(options_container)
         .into_any_element()
@@ -1377,7 +1341,12 @@ fn render_unsupported(component: &str, ctx: &RenderContext) -> gpui::AnyElement 
         .border_1()
         .border_dashed()
         .border_color(ctx.border)
-        .child(div().text_size(px(12.)).text_color(ctx.muted_fg).child(format!("Unsupported component: {}", component)))
+        .child(
+            div()
+                .text_size(px(12.))
+                .text_color(ctx.muted_fg)
+                .child(format!("Unsupported component: {}", component)),
+        )
         .into_any_element()
 }
 
@@ -1453,40 +1422,26 @@ fn render_split(
         for (i, child) in children.iter().enumerate() {
             let is_last = i == children.len() - 1;
             if is_last {
-                container = container.child(
-                    div()
-                        .flex_1()
-                        .w_full()
-                        .overflow_hidden()
-                        .child(render_node(
-                            child,
-                            state,
-                            ctx,
-                            handler.clone(),
-                            node_idx * 100 + i,
-                            input_states,
-                        )),
-                );
+                container =
+                    container.child(div().flex_1().w_full().overflow_hidden().child(render_node(
+                        child,
+                        state,
+                        ctx,
+                        handler.clone(),
+                        node_idx * 100 + i,
+                        input_states,
+                    )));
             } else {
-                let h = if i == 0 {
-                    px(left_width)
-                } else {
-                    px(200.)
-                };
-                container = container.child(
-                    div()
-                        .h(h)
-                        .w_full()
-                        .overflow_hidden()
-                        .child(render_node(
-                            child,
-                            state,
-                            ctx,
-                            handler.clone(),
-                            node_idx * 100 + i,
-                            input_states,
-                        )),
-                );
+                let h = if i == 0 { px(left_width) } else { px(200.) };
+                container =
+                    container.child(div().h(h).w_full().overflow_hidden().child(render_node(
+                        child,
+                        state,
+                        ctx,
+                        handler.clone(),
+                        node_idx * 100 + i,
+                        input_states,
+                    )));
             }
         }
     }
@@ -1555,11 +1510,11 @@ fn render_tree_entry(
     depth: usize,
 ) -> gpui::AnyElement {
     let name = entry.get("name").and_then(|v| v.as_str()).unwrap_or("");
-    let is_dir = entry.get("is_dir").and_then(|v| v.as_bool()).unwrap_or(false);
-    let path = entry
-        .get("path")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let is_dir = entry
+        .get("is_dir")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let path = entry.get("path").and_then(|v| v.as_str()).unwrap_or("");
     let children = entry.get("children").and_then(|v| v.as_array());
 
     let indent = px(16.) * depth as f32;
@@ -1579,9 +1534,7 @@ fn render_tree_entry(
         .text_size(px(13.))
         .text_color(ctx.fg)
         .child(
-            div()
-                .w(indent)
-                .h(px(1.)), // indent spacer
+            div().w(indent).h(px(1.)), // indent spacer
         )
         .child(div().text_size(px(14.)).child(icon))
         .child(div().child(name.to_string()));
@@ -1650,12 +1603,16 @@ fn render_accordion(
             div().child(title.to_string()).into_any_element()
         };
 
-        let content = render_node(child, state, ctx, handler.clone(), node_idx * 100 + i, input_states);
+        let content = render_node(
+            child,
+            state,
+            ctx,
+            handler.clone(),
+            node_idx * 100 + i,
+            input_states,
+        );
 
-        acc = acc.item(|item| {
-            item.title(trigger)
-                .child(content)
-        });
+        acc = acc.item(|item| item.title(trigger).child(content));
     }
 
     acc.into_any_element()
@@ -1678,7 +1635,14 @@ fn render_collapsible(
     let mut col = Collapsible::new().open(open);
 
     for (i, child) in node.children.iter().enumerate() {
-        col = col.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i, input_states));
+        col = col.child(render_node(
+            child,
+            state,
+            ctx,
+            handler.clone(),
+            node_idx * 100 + i,
+            input_states,
+        ));
     }
 
     col.into_any_element()
@@ -1704,7 +1668,14 @@ fn render_group_box(
     }
 
     for (i, child) in node.children.iter().enumerate() {
-        gb = gb.child(render_node(child, state, ctx, handler.clone(), node_idx * 100 + i, input_states));
+        gb = gb.child(render_node(
+            child,
+            state,
+            ctx,
+            handler.clone(),
+            node_idx * 100 + i,
+            input_states,
+        ));
     }
 
     gb.into_any_element()

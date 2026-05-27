@@ -7,11 +7,16 @@ mod db;
 mod encryption;
 mod audit;
 mod import_export;
+mod credential_edit;
+mod credential_list;
 mod service;
 mod init;
 mod state;
 mod ui;
 mod plugin;
+
+// 使用重构后的UI模块
+pub use ui::*;
 
 use std::sync::Arc;
 use plugin_sdk::Plugin;

@@ -1,103 +1,62 @@
-//! 凭证管理插件 - 简化版实现
+//! 凭证管理插件 - 重构版实现
 
 use crate::init::CredentialManagerInit;
 use crate::service::CredentialService;
 use crate::state::{CredentialPluginState, CredentialType, ToolId};
-use crate::ui::{build_sidebar, schema_audit_logs, schema_credential_detail, schema_credential_edit, schema_credential_list, schema_import_export, schema_settings};
+use crate::ui::{
+    build_sidebar, schema_audit_logs, schema_credential_detail,
+    schema_import_export, schema_settings,
+    CredentialDetailHandler,
+    ImportExportHandler, AuditLogsHandler, SettingsHandler,
+};
+use crate::credential_edit::{schema_credential_edit, CredentialEditHandler};
+use crate::credential_list::{schema_credential_list, CredentialListHandler};
 use plugin_sdk::{Plugin, PluginMeta, UiNode, UiSchema};
 use std::sync::{Arc, Mutex};
 
 pub struct CredentialPlugin {
     state: Arc<Mutex<CredentialPluginState>>,
     credential_service: Option<CredentialService>,
+    // 功能处理器
+    list_handler: Option<CredentialListHandler>,
+    edit_handler: Option<CredentialEditHandler>,
+    detail_handler: Option<CredentialDetailHandler>,
+    import_export_handler: Option<ImportExportHandler>,
+    audit_handler: Option<AuditLogsHandler>,
+    settings_handler: Option<SettingsHandler>,
 }
 
 impl CredentialPlugin {
     pub fn new() -> Self {
         let service = CredentialManagerInit::initialize().ok();
-        
+
+        let state = Arc::new(Mutex::new(CredentialPluginState::default()));
+
+        // 创建功能处理器
+        let list_handler = service.as_ref().map(|_| CredentialListHandler::new(state.clone(), service.clone()));
+        let edit_handler = service.as_ref().map(|_| CredentialEditHandler::new(state.clone(), service.clone()));
+        let detail_handler = service.as_ref().map(|_| CredentialDetailHandler::new(state.clone(), service.clone()));
+        let import_export_handler = service.as_ref().map(|_| ImportExportHandler::new(state.clone(), service.clone()));
+        let audit_handler = service.as_ref().map(|_| AuditLogsHandler::new(state.clone(), service.clone()));
+        let settings_handler = service.as_ref().map(|_| SettingsHandler::new(state.clone(), service.clone()));
+
         let plugin = Self {
-            state: Arc::new(Mutex::new(CredentialPluginState::default())),
+            state,
             credential_service: service,
+            list_handler,
+            edit_handler,
+            detail_handler,
+            import_export_handler,
+            audit_handler,
+            settings_handler,
         };
 
         // 加载初始数据
-        plugin.load_credential_list();
+        if let Some(handler) = &plugin.list_handler {
+            handler.load_credential_list();
+        }
 
         plugin
-    }
-
-    fn load_credential_list(&self) {
-        let service = match &self.credential_service {
-            Some(s) => s,
-            None => return,
-        };
-
-        let Ok(credentials) = service.list_all() else { return };
-
-        let ui_credentials: Vec<crate::state::CredentialItem> = credentials
-            .into_iter()
-            .map(|cred| crate::state::CredentialItem {
-                id: cred.id,
-                name: cred.name,
-                platform: cred.platform,
-                category: cred.category,
-                username: cred.username,
-                password_masked: "********".to_string(),
-                notes: cred.notes,
-                is_active: cred.is_active,
-                created_at: cred.created_at,
-                updated_at: cred.updated_at,
-                expires_at: cred.expires_at,
-                tags: cred.tags,
-                extra_fields: cred.extra_fields,
-                credential_type: CredentialType::from_value(&cred.credential_type),
-                ..Default::default()
-            })
-            .collect();
-
-        let count = ui_credentials.len();
-        if let Ok(mut state) = self.state.lock() {
-            state.credential_list.credentials = ui_credentials;
-            state.credential_list.total_count = count;
-            state.credential_list.loading = false;
-        }
-    }
-
-    fn search_credentials(&self, query: &str) {
-        let service = match &self.credential_service {
-            Some(s) => s,
-            None => return,
-        };
-
-        let Ok(credentials) = service.search(query) else { return };
-
-        let ui_credentials: Vec<crate::state::CredentialItem> = credentials
-            .into_iter()
-            .map(|cred| crate::state::CredentialItem {
-                id: cred.id,
-                name: cred.name,
-                platform: cred.platform,
-                category: cred.category,
-                username: cred.username,
-                password_masked: "********".to_string(),
-                notes: cred.notes,
-                is_active: cred.is_active,
-                created_at: cred.created_at,
-                updated_at: cred.updated_at,
-                expires_at: cred.expires_at,
-                tags: cred.tags,
-                extra_fields: cred.extra_fields,
-                credential_type: CredentialType::from_value(&cred.credential_type),
-                ..Default::default()
-            })
-            .collect();
-
-        let count = ui_credentials.len();
-        if let Ok(mut state) = self.state.lock() {
-            state.credential_list.credentials = ui_credentials;
-            state.credential_list.total_count = count;
-        }
     }
 }
 
@@ -128,27 +87,32 @@ impl Plugin for CredentialPlugin {
             // ---- 侧边栏导航 ----
             "select_credential_list" => {
                 let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialList);
-                self.load_credential_list();
+                if let Some(handler) = &self.list_handler {
+                    handler.load_credential_list();
+                }
+                return self.state();
             }
             "select_credential_create" => {
-                let _ = self.state.lock().map(|mut s| {
-                    s.selected_tool = ToolId::CredentialCreate;
-                    s.credential_edit.is_new = true;
-                    s.credential_edit.credential = Default::default();
-                    s.credential_edit.type_display = CredentialType::default().label().to_string();
-                });
+                if let Some(handler) = &self.list_handler {
+                    handler.create_credential();
+                }
+                return self.state();
             }
             "select_credential_edit" => {
                 let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialEdit);
+                return self.state();
             }
             "select_import_export" => {
                 let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::ImportExport);
+                return self.state();
             }
             "select_audit_logs" => {
                 let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::AuditLogs);
+                return self.state();
             }
             "select_settings" => {
                 let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::Settings);
+                return self.state();
             }
 
             // ---- 凭证类型切换 ----
@@ -159,88 +123,87 @@ impl Plugin for CredentialPlugin {
                     s.credential_edit.credential.credential_type = new_type.clone();
                     s.credential_edit.type_display = new_type.label().to_string();
                 });
+                return self.state();
             }
 
             // ---- 搜索 ----
             "search_credentials" => {
-                let query = self
-                    .state
-                    .lock()
-                    .ok()
-                    .map(|s| s.credential_list.search_query.clone())
-                    .unwrap_or_default();
-                self.search_credentials(&query);
+                if let Some(handler) = &self.list_handler {
+                    handler.search_credentials();
+                }
+                return self.state();
             }
 
             // ---- 查看/编辑/删除 ----
             "view_credential" => {
-                if let Some(_id) = params.get("id").and_then(|v| v.as_str()) {
-                    let _ = self.state.lock().map(|mut s| {
-                        s.selected_tool = ToolId::CredentialDetail;
-                    });
+                if let Some(id) = params.get("id").and_then(|v| v.as_str()) {
+                    if let Some(handler) = &self.list_handler {
+                        handler.view_credential(id);
+                    }
                 }
+                return self.state();
             }
             "edit_credential" => {
-                if let Some(_id) = params.get("id").and_then(|v| v.as_str()) {
-                    let _ = self.state.lock().map(|mut s| {
-                        s.selected_tool = ToolId::CredentialEdit;
-                        s.credential_edit.is_new = false;
-                        s.credential_edit.type_display = s.credential_edit.credential.credential_type.label().to_string();
-                    });
+                if let Some(id) = params.get("id").and_then(|v| v.as_str()) {
+                    if let Some(handler) = &self.list_handler {
+                        handler.edit_credential(id);
+                    }
                 }
+                return self.state();
             }
             "delete_credential" => {
                 if let Some(id) = params.get("id").and_then(|v| v.as_str()) {
-                    if let Some(service) = &self.credential_service {
-                        let _ = service.delete(id);
+                    if let Some(handler) = &self.list_handler {
+                        return handler.delete_credential(id);
                     }
-                    self.load_credential_list();
                 }
+                return self.state();
             }
             "create_credential" => {
-                let _ = self.state.lock().map(|mut s| {
-                    s.selected_tool = ToolId::CredentialCreate;
-                    s.credential_edit.is_new = true;
-                    s.credential_edit.credential = Default::default();
-                    s.credential_edit.type_display = CredentialType::default().label().to_string();
-                });
+                if let Some(handler) = &self.list_handler {
+                    handler.create_credential();
+                }
+                return self.state();
             }
 
             // ---- 保存/取消 ----
             "save_credential" => {
-                // TODO: 将 CredentialItem 转为 Credential 并调用 service.create / update
-                log::info!("save_credential called");
-                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialList);
-                self.load_credential_list();
+                if let Some(handler) = &self.edit_handler {
+                    return handler.save_credential();
+                }
+                return serde_json::json!({"success": false, "message": "编辑处理器未初始化"});
             }
             "cancel_edit" => {
-                let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialList);
+                if let Some(handler) = &self.edit_handler {
+                    handler.cancel_edit();
+                }
+                return self.state();
             }
 
             // ---- 启用状态切换 ----
             "toggle_active_status" => {
-                let _ = self.state.lock().map(|mut s| {
-                    s.credential_edit.credential.is_active = !s.credential_edit.credential.is_active;
-                    s.credential_edit.is_active_display =
-                        if s.credential_edit.credential.is_active { "已启用" } else { "已禁用" }.to_string();
-                });
+                if let Some(handler) = &self.edit_handler {
+                    handler.toggle_active_status();
+                }
+                return self.state();
             }
 
             // ---- 平台筛选 ----
             a if a.starts_with("filter_platform_") => {
                 let platform = a.strip_prefix("filter_platform_").unwrap_or("");
-                let _ = self.state.lock().map(|mut s| {
-                    s.credential_list.selected_platform = platform.to_string();
-                });
-                self.load_credential_list();
+                if let Some(handler) = &self.list_handler {
+                    handler.filter_by_platform(platform);
+                }
+                return self.state();
             }
 
             // ---- 分类筛选 ----
             a if a.starts_with("filter_category_") => {
                 let category = a.strip_prefix("filter_category_").unwrap_or("");
-                let _ = self.state.lock().map(|mut s| {
-                    s.credential_list.selected_category = category.to_string();
-                });
+                if let Some(handler) = &self.list_handler {
+                    handler.filter_by_category(category);
+                }
+                return self.state();
             }
 
             // ---- 审计日志筛选 ----
@@ -249,6 +212,7 @@ impl Plugin for CredentialPlugin {
                 let _ = self.state.lock().map(|mut s| {
                     s.audit_logs.filter_action = filter.to_string();
                 });
+                return self.state();
             }
 
             // ---- 详情页操作 ----
@@ -258,47 +222,53 @@ impl Plugin for CredentialPlugin {
                     s.credential_edit.is_new = false;
                     s.credential_edit.type_display = s.credential_edit.credential.credential_type.label().to_string();
                 });
+                return self.state();
             }
             "delete_current_credential" => {
-                if let Some(service) = &self.credential_service {
-                    let id = self.state.lock().ok()
-                        .and_then(|s| s.credential_detail.credential.as_ref().map(|c| c.id.clone()))
-                        .unwrap_or_default();
+                if let Some(id) = self.state.lock().ok()
+                    .and_then(|s| s.credential_detail.credential.as_ref().map(|c| c.id.clone())) {
                     if !id.is_empty() {
-                        let _ = service.delete(&id);
+                        if let Some(handler) = &self.list_handler {
+                            let result = handler.delete_credential(&id);
+                            let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialList);
+                            return result;
+                        }
                     }
                 }
                 let _ = self.state.lock().map(|mut s| s.selected_tool = ToolId::CredentialList);
-                self.load_credential_list();
+                return self.state();
             }
             "toggle_password_visibility" => {
                 let _ = self.state.lock().map(|mut s| {
                     s.credential_detail.show_password = !s.credential_detail.show_password;
                 });
+                return self.state();
             }
 
             // ---- 导入导出 ----
             "import_json" | "import_csv" | "export_all_json" | "export_all_csv"
             | "export_selected_json" | "export_selected_csv" => {
                 log::info!("{} called (TODO: implement)", action);
+                return self.state();
             }
 
             // ---- 审计日志 ----
             "clear_old_logs" => {
                 log::info!("clear_old_logs called (TODO: implement)");
+                return self.state();
             }
 
             // ---- 设置 ----
             "change_master_password" => {
                 log::info!("change_master_password called (TODO: implement)");
+                return self.state();
             }
 
             _ => {
                 log::warn!("Unknown action: {}", action);
+                return self.state();
             }
         }
-
-        self.state()
     }
 
     fn ui_schema(&self) -> UiSchema {
@@ -344,7 +314,9 @@ impl Plugin for CredentialPlugin {
 
     fn on_load(&self) {
         log::info!("Credential plugin loaded");
-        self.load_credential_list();
+        if let Some(handler) = &self.list_handler {
+            handler.load_credential_list();
+        }
     }
 
     fn on_unload(&self) {
