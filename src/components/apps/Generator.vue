@@ -147,20 +147,21 @@ const isGenerating = ref(false);
 const currentGeneratedCode = ref(''); // 用于累积代码
 const projectId = ref(''); // 项目ID
 const versionId = ref(''); // 版本ID
-const modelCreditCosts = ref({}); // 用户积分信息
+const modelCreditCosts = ref<Record<string, number>>({}); // 用户积分信息
 
 onMounted(async () => {
     try {
         const costsResponse = await getModelCreditCosts();
-        modelCreditCosts.value = costsResponse.data;
-        
+        modelCreditCosts.value = (costsResponse as any).data;
+
         // 设置默认选中最后一个模型
         if (Object.keys(modelCreditCosts.value).length > 0) {
             const models = Object.keys(modelCreditCosts.value);
             form.value.model = models[models.length - 1];
         }
-    } catch (error) {
-        ElMessage.error('获取模型积分配置失败，请刷新页面重试');
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        ElMessage.error(`获取模型积分配置失败，请刷新页面重试: ${errorMessage}`);
     }
 });
 
@@ -202,7 +203,7 @@ const generateCode = async () => {
     };
 
     // 定义SSE事件处理回调
-    const handleData = (data) => {
+    const handleData = (data: any) => {
         if (data.error) {
             ElMessage.error(data.message);
             isGenerating.value = false;
@@ -215,7 +216,7 @@ const generateCode = async () => {
             }
             currentGeneratedCode.value += data.code;
             emit('updateGeneratedCode', currentGeneratedCode.value);
-            
+
             if (data.projectId && !projectId.value) {
                 projectId.value = data.projectId;
                 emit('updateSessionInfo', form.value.description, data.projectId, false);
@@ -223,26 +224,26 @@ const generateCode = async () => {
         }
     };
 
-    const handleComplete = (data) => {
+    const handleComplete = (data: any) => {
         isGenerating.value = false;
         if (data && data.projectId) {
             projectId.value = data.projectId;
             versionId.value = data.versionId;
         }
-        
+
         console.log('生成完成，最终项目ID:', projectId.value);
         console.log('生成完成，最终版本ID:', versionId.value);
         ElMessage.success('代码生成完成');
-        
+
         emit('updateGeneratedCode', currentGeneratedCode.value);
-        
+
         const isCodeGenerating = currentGeneratedCode.value.includes('// 代码正在生成中');
         emit('updateSessionInfo', form.value.description, projectId.value, versionId.value, !isCodeGenerating);
-        
+
         emit('openApp', 'safari');
     };
 
-    const handleError = (errorMessage) => {
+    const handleError = (errorMessage: string) => {
         console.error('SSE Error Callback:', errorMessage);
         isGenerating.value = false;
         ElMessage.error('生成代码时发生错误: ' + errorMessage);

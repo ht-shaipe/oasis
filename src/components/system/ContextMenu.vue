@@ -99,12 +99,13 @@ const handleChangeWallpaper = () => {
         nextTick(() => {
             const desktop = document.querySelector('.mac-desktop');
             if (desktop) {
-                desktop.style.transition = 'background-image 1s ease-in-out';
-                desktop.style.filter = 'blur(5px)';
+                const el = desktop as HTMLElement;
+                el.style.transition = 'background-image 1s ease-in-out';
+                el.style.filter = 'blur(5px)';
                 setTimeout(() => {
-                    desktop.style.backgroundImage = `url('/assets/wallpaper/${newWallpaper}.jpg')`;
+                    el.style.backgroundImage = `url('/assets/wallpaper/${newWallpaper}.jpg')`;
                     setTimeout(() => {
-                        desktop.style.filter = 'none';
+                        el.style.filter = 'none';
                     }, 300);
                     console.log(`壁纸已切换为: ${newWallpaper}.jpg`);
                 }, 100);
@@ -128,14 +129,14 @@ const handlePersonalizeAction = () => {
 };
 
 // 处理点击外部关闭菜单
-const handleOutsideClick = (event) => {
+const handleOutsideClick = (_event: MouseEvent) => {
     if (props.visible) {
         emit('close');
     }
 };
 
 // 阻止默认的浏览器右键菜单
-const preventDefaultContextMenu = (event) => {
+const preventDefaultContextMenu = (event: MouseEvent) => {
     if (props.visible) {
         event.preventDefault();
     }
@@ -156,10 +157,10 @@ onUnmounted(() => {
 <style scoped>
 .context-menu {
     position: fixed;
-    background-color: rgba(240, 240, 240, 0.9);
+    background-color: var(--color-context-bg);
     backdrop-filter: blur(10px);
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 20px var(--color-shadow);
     min-width: 200px;
     z-index: 1000;
     user-select: none;
@@ -181,12 +182,12 @@ onUnmounted(() => {
 }
 
 .menu-item:hover {
-    background-color: rgba(0, 122, 255, 0.15);
+    background-color: var(--color-context-hover);
 }
 
 .menu-divider {
     height: 1px;
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: var(--color-context-divider);
     margin: 2px 0;
 }
 

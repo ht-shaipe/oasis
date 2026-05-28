@@ -38,7 +38,7 @@
 const emit = defineEmits(['openApp']);
 
 // 打开App
-const openApp = (app) => {
+const openApp = (app: string) => {
     emit('openApp', app);
 };
 </script>
@@ -84,7 +84,7 @@ const openApp = (app) => {
 .icon-text {
     color: white;
     font-size: 12px;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     text-align: center;
 }
 </style> 

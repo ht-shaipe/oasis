@@ -51,6 +51,9 @@
                 <span class="menubar-icon" @click="toggleSignInModal"> 
                     <el-icon><Coin /></el-icon>
                 </span>
+                <span class="menubar-icon theme-toggle" @click="theme.toggle()" :title="theme.isDark ? '切换亮色' : '切换暗色'">
+                    <el-icon><Sunny v-if="theme.isDark" /><Moon v-else /></el-icon>
+                </span>
                 <span class="menubar-battery">
                     <div class="battery-icon">
                         <div class="battery-level"></div>
@@ -75,10 +78,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { CopyDocument, Bell, Coin } from '@element-plus/icons-vue';
+import { CopyDocument, Bell, Coin, Sunny, Moon } from '@element-plus/icons-vue';
 import SignInModal from './SignInModal.vue';
 import NotificationCenter from './NotificationCenter.vue';
 import Calendar from './Calendar.vue';
+import { useThemeStore } from '@/store/theme';
+
+const theme = useThemeStore();
 
 // 菜单状态
 const showAppleMenu = ref(false);
@@ -127,7 +133,7 @@ const toggleSignInModal = () => {
 
 // 当前时间
 const currentTime = ref('');
-let timeInterval = null;
+let timeInterval: ReturnType<typeof setInterval> | null = null;
 
 // 更新时间的函数
 const updateTime = () => {
@@ -162,9 +168,9 @@ onBeforeUnmount(() => {
     left: 0;
     width: 100%;
     height: 25px;
-    background-color: rgba(50, 50, 50, 0.7);
+    background-color: var(--color-menubar-bg);
     backdrop-filter: blur(10px);
-    color: white;
+    color: var(--color-menubar-text);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -285,7 +291,7 @@ onBeforeUnmount(() => {
 }
 
 .battery-level {
-    background-color: white;
+    background-color: var(--color-menubar-text);
     height: 100%;
     width: 100%;
     border-radius: 1px;
@@ -296,10 +302,10 @@ onBeforeUnmount(() => {
     position: absolute;
     top: 25px;
     left: 0;
-    background-color: rgba(50, 50, 50, 0.95);
+    background-color: var(--color-menu-bg);
     backdrop-filter: blur(10px);
     border-radius: 5px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 5px 20px var(--color-shadow);
     min-width: 200px;
     z-index: 2100; /* 确保高于顶部菜单栏 */
     padding: 5px 0;
@@ -309,10 +315,10 @@ onBeforeUnmount(() => {
     position: absolute;
     top: 25px;
     left: 0;
-    background-color: rgba(50, 50, 50, 0.95);
+    background-color: var(--color-menu-bg);
     backdrop-filter: blur(10px);
     border-radius: 5px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 5px 20px var(--color-shadow);
     min-width: 180px;
     z-index: 2100; /* 确保高于顶部菜单栏 */
     padding: 5px 0;
@@ -322,7 +328,7 @@ onBeforeUnmount(() => {
     padding: 5px 15px;
     cursor: pointer;
     font-size: 13px;
-    color: #fff;
+    color: var(--color-menu-text);
 }
 
 .menu-item:hover {
@@ -331,7 +337,7 @@ onBeforeUnmount(() => {
 
 .menu-divider {
     height: 1px;
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--color-menu-divider);
     margin: 5px 0;
 }
 </style> 

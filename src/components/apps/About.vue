@@ -68,13 +68,13 @@ const toggleMinimize = () => {
 .about-content h2 {
     margin: 10px 0;
     font-size: 18px;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .about-content p {
     margin: 5px 0;
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-secondary);
     text-align: center;
 }
 
@@ -83,16 +83,16 @@ const toggleMinimize = () => {
     bottom: 10px;
     right: 10px;
     font-size: 12px;
-    color: #999;
+    color: var(--color-text-tertiary);
     text-align: right;
 }
 
 .copyright-info a {
-    color: #337ab7;
+    color: var(--color-link);
     text-decoration: none;
 }
 
 .copyright-info a:hover {
-    color: #23527c;
+    color: var(--color-link-hover);
 }
 </style> 

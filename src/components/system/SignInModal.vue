@@ -30,8 +30,8 @@
                 </div>
                 <div class="calendar-days">
                     <div
-                        v-for="day in calendarDays"
-                        :key="day.date"
+                        v-for="(day, idx) in calendarDays"
+                        :key="idx"
                         class="calendar-day"
                         :class="{
                             'empty': !day.date,
@@ -81,7 +81,7 @@
 import { ref, computed, watchEffect } from 'vue';
 import { Check } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { getSignInStatus, signIn } from '../../utils/apiService';
+import { getSignInStatus, signIn, type SignInStatus } from '../../utils/apiService';
 
 const props = defineProps({
     visible: Boolean
@@ -99,7 +99,7 @@ const closeDialog = () => {
 };
 
 // 签到数据
-const signInData = ref({
+const signInData = ref<SignInStatus>({
     hasSigned: false,
     consecutiveDays: 0,
     signedDates: [],
@@ -129,7 +129,7 @@ const calendarDays = computed(() => {
 
     // 添加月初的空白天数
     for (let i = 0; i < startingDayOfWeek; i++) {
-        days.push({ date: null });
+        days.push({ date: null as number | null });
     }
 
     // 添加月份中的天数
@@ -165,8 +165,8 @@ const fetchSignInStatus = async () => {
         
         const response = await getSignInStatus();
         
-        if (response.success) {
-            signInData.value = response.data;
+        if (response.success && response.data) {
+            signInData.value = response.data.data || response.data as any;
         }
     } catch (error) {
         console.error('获取签到状态失败:', error);
@@ -190,15 +190,15 @@ const handleSignIn = async () => {
         
         const response = await signIn();
         
-        if (response.success) {
+        if (response.success && response.data) {
             const result = response.data;
             // 刷新签到状态
             await fetchSignInStatus();
             ElMessage.success(`签到成功！获得 ${result.creditsAdded} 积分`);
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('签到失败:', error);
-        if (error.response && error.response.data && error.response.data.message) {
+        if (error?.response?.data?.message) {
             ElMessage.error(error.response.data.message);
         } else {
             ElMessage.error('签到失败，请稍后再试');
@@ -248,7 +248,7 @@ watchEffect(() => {
 
 .days-text {
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-secondary);
 }
 
 .next-reward {
@@ -257,7 +257,7 @@ watchEffect(() => {
 
 .reward-text {
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-secondary);
 }
 
 .reward-amount {
@@ -267,7 +267,7 @@ watchEffect(() => {
 }
 
 .calendar-container {
-    background-color: #f5f7fa;
+    background-color: var(--color-input-bg);
     border-radius: 8px;
     padding: 15px;
     margin-bottom: 20px;
@@ -289,7 +289,7 @@ watchEffect(() => {
 
 .weekday {
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-secondary);
     padding: 5px 0;
 }
 
@@ -323,7 +323,7 @@ watchEffect(() => {
 }
 
 .calendar-day.future {
-    color: #BBBBBB;
+    color: var(--color-text-tertiary);
 }
 
 .signed-icon {
@@ -345,7 +345,7 @@ watchEffect(() => {
 }
 
 .credit-rules {
-    background-color: #f5f7fa;
+    background-color: var(--color-input-bg);
     border-radius: 8px;
     padding: 15px;
 }
@@ -354,7 +354,7 @@ watchEffect(() => {
     font-size: 16px;
     font-weight: bold;
     margin-bottom: 10px;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .rule-item {
@@ -365,7 +365,7 @@ watchEffect(() => {
 }
 
 .rule-days {
-    color: #666;
+    color: var(--color-text-secondary);
 }
 
 .rule-credits {

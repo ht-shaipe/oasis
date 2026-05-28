@@ -122,8 +122,8 @@ const toggleMinimize = () => {
 
 .notes-sidebar {
     width: 210px;
-    background-color: #f2f2f2;
-    border-right: 1px solid #e0e0e0;
+    background-color: var(--color-sidebar-bg);
+    border-right: 1px solid var(--color-window-titlebar-border);
     display: flex;
     flex-direction: column;
 }
@@ -133,12 +133,12 @@ const toggleMinimize = () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--color-window-titlebar-border);
 }
 
 .sidebar-header h3 {
     margin: 0;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .add-note-btn {
@@ -156,12 +156,12 @@ const toggleMinimize = () => {
 
 .note-item {
     padding: 15px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--color-window-titlebar-border);
     cursor: pointer;
 }
 
 .note-item:hover {
-    background-color: #e9e9e9;
+    background-color: var(--color-input-bg);
 }
 
 .note-item.active {
@@ -170,12 +170,12 @@ const toggleMinimize = () => {
 
 .note-title {
     font-weight: bold;
-    color: #333;
+    color: var(--color-text-primary);
     margin-bottom: 5px;
 }
 
 .note-preview {
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
@@ -198,7 +198,7 @@ const toggleMinimize = () => {
 }
 
 .note-editor h1 {
-    color: #333;
+    color: var(--color-text-primary);
     font-size: 24px;
     margin-top: 0;
     margin-bottom: 20px;

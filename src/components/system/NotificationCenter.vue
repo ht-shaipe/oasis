@@ -59,13 +59,13 @@ const closeNotificationCenter = () => {
 .notification-header h3 {
     margin: 0;
     font-size: 16px;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .notification-header button {
     background: none;
     border: none;
-    color: #666;
+    color: var(--color-text-secondary);
     cursor: pointer;
     padding: 5px 10px;
     border-radius: 4px;
@@ -83,7 +83,7 @@ const closeNotificationCenter = () => {
     display: flex;
     margin-bottom: 15px;
     padding: 10px;
-    background-color: white;
+    background-color: var(--color-card-bg);
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -99,12 +99,12 @@ const closeNotificationCenter = () => {
 .notification-text strong {
     display: block;
     margin-bottom: 5px;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .notification-text p {
     margin: 0;
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 13px;
 }
 </style> 

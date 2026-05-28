@@ -190,8 +190,9 @@ export const mockData: Record<string, any> = {
     message: '项目更新成功',
     data: {
       id: 'mock_project_1',
-      title: '更新后的项目',
+      projectName: '更新后的项目',
       description: '项目已更新',
+      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     } as Project
   } as ApiResponse,

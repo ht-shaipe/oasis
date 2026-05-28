@@ -28,7 +28,6 @@ const closeCalendar = () => {
 // 更新日期
 const updateDate = () => {
     const now = new Date();
-    const year = now.getFullYear();
     const month = now.getMonth() + 1;
     const day = now.getDate();
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
@@ -68,13 +67,13 @@ onMounted(() => {
 .calendar-header h3 {
     margin: 0;
     font-size: 14px;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .calendar-header button {
     background: none;
     border: none;
-    color: #666;
+    color: var(--color-text-secondary);
     cursor: pointer;
     padding: 3px 8px;
     border-radius: 4px;
@@ -91,7 +90,7 @@ onMounted(() => {
 .calendar-item {
     padding: 8px 0;
     border-bottom: 1px solid #eee;
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 13px;
 }
 

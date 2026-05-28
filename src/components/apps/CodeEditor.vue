@@ -340,6 +340,47 @@ import { ElMessage } from 'element-plus';
 import loader from '@monaco-editor/loader';
 import MacWindow from '@/components/common/MacWindow.vue';
 
+// 定义类型接口
+interface EditorTab {
+    name: string;
+    icon: string;
+    language?: string;
+    modified: boolean;
+}
+
+interface FileItem {
+    name: string;
+    type: 'folder' | 'file';
+    icon?: string;
+    expanded?: boolean;
+    children?: FileItem[];
+}
+
+interface SearchResult {
+    path: string;
+    line: number;
+    text: string;
+}
+
+interface MonacoEditor {
+    getValue(): string;
+    setValue(value: string): void;
+    getPosition(): { lineNumber: number; column: number } | null;
+    setPosition(position: { lineNumber: number; column: number }): void;
+    getSelections(): any[] | null;
+    setSelections(selections: any[]): void;
+    getScrollTop(): number;
+    setScrollTop(scrollTop: number): void;
+    layout(): void;
+    onDidChangeModelContent(callback: () => void): void;
+    onDidChangeCursorPosition(callback: () => void): void;
+    getModel(): { getValue(): string; getLineCount(): number; setValue(value: string): void; getLineMaxColumn(line: number): number; getLineContent(line: number): string };
+    revealLine(line: number, scrollType?: number): void;
+    revealPosition(position: any, scrollType?: number): void;
+    updateOptions(options: any): void;
+    dispose(): void;
+}
+
 // 定义属性
 const props = defineProps({
     isMinimized: {
@@ -360,12 +401,12 @@ const props = defineProps({
 const emit = defineEmits(['close', 'minimize', 'codeUpdated', 'openApp']);
 
 // 状态变量
-const editorContainer = ref(null);
+const editorContainer = ref<HTMLElement | null>(null);
 const detectedLanguage = ref('javascript'); // 默认语言
 const lastUpdateTime = ref(Date.now()); // 上次更新时间
 const updateFrequency = ref(1000); // 更新频率（毫秒），初始值较大
 const isGenerating = ref(false); // 是否正在生成代码
-let monacoEditor = null; // 编辑器实例
+let monacoEditor: MonacoEditor | null = null; // 编辑器实例
 let preserveEditorState = false; // 是否保留编辑器状态
 const sidebarCollapsed = ref(false); // 侧边栏是否折叠
 
@@ -373,8 +414,8 @@ const sidebarCollapsed = ref(false); // 侧边栏是否折叠
 const isMinimized = ref(false);
 const activeActivityBarItem = ref('explorer');
 const activeEditorTab = ref(0);
-const editorTabs = ref([]);
-const folderStructure = ref([]);
+const editorTabs = ref<EditorTab[]>([]);
+const folderStructure = ref<FileItem[]>([]);
 
 // 面板相关
 const showPanel = ref(true);
@@ -397,10 +438,10 @@ const sidebarContent = computed(() => activeActivityBarItem.value);
 
 // 搜索相关
 const searchQuery = ref('');
-const searchResults = ref([]);
+const searchResults = ref<SearchResult[]>([]);
 
 // 方法
-function setActiveActivityBarItem(item) {
+function setActiveActivityBarItem(item: string) {
     activeActivityBarItem.value = item;
 }
 
@@ -415,17 +456,17 @@ function toggleSidebar() {
     });
 }
 
-function toggleFolder(folder) {
+function toggleFolder(folder: FileItem) {
     folder.expanded = !folder.expanded;
 }
 
-function openFile(file) {
+function openFile(_file: FileItem) {
     // 如果有openFile的实现，保留它
 }
 
-function getLanguageFromFileName(fileName) {
-    const extension = fileName.split('.').pop().toLowerCase();
-    const languageMap = {
+function getLanguageFromFileName(fileName: string): string {
+    const extension = fileName.split('.').pop()?.toLowerCase() || '';
+    const languageMap: Record<string, string> = {
         'js': 'javascript',
         'html': 'html',
         'css': 'css',
@@ -449,11 +490,11 @@ function getLanguageFromFileName(fileName) {
     return languageMap[extension] || '普通文本';
 }
 
-function setActiveTab(index) {
+function setActiveTab(index: number) {
     activeEditorTab.value = index;
 }
 
-function closeTab(index, event) {
+function closeTab(index: number, event: Event | undefined) {
     if (event) event.stopPropagation();
     if (editorTabs.value.length > 1) {
         editorTabs.value.splice(index, 1);
@@ -475,38 +516,38 @@ function togglePanel() {
     });
 }
 
-function setPanelTab(tab) {
+function setPanelTab(tab: string) {
     activePanelTab.value = tab;
 }
 
-function resizePanel(event) {
+function resizePanel(event: MouseEvent) {
     // 记录初始位置
     const startY = event.clientY;
     const startHeight = panelHeight.value;
-    
-    function onMouseMove(e) {
+
+    function onMouseMove(e: MouseEvent) {
         // 计算新高度
         const delta = startY - e.clientY;
-        
+
         // 获取编辑器区域的总高度，用于计算最大面板高度
         const editorAreaHeight = document.querySelector('.editor-area')?.clientHeight || 500;
         // 限制最大高度为编辑区域的40%
         const maxPanelHeight = Math.min(500, editorAreaHeight * 0.4);
-        
+
         panelHeight.value = Math.max(100, Math.min(maxPanelHeight, startHeight + delta));
-        
+
         // 实时调整编辑器布局
         if (monacoEditor) {
             monacoEditor.layout();
         }
     }
-    
+
     function onMouseUp() {
         // 移除事件监听器
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
     }
-    
+
     // 添加事件监听器
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
@@ -554,7 +595,7 @@ const openContinueDialog = () => {
     emit('openApp', 'continue-dialog');
 };
 // 检测代码语言类型
-const detectLanguage = (code) => {
+const detectLanguage = (code: string): string => {
     // 根据代码内容简单判断语言类型
     if (code.includes('<template>') && code.includes('<script lang="ts">')) {
         return 'html'; // Monaco不直接支持Vue，使用HTML
@@ -589,7 +630,7 @@ const initMonacoEditor = async () => {
     if (editorContainer.value && !monacoEditor) {
         try {
             const monaco = await loader.init();
-            
+
             // 创建编辑器实例
             monacoEditor = monaco.editor.create(editorContainer.value, {
                 value: props.code,
@@ -617,15 +658,15 @@ const initMonacoEditor = async () => {
                 smoothScrolling: true, // 平滑滚动
                 cursorBlinking: 'smooth',
                 cursorSmoothCaretAnimation: true
-            });
-            
+            }) as MonacoEditor;
+
             // 更新检测到的语言
             detectedLanguage.value = detectLanguage(props.code);
 
             // 添加代码更改监听
             monacoEditor.onDidChangeModelContent(() => {
                 if (!preserveEditorState) {
-                    const updatedCode = monacoEditor.getValue();
+                    const updatedCode = monacoEditor!.getValue();
                     emit('codeUpdated', updatedCode);
                 }
             });
@@ -640,13 +681,13 @@ const initMonacoEditor = async () => {
             nextTick(() => {
                 if (props.code && props.code.includes('// 代码正在生成中') || isGenerating.value) {
                     // 获取总行数
-                    const lineCount = monacoEditor.getModel().getLineCount();
+                    const lineCount = monacoEditor!.getModel().getLineCount();
                     // 滚动到底部
-                    monacoEditor.revealLine(lineCount);
+                    monacoEditor!.revealLine(lineCount);
                     // 定位光标到底部
                     const lastLine = lineCount;
-                    const lastColumn = monacoEditor.getModel().getLineMaxColumn(lastLine);
-                    monacoEditor.setPosition({ lineNumber: lastLine, column: lastColumn });
+                    const lastColumn = monacoEditor!.getModel().getLineMaxColumn(lastLine);
+                    monacoEditor!.setPosition({ lineNumber: lastLine, column: lastColumn });
                     updateCursorPosition();
                 }
             });
@@ -657,16 +698,16 @@ const initMonacoEditor = async () => {
     } else if (monacoEditor) {
         // 如果编辑器已经存在，只更新内容
         preserveEditorState = true; // 防止触发不必要的更新
-        
+
         const currentPosition = monacoEditor.getPosition();
         const currentSelections = monacoEditor.getSelections();
         const currentScrollTop = monacoEditor.getScrollTop();
-        
+
         monacoEditor.getModel().setValue(props.code);
         const language = detectLanguage(props.code);
         detectedLanguage.value = language;
         monacoEditor.updateOptions({ language });
-        
+
         // 恢复光标位置和滚动状态
         if (currentPosition) {
             monacoEditor.setPosition(currentPosition);
@@ -675,14 +716,14 @@ const initMonacoEditor = async () => {
             }
             monacoEditor.setScrollTop(currentScrollTop);
         }
-        
+
         preserveEditorState = false; // 恢复更新
-        
+
         // 如果代码正在生成中，滚动到底部
         if (props.code && props.code.includes('// 代码正在生成中') || isGenerating.value) {
             nextTick(() => {
-                const lastLine = monacoEditor.getModel().getLineCount();
-                monacoEditor.revealLine(lastLine);
+                const lastLine = monacoEditor!.getModel().getLineCount();
+                monacoEditor!.revealLine(lastLine);
                 updateCursorPosition();
             });
         }
@@ -778,10 +819,11 @@ watch(
             if (newCode.length > oldCode?.length && newLines > oldLines) {
                 // 滚动到最后一行
                 nextTick(() => {
+                    if (!monacoEditor) return;
                     // 判断是否是增量更新（生成中）还是完全替换
                     if ((newCode.startsWith(oldCode || '') || isGenerating.value) && newCode !== oldCode) {
                         // 生成中，滚动到底部
-                        const lastLineNumber = monacoEditor.getModel().getLineCount();
+                        const lastLineNumber = monacoEditor.getModel()!.getLineCount();
                         monacoEditor.revealLine(lastLineNumber, 1); // 1表示顶部对齐
                         
                         // 如果代码包含"生成中"的提示，则等待提示消失后再滚动
@@ -791,7 +833,7 @@ watch(
                         }
                         
                         // 光标定位到末尾，提升用户体验
-                        const lastLineLength = monacoEditor.getModel().getLineContent(lastLineNumber).length;
+                        const lastLineLength = monacoEditor.getModel()!.getLineContent(lastLineNumber).length;
                         monacoEditor.setPosition({ lineNumber: lastLineNumber, column: lastLineLength + 1 });
                         updateCursorPosition();
                     } else if (currentPosition) {
@@ -1075,7 +1117,7 @@ watch(
 
 .sidebar-message {
     padding: 10px;
-    color: #999999;
+    color: var(--color-text-tertiary);
     text-align: center;
     font-style: italic;
     font-size: 13px;
@@ -1305,7 +1347,7 @@ watch(
 
 .panel-message {
     padding: 20px;
-    color: #999999;
+    color: var(--color-text-tertiary);
     text-align: center;
     font-style: italic;
 }

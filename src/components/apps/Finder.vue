@@ -210,11 +210,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import MacWindow from '@/components/common/MacWindow.vue';
 import { ElMessage } from 'element-plus';
 import { Folder, Document, Loading, Grid, List, Clock, Search, InfoFilled } from '@element-plus/icons-vue';
-import { getUserProjects, getProjectById, getProjectVersionCode } from '@/utils/apiService';
+import { getUserProjects, getProjectById } from '@/utils/apiService';
+
+// 定义类型接口
+interface Project {
+    id: string;
+    projectId: string;
+    projectName: string;
+    description?: string;
+    prompt?: string;
+    versionsCount?: number;
+    lastVersion?: string;
+    updateTime?: number;
+    title?: string;
+}
+
+interface Version {
+    id: string;
+    versionId: string;
+    title?: string;
+    timestamp: number;
+    prompt?: string;
+}
 
 // 定义属性
 const props = defineProps({
@@ -229,17 +250,17 @@ const props = defineProps({
 });
 
 // 事件发射
-const emit = defineEmits(['close', 'minimize', 'openApp']);
+const emit = defineEmits(['close', 'minimize', 'openApp', 'openEditor']);
 
 // 状态变量
 const loading = ref(false);
 const projectLoading = ref(false);
-const projects = ref([]);
+const projects = ref<Project[]>([]);
 const searchQuery = ref('');
 const viewMode = ref('grid');
-const selectedProject = ref(null);
-const projectVersions = ref([]);
-const selectedVersion = ref(null);
+const selectedProject = ref<Project | null>(null);
+const projectVersions = ref<Version[]>([]);
+const selectedVersion = ref<Version | null>(null);
 
 // 关闭应用
 const closeApp = () => {
@@ -256,10 +277,10 @@ const filteredProjects = computed(() => {
     if (!searchQuery.value) {
         return projects.value;
     }
-    
+
     const query = searchQuery.value.toLowerCase();
-    return projects.value.filter(project => 
-        (project.projectName && project.projectName.toLowerCase().includes(query)) || 
+    return projects.value.filter((project: Project) =>
+        (project.projectName && project.projectName.toLowerCase().includes(query)) ||
         (project.description && project.description.toLowerCase().includes(query)) ||
         (project.prompt && project.prompt.toLowerCase().includes(query))
     );
@@ -297,7 +318,7 @@ const filterRecentProjects = () => {
 };
 
 // 打开项目
-const openProject = (project) => {
+const openProject = (project: Project) => {
     selectedProject.value = {
         ...project,
         title: project.projectName // 使用projectName作为title，保持UI一致性
@@ -306,51 +327,22 @@ const openProject = (project) => {
 };
 
 // 选择版本
-const selectVersion = (version) => {
+const selectVersion = (version: Version) => {
     selectedVersion.value = version;
 };
 
 // 打开版本预览
-const openVersionPreview = (version) => {
+const openVersionPreview = (version: Version) => {
     if (!selectedProject.value || !version) return;
-    
+
     // 构建预览URL
     const previewUrl = `/api/projects/${selectedProject.value.projectId}/versions/${version.versionId}/html`;
     // 在新窗口打开预览
     window.open(previewUrl, '_blank');
 };
 
-// 加载版本到编辑器
-const loadVersionToEditor = async (version) => {
-    if (!selectedProject.value || !version) return;
-    
-    try {
-        // 获取HTML内容
-        const html = await getProjectVersionCode(
-            selectedProject.value.projectId, 
-            version.versionId
-        );
-        
-        // 加载到编辑器
-        emit('openEditor', {
-            code: html,
-            prompt: version.prompt,
-            additionalPrompt: '', // 默认无附加提示
-            projectId: selectedProject.value.projectId,
-            versionId: version.versionId
-        });
-        
-        // 关闭Finder
-        closeApp();
-        
-    } catch (error) {
-        console.error('加载版本到编辑器时出错:', error);
-        ElMessage.error('加载版本到编辑器失败');
-    }
-};
-
 // 格式化日期
-const formatDate = (dateStr) => {
+const formatDate = (dateStr: string | number) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
@@ -363,7 +355,7 @@ const getTotalSize = () => {
 };
 
 // 格式化文件大小
-const formatFileSize = (size) => {
+const formatFileSize = (size: number) => {
     if (size < 1024) {
         return size + ' B';
     } else if (size < 1024 * 1024) {
@@ -380,31 +372,33 @@ const loadProjects = async () => {
     try {
         loading.value = true;
         const data = await getUserProjects();
-        projects.value = data.projects || [];
-    } catch (error) {
+        projects.value = (data as any).projects || [];
+    } catch (error: unknown) {
         console.error('加载项目列表时出错:', error);
-        ElMessage.error('加载项目列表失败');
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        ElMessage.error(`加载项目列表失败: ${errorMessage}`);
     } finally {
         loading.value = false;
     }
 };
 
 // 加载项目版本
-const loadProjectVersions = async (projectId) => {
+const loadProjectVersions = async (projectId: string) => {
     if (!projectId) return;
-    
+
     try {
         projectLoading.value = true;
         const data = await getProjectById(projectId);
-        console.log(data)
-        if(data.success){
-            projectVersions.value = data.project.versions || [];
-        }else{
+        console.log(data);
+        if ((data as any).success) {
+            projectVersions.value = (data as any).project.versions || [];
+        } else {
             ElMessage.error('加载项目版本失败');
         }
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('加载项目版本时出错:', error);
-        ElMessage.error('加载项目版本失败');
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        ElMessage.error(`加载项目版本失败: ${errorMessage}`);
     } finally {
         projectLoading.value = false;
     }
@@ -420,14 +414,14 @@ onMounted(() => {
 .finder-container {
     display: flex;
     height: 100%;
-    background-color: #f9f9f9;
+    background-color: var(--color-sidebar-bg);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 .finder-sidebar {
     width: 200px;
-    background-color: #f2f2f2;
-    border-right: 1px solid #e0e0e0;
+    background-color: var(--color-sidebar-bg);
+    border-right: 1px solid var(--color-window-titlebar-border);
     padding: 10px 0;
     overflow-y: auto;
 }
@@ -440,7 +434,7 @@ onMounted(() => {
     padding: 0 16px;
     font-size: 12px;
     font-weight: 500;
-    color: #777;
+    color: var(--color-text-tertiary);
     margin-bottom: 5px;
     text-transform: uppercase;
 }
@@ -457,7 +451,7 @@ onMounted(() => {
 .sidebar-item .el-icon {
     margin-right: 8px;
     font-size: 16px;
-    color: #666;
+    color: var(--color-text-secondary);
 }
 
 .sidebar-item:hover {
@@ -484,8 +478,8 @@ onMounted(() => {
     display: flex;
     align-items: center;
     padding: 8px 16px;
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #e0e0e0;
+    background-color: var(--color-sidebar-bg);
+    border-bottom: 1px solid var(--color-window-titlebar-border);
     height: 50px;
 }
 
@@ -503,7 +497,7 @@ onMounted(() => {
 
 .path-separator {
     margin: 0 8px;
-    color: #999;
+    color: var(--color-text-tertiary);
 }
 
 .current-path {
@@ -519,7 +513,7 @@ onMounted(() => {
     flex: 1;
     overflow-y: auto;
     padding: 16px;
-    background-color: #fff;
+    background-color: var(--color-input-bg);
 }
 
 .projects-container.grid,
@@ -574,7 +568,7 @@ onMounted(() => {
 .project-meta,
 .version-meta {
     font-size: 11px;
-    color: #777;
+    color: var(--color-text-tertiary);
 }
 
 .list-item-name {
@@ -594,10 +588,10 @@ onMounted(() => {
 
 .finder-statusbar {
     height: 24px;
-    background-color: #f7f7f7;
-    border-top: 1px solid #e0e0e0;
+    background-color: var(--color-sidebar-bg);
+    border-top: 1px solid var(--color-window-titlebar-border);
     font-size: 12px;
-    color: #777;
+    color: var(--color-text-tertiary);
     padding: 0 16px;
     display: flex;
     align-items: center;
@@ -641,7 +635,7 @@ onMounted(() => {
 }
 
 .project-update {
-    color: #999;
+    color: var(--color-text-tertiary);
     font-size: 0.9em;
 }
 
@@ -657,7 +651,7 @@ onMounted(() => {
 }
 
 .prompt-preview {
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 12px;
     white-space: nowrap;
     overflow: hidden;

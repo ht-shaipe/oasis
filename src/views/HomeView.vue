@@ -179,7 +179,7 @@ const currentVersionId = ref('');
 const filename = ref('');
 
 // 显示右键菜单
-const handleContextMenu = (event) => {
+const handleContextMenu = (event: MouseEvent) => {
     // 阻止默认的浏览器右键菜单
     event.preventDefault();
     
@@ -199,7 +199,7 @@ const closeAllMenus = () => {
 };
 
 // 打开应用
-const openApp = (appName) => {
+const openApp = (appName: string | { type: string; url: string; target: string }) => {
     // 检查是否是带有URL的对象格式
     if (typeof appName === 'object' && appName.type === 'safari') {
         if (appName.target === '_blank') {
@@ -249,7 +249,7 @@ const openApp = (appName) => {
 };
 
 // 更新生成的代码
-const updateGeneratedCode = (code) => {
+const updateGeneratedCode = (code: string) => {
     generatedCode.value = code;
     filename.value = 'index.html';
     // 确保编辑器窗口已打开
@@ -260,7 +260,7 @@ const updateGeneratedCode = (code) => {
 };
 
 // 更新会话信息
-const updateSessionInfo = (prompt, projectId, versionId, shouldOpenContinueDialog = false) => {
+const updateSessionInfo = (prompt: string, projectId: string, versionId: string, shouldOpenContinueDialog = false) => {
     originalPrompt.value = prompt || '';
     currentprojectId.value = projectId || '';
     currentVersionId.value = versionId || '';
@@ -283,12 +283,12 @@ const updateSessionInfo = (prompt, projectId, versionId, shouldOpenContinueDialo
 };
 
 // 处理代码更新事件
-const handleCodeUpdated = (code) => {
+const handleCodeUpdated = (code: string) => {
     generatedCode.value = code;
 };
 
 // 处理版本加载事件
-const handleLoadVersion = (versionDetail) => {
+const handleLoadVersion = (versionDetail: { code?: string; prompt?: string } | null) => {
     if (versionDetail && versionDetail.code) {
         generatedCode.value = versionDetail.code;
         originalPrompt.value = versionDetail.prompt || '';
@@ -305,7 +305,7 @@ const handleLoadVersion = (versionDetail) => {
 };
 
 // 处理继续对话版本
-const handleContinueVersion = (version) => {
+const handleContinueVersion = (version: { code?: string; prompt?: string } | null) => {
     if (version) {
         // 先加载这个版本
         handleLoadVersion(version);
@@ -319,7 +319,7 @@ const handleContinueVersion = (version) => {
 };
 
 // 处理继续生成的代码
-const handleContinueCodeGenerated = async (code, additionalPrompt) => {
+const handleContinueCodeGenerated = async (code: string, _additionalPrompt: string) => {
     // 更新代码
     generatedCode.value = code;
     
@@ -368,15 +368,16 @@ onMounted(async () => {
     });
     
     // 从本地存储加载保存的壁纸
-    const savedWallpaper = localStorage.getItem('wallpaper') || 1;
+    const savedWallpaper = localStorage.getItem('wallpaper') || '1';
     currentWallpaper.value = parseInt(savedWallpaper);
     const desktop = document.querySelector('.mac-desktop');
     if (desktop) {
+        const el = desktop as HTMLElement;
         const preloadImage = new Image();
         preloadImage.src = `/assets/wallpaper/${currentWallpaper.value}.jpg`;
         preloadImage.onload = () => {
-            desktop.style.backgroundImage = `url('/assets/wallpaper/${currentWallpaper.value}.jpg')`;
-            desktop.style.transition = 'background-image 1s ease-in-out';
+            el.style.backgroundImage = `url('/assets/wallpaper/${currentWallpaper.value}.jpg')`;
+            el.style.transition = 'background-image 1s ease-in-out';
         };
     }
 });

@@ -82,7 +82,7 @@ const continuePrompt = ref('');
 const selectedModel = ref('gpt-3.5-turbo');
 const isGenerating = ref(false);
 const localOriginalPrompt = ref(props.originalPrompt);
-const modelCreditCosts = ref({});
+const modelCreditCosts = ref<Record<string, number>>({});
 
 // 监听props变化
 watch(
@@ -144,29 +144,32 @@ const submitContinueDialog = async () => {
                 }
             },
             // 错误的回调
-            (error) => {
+            (error: string | Error) => {
                 isGenerating.value = false;
-                ElMessage.error(`生成代码时发生错误: ${error}`);
+                const errorMessage = typeof error === 'string' ? error : error.message;
+                ElMessage.error(`生成代码时发生错误: ${errorMessage}`);
             }
         );
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('继续生成代码错误:', error);
         isGenerating.value = false;
-        ElMessage.error(`生成代码时发生错误: ${error.message || '未知错误'}`);
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        ElMessage.error(`生成代码时发生错误: ${errorMessage}`);
     }
 };
 
 onMounted(async () => {
     try {
         const costsResponse = await getModelCreditCosts();
-        modelCreditCosts.value = costsResponse.data;
-        
+        modelCreditCosts.value = costsResponse.data || {};
+
         if (Object.keys(modelCreditCosts.value).length > 0) {
             const models = Object.keys(modelCreditCosts.value);
             selectedModel.value = models[models.length - 1];
         }
-    } catch (error) {
-        ElMessage.error('获取模型积分配置失败，请刷新页面重试');
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        ElMessage.error(`获取模型积分配置失败，请刷新页面重试: ${errorMessage}`);
     }
 });
 </script>
@@ -191,7 +194,7 @@ onMounted(async () => {
 .ai-model-selection h4 {
     margin-top: 0;
     margin-bottom: 10px;
-    color: #333;
+    color: var(--color-text-primary);
     font-size: 14px;
 }
 

@@ -128,7 +128,7 @@ const previewHtml = computed(() => {
             line-height: 1.6;
           }
           pre {
-            background-color: #f5f7fa;
+            background-color: var(--color-input-bg);
             padding: 15px;
             border-radius: 4px;
             overflow: auto;
@@ -154,7 +154,7 @@ const previewHtml = computed(() => {
           .box {
             width: 100px;
             height: 100px;
-            background: #e0e0e0;
+            background: var(--color-window-titlebar-border);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -182,8 +182,8 @@ const previewHtml = computed(() => {
 .safari-toolbar {
     display: flex;
     align-items: center;
-    background-color: #f8f8f8;
-    border-bottom: 1px solid #e0e0e0;
+    background-color: var(--color-bg);
+    border-bottom: 1px solid var(--color-window-titlebar-border);
     padding: 10px;
 }
 
@@ -197,13 +197,13 @@ const previewHtml = computed(() => {
     flex: 1;
     display: flex;
     align-items: center;
-    background-color: #e9e9e9;
+    background-color: var(--color-input-bg);
     border-radius: 6px;
     padding: 0 10px;
     height: 28px;
     margin: 0 10px;
     font-size: 13px;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .safari-address-bar .el-icon {

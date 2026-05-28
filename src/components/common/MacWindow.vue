@@ -66,7 +66,7 @@ const props = defineProps({
 });
 
 // 窗口引用
-const windowRef = ref(null);
+const windowRef = ref<HTMLElement | null>(null);
 
 // 窗口层级
 const currentZIndex = ref(props.zIndex);
@@ -108,7 +108,7 @@ onMounted(() => {
     // 查找菜单栏元素并获取其高度
     const menuBarElement = document.querySelector('.menu-bar');
     if (menuBarElement) {
-        menuBarHeight.value = menuBarElement.offsetHeight;
+        menuBarHeight.value = (menuBarElement as HTMLElement).offsetHeight;
     } else {
         // 默认菜单栏高度
         menuBarHeight.value = 25; // macOS默认菜单栏高度
@@ -126,7 +126,7 @@ const bringToFront = () => {
     
     allWindows.forEach(window => {
         const computedStyle = getComputedStyle(window);
-        const zIndex = parseInt(computedStyle.zIndex || 1000);
+        const zIndex = parseInt(computedStyle.zIndex || '1000');
         if (zIndex > maxZIndex) {
             maxZIndex = zIndex;
         }
@@ -204,18 +204,18 @@ const toggleMaximize = () => {
 };
 
 // 开始拖动
-const startDrag = (event) => {
+const startDrag = (event: MouseEvent) => {
     // 如果是最大化状态，不允许拖动
     if (isMaximized.value) return;
     
     // 如果点击的是按钮，不进行拖动
-    if (event.target.classList.contains('window-button')) return;
+    if ((event.target as HTMLElement).classList.contains('window-button')) return;
     
     // 确保窗口在最前
     bringToFront();
     
     isDragging.value = true;
-    const rect = windowRef.value.getBoundingClientRect();
+    const rect = (windowRef.value as HTMLElement).getBoundingClientRect();
     dragOffset.value = {
         x: event.clientX - rect.left,
         y: event.clientY - rect.top
@@ -226,7 +226,7 @@ const startDrag = (event) => {
 };
 
 // 执行拖动
-const doDrag = (event) => {
+const doDrag = (event: MouseEvent) => {
     if (!isDragging.value) return;
     
     const x = event.clientX - dragOffset.value.x;
@@ -246,7 +246,7 @@ const stopDrag = () => {
 };
 
 // 开始调整大小
-const startResize = (event, direction) => {
+const startResize = (event: MouseEvent, direction: string) => {
     event.preventDefault();
     event.stopPropagation();
     
@@ -267,7 +267,7 @@ const startResize = (event, direction) => {
 };
 
 // 执行调整大小
-const doResize = (event) => {
+const doResize = (event: MouseEvent) => {
     if (!isResizing.value) return;
     
     const dx = event.clientX - resizeStartPos.value.x;
@@ -367,7 +367,7 @@ const handleWindowResize = () => {
 
 // 窗口样式计算
 const windowStyle = computed(() => {
-    const style = isMaximized.value ? {
+    const baseStyle: Record<string, string> = isMaximized.value ? {
         top: `${menuBarHeight.value}px`,
         left: '0',
         width: '100vw',
@@ -384,14 +384,14 @@ const windowStyle = computed(() => {
         transition: isMaximizing.value || isRestoring.value ? 'all 0.3s ease-in-out' : 'opacity 0.3s, transform 0.3s'
     };
     
-    style.zIndex = currentZIndex.value;
+    baseStyle.zIndex = String(currentZIndex.value);
     
-    return style;
+    return baseStyle;
 });
 
 // 内容区样式
 const contentStyle = computed(() => {
-    const style = {};
+    const style: Record<string, string> = {};
     if (isMaximized.value) {
         style.height = `calc(100vh - ${menuBarHeight.value + 36}px)`;
     } else if (windowSize.value.height) {
@@ -405,9 +405,9 @@ const contentStyle = computed(() => {
 /* Mac风格窗口 */
 .mac-window {
     position: fixed;
-    background-color: rgba(250, 250, 250, 0.95);
+    background-color: var(--color-bg-glass);
     border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 30px var(--color-shadow);
     overflow: hidden;
     backdrop-filter: blur(10px);
     z-index: 1000;
@@ -462,9 +462,9 @@ const contentStyle = computed(() => {
 .window-titlebar {
     display: flex;
     align-items: center;
-    background-color: #f1f1f1;
+    background-color: var(--color-window-titlebar);
     height: 36px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--color-window-titlebar-border);
     padding: 0 12px;
     position: relative;
     cursor: move;
@@ -506,7 +506,7 @@ const contentStyle = computed(() => {
     left: 50%;
     transform: translateX(-50%);
     font-size: 13px;
-    color: #4a4a4a;
+    color: var(--color-window-title);
     font-weight: 500;
     pointer-events: none;
 }

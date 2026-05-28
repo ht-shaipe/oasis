@@ -89,6 +89,18 @@ import { ElMessage } from 'element-plus';
 import MacWindow from '@/components/common/MacWindow.vue';
 import SignInModal from '@/components/system/SignInModal.vue';
 
+// 定义用户信息类型
+interface UserInfo {
+    username?: string;
+    email?: string;
+    registrationDate?: string;
+    lastLoginDate?: string;
+    freeCredits?: number;
+    paidCredits?: number;
+    memberLevel?: number;
+    avatarUrl?: string;
+}
+
 // 组件属性
 const props = defineProps({
     isMinimized: {
@@ -101,7 +113,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'minimize']);
 
 // 用户信息状态
-const userInfo = ref({});
+const userInfo = ref<UserInfo>({});
 const loading = ref(true);
 const error = ref('');
 
@@ -135,30 +147,31 @@ const memberLevelText = computed(() => {
 const fetchUserInfo = async () => {
     loading.value = true;
     error.value = '';
-    
+
     try {
         const response = await getCurrentUser();
-        if (response.success) {
-            userInfo.value = response.user;
+        if ((response as any).success) {
+            userInfo.value = (response as any).user;
         } else {
-            error.value = response.message || '获取用户信息失败';
+            error.value = (response as any).message || '获取用户信息失败';
         }
-    } catch (err) {
+    } catch (err: unknown) {
         console.error('获取用户信息出错:', err);
-        error.value = '网络错误，请稍后再试';
+        const errorMessage = err instanceof Error ? err.message : '未知错误';
+        error.value = `网络错误，请稍后再试: ${errorMessage}`;
     } finally {
         loading.value = false;
     }
 };
 
 // 日期格式化
-const formatDate = (dateString) => {
+const formatDate = (dateString: string | number | undefined) => {
     if (!dateString) return '未知';
-    
+
     try {
-        const timestamp = parseInt(dateString);
+        const timestamp = parseInt(String(dateString));
         const date = isNaN(timestamp) ? new Date(dateString) : new Date(timestamp * 1000);
-        
+
         return date.toLocaleString('zh-CN', {
             year: 'numeric',
             month: '2-digit',
@@ -166,8 +179,8 @@ const formatDate = (dateString) => {
             hour: '2-digit',
             minute: '2-digit'
         });
-    } catch (e) {
-        return dateString;
+    } catch (_e) {
+        return String(dateString);
     }
 };
 
@@ -274,7 +287,7 @@ onMounted(() => {
 .user-info h2 {
     margin: 0;
     font-size: 20px;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 .member-badge {
@@ -286,8 +299,8 @@ onMounted(() => {
 }
 
 .member-badge.free {
-    background-color: #f1f1f1;
-    color: #666;
+    background-color: var(--color-window-titlebar);
+    color: var(--color-text-secondary);
     width: 100px;
 }
 
@@ -308,7 +321,7 @@ onMounted(() => {
 
 /* 信息区域样式 */
 .info-section, .credits-section, .daily-check-section {
-    background-color: #f9f9f9;
+    background-color: var(--color-sidebar-bg);
     border-radius: 8px;
     padding: 15px;
 }
@@ -317,7 +330,7 @@ onMounted(() => {
     margin-top: 0;
     margin-bottom: 15px;
     font-size: 16px;
-    color: #333;
+    color: var(--color-text-primary);
     border-bottom: 1px solid #eee;
     padding-bottom: 8px;
 }
@@ -348,7 +361,7 @@ onMounted(() => {
 
 .sign-in-tip {
     font-size: 12px;
-    color: #666;
+    color: var(--color-text-secondary);
     margin-top: 10px;
 }
 
@@ -359,12 +372,12 @@ onMounted(() => {
 
 .info-row .label {
     width: 80px;
-    color: #666;
+    color: var(--color-text-secondary);
 }
 
 .info-row .value {
     flex: 1;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 /* 积分卡片样式 */
@@ -396,7 +409,7 @@ onMounted(() => {
 
 .credit-label {
     font-size: 12px;
-    color: #666;
+    color: var(--color-text-secondary);
 }
 
 /* 按钮样式 */
@@ -412,8 +425,8 @@ onMounted(() => {
     border: none;
     font-size: 14px;
     cursor: pointer;
-    background-color: #f1f1f1;
-    color: #333;
+    background-color: var(--color-window-titlebar);
+    color: var(--color-text-primary);
     transition: all 0.2s;
 }
 

@@ -64,9 +64,15 @@ declare module '*.eot' {
   export default content
 }
 
-// 扩展 Window 对象
-interface Window {
-  macOS?: any
-  config?: any
-  tool?: any
+// vuex 类型声明（exports 兼容）
+declare module 'vuex' {
+  export * from 'vuex/types/index.d.ts';
+}
+
+// vue3-eventbus 类型声明
+declare module 'vue3-eventbus' {
+  import mitt from 'mitt';
+  const bus: mitt.Emitter<any> & { install: (app: any, options?: any) => any };
+  export default bus;
+  export { bus };
 }

@@ -75,7 +75,7 @@ const emit = defineEmits(['login-complete']);
 
 // 邀请码相关状态
 const inviteCode = ref('');
-const inviteCodeInput = ref(null);
+const inviteCodeInput = ref<HTMLInputElement | null>(null);
 const isVerifying = ref(false);
 const verificationFailed = ref(false);
 const verificationSuccess = ref(false);
@@ -98,7 +98,7 @@ const setWallpaper = () => {
     // 更新桌面背景样式
     const desktop = document.querySelector('.login-container');
     if (desktop) {
-        desktop.style.backgroundImage = `url('/assets/wallpaper/${savedWallpaper}.jpg')`;
+        (desktop as HTMLElement).style.backgroundImage = `url('/assets/wallpaper/${savedWallpaper}.jpg')`;
     }
 };
 
@@ -116,7 +116,7 @@ const checkStoredInviteCode = () => {
 };
 
 // 保存有效的邀请码到本地存储
-const saveInviteCodeToStorage = (code) => {
+const saveInviteCodeToStorage = (code: string) => {
     localStorage.setItem(INVITE_CODE_STORAGE_KEY, code);
 };
 
@@ -137,15 +137,15 @@ const getAndStoreFingerprint = async () => {
 };
 
 // 注册用户
-const tryRegisterUser = async (fingerprint, code) => {
+const tryRegisterUser = async (fingerprint: string | null, code: string) => {
     if (!fingerprint) {
         console.error('无法注册用户：缺少指纹');
         return false;
     }
     try {
-        const response = await registerUser(fingerprint, code);
+        const response = await registerUser(fingerprint!, code);
         if (response.success) {
-            localStorage.setItem('auth_token', response.token);
+            localStorage.setItem('auth_token', (response as any).token);
         }
         return true; 
     } catch (error) {
@@ -215,7 +215,7 @@ const resetVerification = () => {
 };
 
 // 模拟Mac登录加载过程
-const simulateLoading = (isSuccess) => {
+const simulateLoading = (isSuccess: boolean) => {
     // 清除可能存在的旧定时器
     if (window.loadingInterval) {
         clearInterval(window.loadingInterval);
@@ -510,7 +510,7 @@ onMounted(async () => {
     width: 8px;
     height: 8px;
     margin: 0 4px;
-    background-color: white;
+    background-color: var(--color-text-secondary);
     border-radius: 50%;
     opacity: 0.6;
     animation: dot-pulse 1.2s infinite ease-in-out;

@@ -44,12 +44,12 @@
 const emit = defineEmits(['openApp']);
 
 // 打开App
-const openApp = (app) => {
+const openApp = (app: string) => {
     emit('openApp', app);
 };
 
 // 打开网页
-const openWeb = (url, target = '_self') => {
+const openWeb = (url: string, target = '_self') => {
     emit('openApp', { type: 'safari', url: url, target: target });
 };
 
@@ -72,10 +72,10 @@ const openSystemMail = () => {
     display: flex;
     gap: 15px;
     padding: 10px 20px;
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--color-dock-bg);
     border-radius: 16px;
     backdrop-filter: blur(10px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 16px var(--color-dock-shadow);
     z-index: 1000;
 }
 
