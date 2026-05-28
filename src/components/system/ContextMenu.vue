@@ -89,7 +89,7 @@ const handleChangeWallpaper = () => {
     const currentWallpaper = parseInt(localStorage.getItem('wallpaper') || '1');
     let newWallpaper;
     do {
-        newWallpaper = Math.floor(Math.random() * 20) + 1;
+        newWallpaper = Math.floor(Math.random() * 10) + 1;
     } while (newWallpaper === currentWallpaper);
     
     localStorage.setItem('wallpaper', newWallpaper.toString());
