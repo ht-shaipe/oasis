@@ -23,7 +23,7 @@
     </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // 事件发射
 const emit = defineEmits(['close']);
 

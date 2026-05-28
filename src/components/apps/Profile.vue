@@ -82,7 +82,7 @@
     <SignInModal v-model:visible="showSignInModal"/>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { getCurrentUser } from '@/utils/apiService';
 import { ElMessage } from 'element-plus';

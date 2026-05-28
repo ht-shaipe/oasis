@@ -53,7 +53,7 @@
     </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue';
 import * as FingerprintJS from '@fingerprintjs/fingerprintjs';
 import { registerUser } from '@/utils/apiService';

@@ -87,7 +87,7 @@
     </MacWindow>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import MacWindow from '@/components/common/MacWindow.vue';
 
 // 定义属性

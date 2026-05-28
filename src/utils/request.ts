@@ -1,10 +1,10 @@
-import axios from 'axios';
+import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios';
 import { ElMessage } from 'element-plus';
 
 // 创建一个 axios 实例
-const httpClient = axios.create({
+const httpClient: AxiosInstance = axios.create({
     baseURL: 'https://ai.moejue.cn/',
-    timeout: 10000, 
+    timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -13,27 +13,27 @@ const httpClient = axios.create({
 
 // 请求拦截器
 httpClient.interceptors.request.use(
-    config => {
+    (config) => {
         const token = localStorage.getItem('auth_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },
-    error => {
+    (error: AxiosError) => {
         return Promise.reject(error);
     }
 );
 
 // 响应拦截器
 httpClient.interceptors.response.use(
-    response => {
+    (response: AxiosResponse) => {
         return response.data;
     },
-    error => {
+    (error: AxiosError) => {
         if (error.response) {
             // 请求已发出，但服务器响应的状态码不在 2xx 范围内
-            const { status, data } = error.response;
+            const { status, data } = error.response as any;
 
             if (status === 401) {
                 // 处理 401 Unauthorized 错误
@@ -61,10 +61,20 @@ httpClient.interceptors.response.use(
     }
 );
 
+// 通用类型定义
+type SuccessCallback<T> = (response: T) => void;
+type ErrorCallback = (error: any) => void;
+
 // 封装 GET 请求
-export const get = async (url, params = {}, config = {}, onSuccess = null, onError = null) => {
+export const get = async <T = any>(
+    url: string,
+    params: Record<string, any> = {},
+    config: AxiosRequestConfig = {},
+    onSuccess?: SuccessCallback<T>,
+    onError?: ErrorCallback
+): Promise<T> => {
     try {
-        const response = await httpClient.get(url, { params, ...config });
+        const response = await httpClient.get<any, T>(url, { params, ...config });
         if (onSuccess) onSuccess(response);
         return response;
     } catch (error) {
@@ -74,9 +84,15 @@ export const get = async (url, params = {}, config = {}, onSuccess = null, onErr
 };
 
 // 封装 POST 请求
-export const post = async (url, data = {}, config = {}, onSuccess = null, onError = null) => {
+export const post = async <T = any>(
+    url: string,
+    data: Record<string, any> = {},
+    config: AxiosRequestConfig = {},
+    onSuccess?: SuccessCallback<T>,
+    onError?: ErrorCallback
+): Promise<T> => {
     try {
-        const response = await httpClient.post(url, data, config);
+        const response = await httpClient.post<any, T>(url, data, config);
         if (onSuccess) onSuccess(response);
         return response;
     } catch (error) {
@@ -86,9 +102,15 @@ export const post = async (url, data = {}, config = {}, onSuccess = null, onErro
 };
 
 // 封装 PUT 请求
-export const put = async (url, data = {}, config = {}, onSuccess = null, onError = null) => {
+export const put = async <T = any>(
+    url: string,
+    data: Record<string, any> = {},
+    config: AxiosRequestConfig = {},
+    onSuccess?: SuccessCallback<T>,
+    onError?: ErrorCallback
+): Promise<T> => {
     try {
-        const response = await httpClient.put(url, data, config);
+        const response = await httpClient.put<any, T>(url, data, config);
         if (onSuccess) onSuccess(response);
         return response;
     } catch (error) {
@@ -98,9 +120,14 @@ export const put = async (url, data = {}, config = {}, onSuccess = null, onError
 };
 
 // 封装 DELETE 请求
-export const del = async (url, config = {}, onSuccess = null, onError = null) => {
+export const del = async <T = any>(
+    url: string,
+    config: AxiosRequestConfig = {},
+    onSuccess?: SuccessCallback<T>,
+    onError?: ErrorCallback
+): Promise<T> => {
     try {
-        const response = await httpClient.delete(url, config);
+        const response = await httpClient.delete<any, T>(url, config);
         if (onSuccess) onSuccess(response);
         return response;
     } catch (error) {
@@ -110,9 +137,15 @@ export const del = async (url, config = {}, onSuccess = null, onError = null) =>
 };
 
 // 封装 PATCH 请求
-export const patch = async (url, data = {}, config = {}, onSuccess = null, onError = null) => {
+export const patch = async <T = any>(
+    url: string,
+    data: Record<string, any> = {},
+    config: AxiosRequestConfig = {},
+    onSuccess?: SuccessCallback<T>,
+    onError?: ErrorCallback
+): Promise<T> => {
     try {
-        const response = await httpClient.patch(url, data, config);
+        const response = await httpClient.patch<any, T>(url, data, config);
         if (onSuccess) onSuccess(response);
         return response;
     } catch (error) {
@@ -122,7 +155,14 @@ export const patch = async (url, data = {}, config = {}, onSuccess = null, onErr
 };
 
 // 封装上传图片请求
-export const uploadImage = async (url, file, additionalData = {}, config = {}, onSuccess = null, onError = null) => {
+export const uploadImage = async <T = any>(
+    url: string,
+    file: File,
+    additionalData: Record<string, any> = {},
+    config: AxiosRequestConfig = {},
+    onSuccess?: SuccessCallback<T>,
+    onError?: ErrorCallback
+): Promise<T> => {
     try {
         const formData = new FormData();
         formData.append('file', file);
@@ -133,14 +173,14 @@ export const uploadImage = async (url, file, additionalData = {}, config = {}, o
             }
         }
 
-        const response = await httpClient.post(url, formData, {
+        const response = await httpClient.post<any, T>(url, formData, {
             ...config,
             headers: {
                 ...config.headers,
                 'Content-Type': 'multipart/form-data'
             }
         });
-        
+
         if (onSuccess) onSuccess(response);
         return response;
     } catch (error) {

@@ -73,7 +73,7 @@
     <Calendar v-if="showCalendar" @close="showCalendar = false" />
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { CopyDocument, Bell, Coin } from '@element-plus/icons-vue';
 import SignInModal from './SignInModal.vue';

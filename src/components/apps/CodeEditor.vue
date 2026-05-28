@@ -334,7 +334,7 @@
     </MacWindow>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, watch, nextTick, onBeforeUnmount, computed } from 'vue';
 import { ElMessage } from 'element-plus';
 import loader from '@monaco-editor/loader';
@@ -556,7 +556,7 @@ const openContinueDialog = () => {
 // 检测代码语言类型
 const detectLanguage = (code) => {
     // 根据代码内容简单判断语言类型
-    if (code.includes('<template>') && code.includes('<script>')) {
+    if (code.includes('<template>') && code.includes('<script lang="ts">')) {
         return 'html'; // Monaco不直接支持Vue，使用HTML
     } else if (code.includes('<!DOCTYPE html>') || code.includes('<html>')) {
         return 'html';

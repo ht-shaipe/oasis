@@ -31,7 +31,7 @@
     </MacWindow>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { ArrowLeft, ArrowRight, Lock, Share } from '@element-plus/icons-vue';
 import MacWindow from '@/components/common/MacWindow.vue';
@@ -84,7 +84,7 @@ const previewHtml = computed(() => {
     if (code.includes('<html>') ||
         code.includes('<body>')) {
         previewContent = code;
-    } else if (code.includes('<template>') && code.includes('<script>')) {
+    } else if (code.includes('<template>') && code.includes('<script lang="ts">')) {
         // Vue单文件组件，用注释提示
         previewContent = `
       <h2>Vue 组件预览</h2>

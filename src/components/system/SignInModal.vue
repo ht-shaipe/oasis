@@ -77,7 +77,7 @@
     </el-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watchEffect } from 'vue';
 import { Check } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
