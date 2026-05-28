@@ -1,0 +1,170 @@
+#[cfg(not(target_family = "wasm"))]
+use std::path::PathBuf;
+
+use gpui::{App, SharedString};
+#[cfg(not(target_family = "wasm"))]
+use gpui_component::ActiveTheme as _;
+use gpui_component::{Theme, ThemeRegistry};
+use serde::{Deserialize, Serialize};
+
+use crate::app::actions::{SelectLocale, SwitchTheme, SwitchThemeMode};
+use crate::app_state::AppSettings;
+
+#[cfg(target_family = "wasm")]
+use crate::app::embedded_themes;
+
+/// Persisted state
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct State {
+    theme: SharedString,
+    #[serde(default)]
+    app_settings: Option<AppSettings>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            theme: "Default Light".into(),
+            app_settings: None,
+        }
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn state_file_path() -> PathBuf {
+    let dir = dirs::data_local_dir()
+        .unwrap_or_else(|| std::env::temp_dir())
+        .join("oasis");
+    let _ = std::fs::create_dir_all(&dir);
+    dir.join("state.json")
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn load_state() -> State {
+    let path = state_file_path();
+    let json = std::fs::read_to_string(&path).unwrap_or_default();
+    serde_json::from_str(&json).unwrap_or_default()
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn write_state(state: &State) {
+    if let Ok(json) = serde_json::to_string_pretty(state) {
+        let _ = std::fs::write(state_file_path(), json);
+    }
+}
+
+/// Initialize themes
+pub fn init(cx: &mut App) {
+    #[cfg(target_family = "wasm")]
+    {
+        tracing::info!("Loading embedded themes for WASM...");
+        let registry = ThemeRegistry::global_mut(cx);
+        for (name, content) in embedded_themes::embedded_themes() {
+            if let Err(e) = registry.load_themes_from_str(content) {
+                tracing::error!("Failed to load embedded theme {}: {}", name, e);
+            } else {
+                tracing::info!("Loaded embedded theme: {}", name);
+            }
+        }
+    }
+
+    #[cfg(not(target_family = "wasm"))]
+    let state = load_state();
+
+    #[cfg(target_family = "wasm")]
+    let state = State::default();
+
+    // Initialize AppSettings globally
+    let app_settings = state.app_settings.unwrap_or_default();
+    cx.set_global::<AppSettings>(app_settings.clone());
+
+    #[cfg(target_family = "wasm")]
+    if let Some(theme_config) = ThemeRegistry::global(cx)
+        .themes()
+        .get(state.theme.as_ref())
+        .cloned()
+    {
+        Theme::global_mut(cx).apply_config(&theme_config);
+    }
+
+    #[cfg(not(target_family = "wasm"))]
+    {
+        // Watch themes directory
+        let themes_dir = if cfg!(debug_assertions) {
+            PathBuf::from("./themes")
+        } else {
+            let dir = dirs::data_local_dir()
+                .unwrap_or_else(|| PathBuf::from("./"))
+                .join("oasis")
+                .join("themes");
+            let _ = std::fs::create_dir_all(&dir);
+            dir
+        };
+
+        if let Err(err) = ThemeRegistry::watch_dir(themes_dir, cx, move |cx| {
+            if let Some(theme) = ThemeRegistry::global(cx)
+                .themes()
+                .get(&state.theme)
+                .cloned()
+            {
+                Theme::global_mut(cx).apply_config(&theme);
+                cx.refresh_windows();
+            }
+        }) {
+            tracing::error!("Failed to watch themes directory: {}", err);
+        }
+    }
+
+    cx.refresh_windows();
+    save_state(cx);
+
+    #[cfg(not(target_family = "wasm"))]
+    {
+        // Observe theme changes → persist
+        cx.observe_global::<Theme>(|cx| {
+            save_state(cx);
+        })
+        .detach();
+    }
+
+    // Theme switch action
+    cx.on_action(|switch: &SwitchTheme, cx| {
+        if let Some(theme_config) = ThemeRegistry::global(cx).themes().get(&switch.name).cloned() {
+            Theme::global_mut(cx).apply_config(&theme_config);
+        }
+        cx.refresh_windows();
+        save_state(cx);
+    });
+
+    // Theme mode switch action
+    cx.on_action(|switch: &SwitchThemeMode, cx| {
+        Theme::change(switch.mode.clone(), None, cx);
+        cx.refresh_windows();
+        save_state(cx);
+    });
+
+    // Locale switch action
+    cx.on_action(|select: &SelectLocale, cx| {
+        let locale = select.locale.clone();
+        AppSettings::global_mut(cx).locale = locale.clone();
+        rust_i18n::set_locale(&locale);
+        crate::app_menus::init(crate::app_state::AppState::global(cx).app_title().clone(), cx);
+        cx.refresh_windows();
+        save_state(cx);
+    });
+}
+
+pub(crate) fn save_state(cx: &mut App) {
+    #[cfg(not(target_family = "wasm"))]
+    {
+        let state = State {
+            theme: cx.theme().theme_name().clone(),
+            app_settings: Some(AppSettings::global(cx).clone()),
+        };
+        write_state(&state);
+    }
+    #[cfg(target_family = "wasm")]
+    {
+        let _ = cx;
+    }
+}
