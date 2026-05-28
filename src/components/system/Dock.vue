@@ -1,40 +1,31 @@
 <template>
     <div class="mac-dock">
         <div class="dock-item" @click="openApp('Finder')">
-            <img src="/assets/icons/Finder.png" alt="Finder" title="Finder">
+            <img src="/assets/icons/Finder.png" :alt="t('dock.finder')" :title="t('dock.finder')">
         </div>
         <div class="dock-item" @click="openApp('generator')">
-            <img src="/assets/icons/Reminders.png" alt="代码生成器" title="代码生成器">
+            <img src="/assets/icons/Reminders.png" :alt="t('dock.codeGenerator')" :title="t('dock.codeGenerator')">
         </div>
         <div class="dock-item" @click="openApp('editor')">
             <img src="/assets/icons/vscode.png" alt="VsCode" title="VsCode">
         </div>
         <div class="dock-item" @click="openApp('safari')">
-            <img src="/assets/icons/Safari.png" alt="Safari" title="Safari">
+            <img src="/assets/icons/Safari.png" :alt="t('dock.safari')" :title="t('dock.safari')">
         </div>
         <div class="dock-item" @click="openApp('about')">
-            <img src="/assets/icons/Settings.png" alt="关于" title="关于">
+            <img src="/assets/icons/Settings.png" :alt="t('dock.about')" :title="t('dock.about')">
         </div>
         <div class="dock-item" @click="openApp('profile')">
-            <img src="/assets/icons/Contacts.png" alt="个人中心" title="个人中心">
+            <img src="/assets/icons/Contacts.png" :alt="t('dock.profile')" :title="t('dock.profile')">
         </div>
         <div class="dock-item" @click="openSystemMail">
-            <img src="/assets/icons/Mail.png" alt="邮件" title="邮件">
+            <img src="/assets/icons/Mail.png" :alt="t('dock.mail')" :title="t('dock.mail')">
         </div>
-        <div class="dock-item" @click="openWeb('https://photo.moejue.cn/')">
-            <img src="/assets/icons/Photos.png" alt="照片" title="照片">
+        <div class="dock-item" @click="openWeb('https://photo.HongTui.cn/')">
+            <img src="/assets/icons/Photos.png" :alt="t('dock.photos')" :title="t('dock.photos')">
         </div>
-        <div class="dock-item" @click="openWeb('https://moejue.cn/')">
+        <div class="dock-item" @click="openWeb('https://HongTui.cn/')">
             <img src="/assets/icons/Maps.png" alt="Blog" title="Blog">
-        </div>
-        <!-- <div class="dock-item">
-            <img src="/assets/icons/youtube.png" alt="youtube" title="youtube">
-        </div> -->
-        <div class="dock-item" @click="openWeb('https://github.com/iAJue/MacWeb', '_blank')">
-            <img src="/assets/icons/Github.png" alt="Github" title="Github">
-        </div>
-        <div class="dock-item" @click="openWeb('http://music.moekoe.cn/')">
-            <img src="/assets/icons/MoeKoeMusic.png" alt="MoeKoeMusic" title="MoeKoeMusic">
         </div>
     </div>
 </template>
@@ -42,6 +33,10 @@
 <script setup lang="ts">
 // 事件发射
 const emit = defineEmits(['openApp']);
+
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 // 打开App
 const openApp = (app: string) => {
@@ -55,7 +50,7 @@ const openWeb = (url: string, target = '_self') => {
 
 // 打开系统邮件
 const openSystemMail = () => {
-    const email = 'moejue@qq.com';
+    const email = 'HongTui@qq.com';
     const subject = encodeURIComponent('WebAI反馈Bug');
     const body = encodeURIComponent('我在使用WebAI时发现了以下问题：\n\n[请在此描述您遇到的问题]\n\n系统信息：\n浏览器：' + navigator.userAgent);
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;

@@ -3,41 +3,37 @@
         <div class="menubar-left">
             <div class="mac-logo" @click="toggleAppleMenu">
                 <img src="/assets/icons/mac.png" alt="Mac Logo">
-                <!-- Apple菜单 -->
+                <!-- Apple Menu -->
                 <div class="apple-menu" v-if="showAppleMenu">
-                    <div class="menu-item">关于本机</div>
+                    <div class="menu-item">{{ t('menu.about') }}</div>
                     <div class="menu-divider"></div>
-                    <div class="menu-item">系统偏好设置...</div>
+                    <div class="menu-item">{{ t('menu.preferences') }}...</div>
                     <div class="menu-item">App Store...</div>
                     <div class="menu-divider"></div>
-                    <div class="menu-item">最近使用的项目</div>
+                    <div class="menu-item">{{ t('menu.forceQuit') }}...</div>
                     <div class="menu-divider"></div>
-                    <div class="menu-item">强制退出...</div>
-                    <div class="menu-divider"></div>
-                    <div class="menu-item">睡眠</div>
-                    <div class="menu-item">重新启动...</div>
-                    <div class="menu-item">关机...</div>
-                    <div class="menu-divider"></div>
-                    <div class="menu-item">退出登录...</div>
+                    <div class="menu-item">{{ t('menu.sleep') }}</div>
+                    <div class="menu-item">{{ t('menu.restart') }}...</div>
+                    <div class="menu-item">{{ t('menu.shutDown') }}...</div>
                 </div>
             </div>
             <div class="menubar-items">
                 <span class="menubar-item active">Web AI</span>
                 <span class="menubar-item" @click="toggleFileMenu">
-                    文件
-                    <!-- 文件菜单 -->
+                    {{ t('menu.file') }}
+                    <!-- File Menu -->
                     <div class="dropdown-menu" v-if="showFileMenu">
-                        <div class="menu-item">新建</div>
-                        <div class="menu-item">打开</div>
-                        <div class="menu-item">保存</div>
+                        <div class="menu-item">{{ t('app.new') }}</div>
+                        <div class="menu-item">{{ t('app.open') }}</div>
+                        <div class="menu-item">{{ t('app.save') }}</div>
                         <div class="menu-divider"></div>
-                        <div class="menu-item">导出</div>
+                        <div class="menu-item">{{ t('app.export') }}</div>
                     </div>
                 </span>
-                <span class="menubar-item">编辑</span>
-                <span class="menubar-item">视图</span>
-                <span class="menubar-item">窗口</span>
-                <span class="menubar-item">帮助</span>
+                <span class="menubar-item">{{ t('menu.edit') }}</span>
+                <span class="menubar-item">{{ t('menu.view') }}</span>
+                <span class="menubar-item">{{ t('macWindow.close') }}</span>
+                <span class="menubar-item">{{ t('menu.help') }}</span>
             </div>
         </div>
         <div class="menubar-right">
@@ -51,8 +47,11 @@
                 <span class="menubar-icon" @click="toggleSignInModal"> 
                     <el-icon><Coin /></el-icon>
                 </span>
-                <span class="menubar-icon theme-toggle" @click="theme.toggle()" :title="theme.isDark ? '切换亮色' : '切换暗色'">
+                <span class="menubar-icon theme-toggle" @click="theme.toggle()" :title="theme.isDark ? t('theme.switchToLight') : t('theme.switchToDark')">
                     <el-icon><Sunny v-if="theme.isDark" /><Moon v-else /></el-icon>
+                </span>
+                <span class="menubar-icon locale-toggle" @click="toggleLocale" :title="localeStore.locale === 'zh-CN' ? 'English' : '中文'">
+                    {{ localeStore.locale === 'zh-CN' ? 'EN' : '中' }}
                 </span>
                 <span class="menubar-battery">
                     <div class="battery-icon">
@@ -66,13 +65,13 @@
             </div>
         </div>
     </div>
-    <!-- 签到弹窗 -->
+    <!-- Sign-in Dialog -->
     <SignInModal v-model:visible="showSignInModal"/>
     
-    <!-- 通知中心 -->
+    <!-- Notification Center -->
     <NotificationCenter v-if="showNotificationCenter" @close="showNotificationCenter = false" />
     
-    <!-- 日历视图 -->
+    <!-- Calendar -->
     <Calendar v-if="showCalendar" @close="showCalendar = false" />
 </template>
 
@@ -83,8 +82,12 @@ import SignInModal from './SignInModal.vue';
 import NotificationCenter from './NotificationCenter.vue';
 import Calendar from './Calendar.vue';
 import { useThemeStore } from '@/store/theme';
+import { useLocaleStore } from '@/store/locale';
+import { useI18n } from 'vue-i18n';
 
 const theme = useThemeStore();
+const localeStore = useLocaleStore();
+const { t } = useI18n();
 
 // 菜单状态
 const showAppleMenu = ref(false);
@@ -129,6 +132,11 @@ const toggleSignInModal = () => {
     showSignInModal.value = true;
     showAppleMenu.value = false;
     showFileMenu.value = false;
+};
+
+// 切换语言
+const toggleLocale = () => {
+    localeStore.toggleLocale();
 };
 
 // 当前时间

@@ -1,31 +1,31 @@
 <template>
-    <MacWindow title="继续对话" :isMinimized="isMinimized" @close="closeApp" @minimize="toggleMinimize" width="700"
+    <MacWindow :title="t('continueDialog.title')" :isMinimized="isMinimized" @close="closeApp" @minimize="toggleMinimize" width="700"
         height="500">
         <div class="continue-dialog">
             <div class="dialog-content">
                 <div class="original-prompt">
-                    <h4>原始提示</h4>
-                    <el-input type="textarea" :value="originalPrompt" :rows="3" placeholder="原始提示内容" readonly />
+                    <h4>{{ t('continueDialog.originalPrompt') }}</h4>
+                    <el-input type="textarea" :value="originalPrompt" :rows="3" :placeholder="t('continueDialog.originalPromptPlaceholder')" readonly />
                 </div>
 
                 <div class="continue-prompt">
-                    <h4>继续对话</h4>
+                    <h4>{{ t('continueDialog.continueConversation') }}</h4>
                     <el-input type="textarea" v-model="continuePrompt" :rows="6"
-                        placeholder="请输入您想要继续对话的内容，描述需要修改或优化的部分..." :disabled="isGenerating" />
+                        :placeholder="t('continueDialog.continuePlaceholder')" :disabled="isGenerating" />
                 </div>
 
                 <div class="ai-model-selection">
-                    <h4>AI模型选择</h4>
-                    <el-select v-model="selectedModel" placeholder="请选择AI模型">
+                    <h4>{{ t('continueDialog.aiModelSelection') }}</h4>
+                    <el-select v-model="selectedModel" :placeholder="t('generator.modelSelect')">
                         <el-option 
                             v-for="(cost, model) in modelCreditCosts" 
                             :key="model" 
-                            :label="`${model} (${cost}积分)`" 
+                            :label="`${model} (${cost}${t('signIn.creditsUnit')})`" 
                             :value="model" 
                         >
                             <div class="model-option">
                                 <span>{{ model }}</span>
-                                <span class="credit-badge">{{ cost }}积分</span>
+                                <span class="credit-badge">{{ cost }}{{ t('signIn.creditsUnit') }}</span>
                             </div>
                         </el-option>
                     </el-select>
@@ -33,10 +33,10 @@
 
 
                 <div class="dialog-actions">
-                    <el-button @click="closeApp">取消</el-button>
+                    <el-button @click="closeApp">{{ t('app.cancel') }}</el-button>
                     <el-button type="primary" @click="submitContinueDialog" :loading="isGenerating"
                         :disabled="!continuePrompt || isGenerating">
-                        {{ isGenerating ? '生成中...' : '继续生成' }}
+                        {{ isGenerating ? t('continueDialog.generating') : t('continueDialog.continueGenerate') }}
                     </el-button>
                 </div>
             </div>
@@ -47,8 +47,11 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { ElMessage } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import MacWindow from '@/components/common/MacWindow.vue';
 import { continueConversationStream, getModelCreditCosts } from '@/utils/apiService';
+
+const { t } = useI18n();
 
 // 定义属性
 const props = defineProps({
@@ -105,7 +108,7 @@ const toggleMinimize = () => {
 // 提交继续对话
 const submitContinueDialog = async () => {
     if (!continuePrompt.value) {
-        ElMessage.warning('请输入继续对话的内容');
+        ElMessage.warning(t('continueDialog.pleaseInputContent'));
         return;
     }
 
@@ -140,21 +143,21 @@ const submitContinueDialog = async () => {
                     emit('codeGenerated', generatedCode, continuePrompt.value);
                     closeApp();
                 } else {
-                    ElMessage.warning('没有收到任何生成的代码');
+                    ElMessage.warning(t('generator.noCodeReceived'));
                 }
             },
             // 错误的回调
             (error: string | Error) => {
                 isGenerating.value = false;
                 const errorMessage = typeof error === 'string' ? error : error.message;
-                ElMessage.error(`生成代码时发生错误: ${errorMessage}`);
+                ElMessage.error(`${t('continueDialog.generateError')}: ${errorMessage}`);
             }
         );
     } catch (error: unknown) {
         console.error('继续生成代码错误:', error);
         isGenerating.value = false;
-        const errorMessage = error instanceof Error ? error.message : '未知错误';
-        ElMessage.error(`生成代码时发生错误: ${errorMessage}`);
+        const errorMessage = error instanceof Error ? error.message : t('app.unknownError');
+        ElMessage.error(`${t('continueDialog.generateError')}: ${errorMessage}`);
     }
 };
 
@@ -168,8 +171,8 @@ onMounted(async () => {
             selectedModel.value = models[models.length - 1];
         }
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : '未知错误';
-        ElMessage.error(`获取模型积分配置失败，请刷新页面重试: ${errorMessage}`);
+        const errorMessage = error instanceof Error ? error.message : t('app.unknownError');
+        ElMessage.error(`${t('continueDialog.modelCostFailed')}: ${errorMessage}`);
     }
 });
 </script>

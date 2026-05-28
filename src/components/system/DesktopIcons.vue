@@ -2,38 +2,24 @@
     <div class="desktop-icons">
         <div class="desktop-icon" @click="openApp('notes')">
             <div class="icon-container">
-                <img src="/assets/icons/Notes.png" alt="使用帮助">
+                <img src="/assets/icons/Notes.png" :alt="t('contextMenu.useHelp')">
             </div>
-            <div class="icon-text">使用帮助</div>
+            <div class="icon-text">{{ t('contextMenu.useHelp') }}</div>
         </div>
         <div class="desktop-icon" @click="openApp('about')">
             <div class="icon-container">
-                <img src="/assets/icons/Settings.png" alt="关于">
+                <img src="/assets/icons/Settings.png" :alt="t('desktop.about')">
             </div>
-            <div class="icon-text">关于</div>
+            <div class="icon-text">{{ t('desktop.about') }}</div>
         </div>
-        <!-- <div class="desktop-icon" @click="openApp('editor')">
-            <div class="icon-container">
-                <img src="/assets/icons/vscode.png" alt="VsCode">
-            </div>
-            <div class="icon-text">VsCode</div>
-        </div>
-        <div class="desktop-icon" @click="openApp('safari')">
-            <div class="icon-container">
-                <img src="/assets/icons/Safari.png" alt="Safari">
-            </div>
-            <div class="icon-text">Safari</div>
-        </div>
-        <div class="desktop-icon" @click="openApp('music')">
-            <div class="icon-container">
-                <img src="/assets/icons/MoeKoeMusic.png" alt="MoeKoeMusic">
-            </div>
-            <div class="icon-text">MoeKoeMusic</div>
-        </div> -->
     </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+
 // 事件发射
 const emit = defineEmits(['openApp']);
 
@@ -44,15 +30,16 @@ const openApp = (app: string) => {
 </script>
 
 <style scoped>
-/* 桌面图标 */
+/* 桌面图标容器 */
 .desktop-icons {
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
-    padding-top: 35px; /* 为顶部菜单栏留出空间 */
-    margin-left: 20px;
+    padding: 35px 0 0 20px;
+    margin: 0;
 }
 
+/* 桌面图标项 */
 .desktop-icon {
     display: flex;
     flex-direction: column;
@@ -60,12 +47,31 @@ const openApp = (app: string) => {
     cursor: pointer;
     transition: all 0.2s;
     width: 80px;
+    position: relative;
+    margin: 0;
+    padding: 0;
 }
 
 .desktop-icon:hover {
     transform: scale(1.05);
 }
 
+.desktop-icon:active {
+    transform: scale(0.98);
+}
+
+/* 移除伪元素 - 只针对伪元素，不影响内容 */
+.desktop-icon::before,
+.desktop-icon::after,
+.icon-container::before,
+.icon-container::after,
+.icon-text::before,
+.icon-text::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* 图标容器 */
 .icon-container {
     width: 60px;
     height: 60px;
@@ -73,18 +79,59 @@ const openApp = (app: string) => {
     align-items: center;
     justify-content: center;
     margin-bottom: 5px;
+    background: transparent;
 }
 
 .icon-container img {
     width: 100%;
     height: 100%;
     object-fit: contain;
+    display: block;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    background: transparent;
 }
 
+/* 图标文字 */
 .icon-text {
     color: white;
     font-size: 12px;
+    font-weight: 400;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     text-align: center;
+    margin: 2px 0 0 0;
+    line-height: 1.2;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    text-decoration: none;
+    position: relative;
 }
-</style> 
+
+/* 移除首字母装饰 */
+.icon-text::first-letter {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+}
+
+/* 交互状态 */
+.icon-text:hover,
+.icon-text:focus {
+    outline: none;
+    border: none;
+    text-decoration: none;
+    background: transparent;
+}
+
+/* 滚动条隐藏 */
+::-webkit-scrollbar {
+    display: none;
+}
+</style>

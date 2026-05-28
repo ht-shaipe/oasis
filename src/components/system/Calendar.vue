@@ -2,17 +2,20 @@
     <div class="calendar-popup">
         <div class="calendar-header">
             <h3>{{ currentDate }}</h3>
-            <button @click="closeCalendar">关闭</button>
+            <button @click="closeCalendar">{{ t('app.close') }}</button>
         </div>
         <div class="calendar-content">
-            <div class="calendar-item">今天没有日程安排</div>
-            <div class="calendar-item">点击"+"添加新事件</div>
+            <div class="calendar-item">{{ t('calendar.noSchedule') }}</div>
+            <div class="calendar-item">{{ t('calendar.addEvent') }}</div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 // 事件发射
 const emit = defineEmits(['close']);
@@ -30,9 +33,9 @@ const updateDate = () => {
     const now = new Date();
     const month = now.getMonth() + 1;
     const day = now.getDate();
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    const weekdays = t('calendar.weekdays') as unknown as string[];
     const weekday = weekdays[now.getDay()];
-    currentDate.value = `${month}月${day}日 星期${weekday}`;
+    currentDate.value = `${month}${t('calendar.dateFormat', { month, day, weekday })}`;
 };
 
 // 组件挂载后初始化

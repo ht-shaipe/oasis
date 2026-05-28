@@ -7,31 +7,31 @@
     >
         <div class="menu-group">
             <div class="menu-item" @click="handleViewAction">
-                <span>查看</span>
+                <span>{{ t('app.view') }}</span>
             </div>
             <div class="menu-item" @click="handleSortAction">
-                <span>排序方式</span>
+                <span>{{ t('finder.sort') }}</span>
             </div>
             <div class="menu-item" @click="handleRefreshAction">
-                <span>刷新</span>
+                <span>{{ t('app.refresh') }}</span>
             </div>
         </div>
         <div class="menu-divider"></div>
         <div class="menu-group">
             <div class="menu-item" @click="handleCreateFileAction">
-                <span>新建文件</span>
+                <span>{{ t('codeEditor.newFile') }}</span>
             </div>
             <div class="menu-item" @click="handleCreateFolderAction">
-                <span>新建文件夹</span>
+                <span>{{ t('codeEditor.newFolder') }}</span>
             </div>
         </div>
         <div class="menu-divider"></div>
         <div class="menu-group">
             <div class="menu-item" @click="handleChangeWallpaper">
-                <span>切换壁纸</span>
+                <span>{{ t('contextMenu.changeWallpaper') }}</span>
             </div>
             <div class="menu-item" @click="handleDisplaySettings">
-                <span>显示设置</span>
+                <span>{{ t('contextMenu.displaySettings') }}</span>
             </div>
         </div>
         <div class="menu-divider"></div>
@@ -46,6 +46,9 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
 import { nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     visible: {

@@ -8,7 +8,7 @@ use tauri::{
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![greet, update_tray_locale])
         .setup(|app| {
             setup_tray(app)?;
             Ok(())
@@ -18,18 +18,17 @@ pub fn run() {
 }
 
 fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
-    // 右键菜单
-    let show = MenuItemBuilder::with_id("show", "显示主窗口").build(app)?;
-    let hide = MenuItemBuilder::with_id("hide", "隐藏主窗口").build(app)?;
+    let show = MenuItemBuilder::with_id("show", "Show Window").build(app)?;
+    let hide = MenuItemBuilder::with_id("hide", "Hide Window").build(app)?;
     let sep = PredefinedMenuItem::separator(app)?;
-    let about = MenuItemBuilder::with_id("about", "关于 Oasis").build(app)?;
-    let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
+    let about = MenuItemBuilder::with_id("about", "About Oasis").build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
     let menu = MenuBuilder::new(app)
         .items(&[&show, &hide, &sep, &about, &quit])
         .build()?;
 
-    let _tray = TrayIconBuilder::new()
+    let _tray = TrayIconBuilder::with_id("main")
         .icon(app.default_window_icon().unwrap().clone())
         .tooltip("Oasis")
         .menu(&menu)
@@ -58,7 +57,6 @@ fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
-            // 左键点击：切换窗口显示/隐藏
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
@@ -83,5 +81,34 @@ fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("你好, {}! 欢迎使用 Oasis 🏜️", name)
+    format!("Hello, {}! Welcome to Oasis 🏜️", name)
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct TrayLocale {
+    show: String,
+    hide: String,
+    about: String,
+    quit: String,
+}
+
+#[tauri::command]
+fn update_tray_locale(app: tauri::AppHandle, locale: TrayLocale) -> Result<(), String> {
+    // 通过 ID 查找菜单项并更新文字
+    let ids_and_texts = [
+        ("show", &locale.show),
+        ("hide", &locale.hide),
+        ("about", &locale.about),
+        ("quit", &locale.quit),
+    ];
+    for (id, text) in &ids_and_texts {
+        if let Some(menu) = app.menu() {
+            if let Some(item) = menu.get(&tauri::menu::MenuId::new(*id)) {
+                if let Some(mi) = item.as_menuitem() {
+                    let _ = mi.set_text(text);
+                }
+            }
+        }
+    }
+    Ok(())
 }

@@ -1,22 +1,22 @@
 <template>
     <div class="notification-center">
         <div class="notification-header">
-            <h3>通知中心</h3>
-            <button @click="closeNotificationCenter">关闭</button>
+            <h3>{{ t('notification.title') }}</h3>
+            <button @click="closeNotificationCenter">{{ t('app.close') }}</button>
         </div>
         <div class="notification-content">
             <div class="notification-item">
                 <img src="/assets/icons/Messages.png" alt="消息" width="40" height="40">
                 <div class="notification-text">
-                    <strong>新消息</strong>
-                    <p>后端服务已关闭，你当前看到的所有数据都是模拟数据</p>
+                    <strong>{{ t('notification.newMessage') }}</strong>
+                    <p>{{ t('notification.mockDataNotice') }}</p>
                 </div>
             </div>
             <div class="notification-item">
                 <img src="/assets/icons/Mail.png" alt="邮件" width="40" height="40">
                 <div class="notification-text">
-                    <strong>邮件</strong>
-                    <p>没有未读邮件</p>
+                    <strong>{{ t('notification.mail') }}</strong>
+                    <p>{{ t('notification.noUnreadMail') }}</p>
                 </div>
             </div>
         </div>
@@ -25,6 +25,9 @@
 
 <script setup lang="ts">
 // 事件发射
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 const emit = defineEmits(['close']);
 
 // 关闭通知中心

@@ -11,14 +11,14 @@
             <!-- 侧边栏 -->
             <div class="finder-sidebar">
                 <div class="sidebar-section">
-                    <div class="section-title">收藏</div>
+                    <div class="section-title">{{ t('finder.favorites') }}</div>
                     <div class="sidebar-item active" @click="showAllProjects">
                         <el-icon><Folder /></el-icon>
-                        <span>项目</span>
+                        <span>{{ t('finder.projects') }}</span>
                     </div>
                     <div class="sidebar-item" @click="filterRecentProjects">
                         <el-icon><Clock /></el-icon>
-                        <span>最近</span>
+                        <span>{{ t('finder.recent') }}</span>
                     </div>
                 </div>
             </div>
@@ -40,19 +40,19 @@
                     
                     <div class="path-navigator">
                         <template v-if="selectedProject">
-                            <el-button link @click="showAllProjects">项目</el-button>
+                            <el-button link @click="showAllProjects">{{ t('finder.projects') }}</el-button>
                             <span class="path-separator">/</span>
                             <span class="current-path">{{ selectedProject.title }}</span>
                         </template>
                         <template v-else>
-                            <span class="current-path">项目</span>
+                            <span class="current-path">{{ t('finder.projects') }}</span>
                         </template>
                     </div>
                     
                     <div class="search-box">
                         <el-input
                             v-model="searchQuery"
-                            placeholder="搜索"
+                            :placeholder="t('finder.searchPlaceholder')"
                             :prefix-icon="Search"
                             clearable
                             size="small"
@@ -64,10 +64,10 @@
                 <div v-if="!selectedProject" :class="['projects-container', viewMode]">
                     <div v-if="loading" class="loading-container">
                         <el-icon class="loading-icon"><Loading /></el-icon>
-                        <p>加载中...</p>
+                        <p>{{ t('finder.loading') }}</p>
                     </div>
 
-                    <el-empty v-else-if="filteredProjects.length === 0" description="暂无项目" />
+                    <el-empty v-else-if="filteredProjects.length === 0" :description="t('finder.noProjects')" />
 
                     <template v-else>
                         <!-- 网格视图 -->
@@ -84,7 +84,7 @@
                                 </div>
                                 <div class="project-name">{{ project.projectName }}</div>
                                 <div class="project-meta">
-                                    {{ project.versionsCount || 0 }} 个版本
+                                    {{ project.versionsCount || 0 }} {{ t('finder.versions') }}
                                     <span v-if="project.updateTime" class="project-update">
                                         · {{ formatDate(project.updateTime * 1000) }}
                                     </span>
@@ -100,7 +100,7 @@
                             @row-click="openProject"
                             @row-dblclick="openProject"
                         >
-                            <el-table-column label="名称" min-width="200">
+                            <el-table-column :label="t('finder.name')" min-width="200">
                                 <template #default="{ row }">
                                     <div class="list-item-name">
                                         <el-icon><Folder /></el-icon>
@@ -108,13 +108,13 @@
                                     </div>
                                 </template>
                             </el-table-column>
-                            <el-table-column prop="versionsCount" label="版本数量" width="100" />
-                            <el-table-column label="最新版本" min-width="150">
+                            <el-table-column prop="versionsCount" :label="t('finder.versionCountCol')" width="100" />
+                            <el-table-column :label="t('finder.latestVersion')" min-width="150">
                                 <template #default="{ row }">
                                     {{ row.lastVersion ? row.lastVersion.substring(0, 8) + '...' : '-' }}
                                 </template>
                             </el-table-column>
-                            <el-table-column label="更新时间" width="180">
+                            <el-table-column :label="t('finder.lastUpdated')" width="180">
                                 <template #default="{ row }">
                                     {{ formatDate(row.updateTime * 1000) }}
                                 </template>
@@ -127,10 +127,10 @@
                 <div v-else :class="['versions-container', viewMode]">
                     <div v-if="projectLoading" class="loading-container">
                         <el-icon class="loading-icon"><Loading /></el-icon>
-                        <p>加载中...</p>
+                        <p>{{ t('finder.loading') }}</p>
                     </div>
 
-                    <el-empty v-else-if="projectVersions.length === 0" description="此项目暂无版本" />
+                    <el-empty v-else-if="projectVersions.length === 0" :description="t('finder.noVersions')" />
 
                     <template v-else>
                         <!-- 网格视图 -->
@@ -145,7 +145,7 @@
                                 <div class="version-icon">
                                     <el-icon><Document /></el-icon>
                                 </div>
-                                <div class="version-name">{{ version.title || `版本 ${formatDate(version.timestamp * 1000)}` }}</div>
+                                <div class="version-name">{{ version.title || `${t('finder.versions')} ${formatDate(version.timestamp * 1000)}` }}</div>
                                 <div class="version-meta">
                                     {{ formatDate(version.timestamp * 1000) }}
                                 </div>
@@ -165,32 +165,26 @@
                             @row-click="selectVersion"
                             @row-dblclick="openVersionPreview"
                         >
-                            <el-table-column label="名称" min-width="200">
+                            <el-table-column :label="t('finder.name')" min-width="200">
                                 <template #default="{ row }">
                                     <div class="list-item-name">
                                         <el-icon><Document /></el-icon>
-                                        <span>{{ row.title || `版本 ${formatDate(row.timestamp * 1000)}` }}</span>
+                                        <span>{{ row.title || `${t('finder.versions')} ${formatDate(row.timestamp * 1000)}` }}</span>
                                     </div>
                                 </template>
                             </el-table-column>
-                            <el-table-column label="提示" min-width="200">
+                            <el-table-column :label="t('finder.prompt')" min-width="200">
                                 <template #default="{ row }">
                                     <el-tooltip :content="row.prompt" placement="top" effect="dark" v-if="row.prompt">
                                         <span class="prompt-preview">{{ row.prompt.substring(0, 30) }}{{ row.prompt.length > 30 ? '...' : '' }}</span>
                                     </el-tooltip>
                                 </template>
                             </el-table-column>
-                            <el-table-column label="创建时间" width="180">
+                            <el-table-column :label="t('finder.createdAt')" width="180">
                                 <template #default="{ row }">
                                     {{ formatDate(row.timestamp * 1000) }}
                                 </template>
                             </el-table-column>
-                            <!-- <el-table-column label="操作" width="150">
-                                <template #default="{ row }">
-                                    <el-button link @click.stop="openVersionPreview(row)">预览</el-button>
-                                    <el-button link @click.stop="loadVersionToEditor(row)">编辑</el-button>
-                                </template>
-                            </el-table-column> -->
                         </el-table>
                     </template>
                 </div>
@@ -198,10 +192,10 @@
                 <!-- 底部状态栏 -->
                 <div class="finder-statusbar">
                     <div v-if="selectedProject">
-                        {{ projectVersions.length }} 个版本, {{ formatFileSize(getTotalSize()) }}
+                        {{ projectVersions.length }} {{ t('finder.versionCount') }}, {{ formatFileSize(getTotalSize()) }}
                     </div>
                     <div v-else>
-                        {{ filteredProjects.length }} 个项目
+                        {{ filteredProjects.length }} {{ t('finder.projectCount') }}
                     </div>
                 </div>
             </div>
@@ -211,10 +205,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import MacWindow from '@/components/common/MacWindow.vue';
 import { ElMessage } from 'element-plus';
 import { Folder, Document, Loading, Grid, List, Clock, Search, InfoFilled } from '@element-plus/icons-vue';
 import { getUserProjects, getProjectById } from '@/utils/apiService';
+
+const { t } = useI18n();
 
 // 定义类型接口
 interface Project {
@@ -308,7 +305,7 @@ const filterRecentProjects = () => {
     
     // 如果过滤后没有项目，显示提示信息
     if (filteredList.length === 0) {
-        ElMessage.info('没有最近7天内更新的项目');
+        ElMessage.info(t('finder.noRecentProjects'));
         // 保持原始项目列表不变，但显示提示
         return;
     }
@@ -374,9 +371,9 @@ const loadProjects = async () => {
         const data = await getUserProjects();
         projects.value = (data as any).projects || [];
     } catch (error: unknown) {
-        console.error('加载项目列表时出错:', error);
-        const errorMessage = error instanceof Error ? error.message : '未知错误';
-        ElMessage.error(`加载项目列表失败: ${errorMessage}`);
+        console.error(t('finder.loadProjectsError') + ':', error);
+        const errorMessage = error instanceof Error ? error.message : t('app.unknownError');
+        ElMessage.error(`${t('finder.loadProjectsFailed')}: ${errorMessage}`);
     } finally {
         loading.value = false;
     }
@@ -393,12 +390,12 @@ const loadProjectVersions = async (projectId: string) => {
         if ((data as any).success) {
             projectVersions.value = (data as any).project.versions || [];
         } else {
-            ElMessage.error('加载项目版本失败');
+            ElMessage.error(t('finder.loadVersionsFailed'));
         }
     } catch (error: unknown) {
-        console.error('加载项目版本时出错:', error);
-        const errorMessage = error instanceof Error ? error.message : '未知错误';
-        ElMessage.error(`加载项目版本失败: ${errorMessage}`);
+        console.error(t('finder.loadVersionsError') + ':', error);
+        const errorMessage = error instanceof Error ? error.message : t('app.unknownError');
+        ElMessage.error(`${t('finder.loadVersionsFailed')}: ${errorMessage}`);
     } finally {
         projectLoading.value = false;
     }
@@ -666,4 +663,4 @@ onMounted(() => {
 .version-prompt .el-icon {
     font-size: 16px;
 }
-</style> 
+</style>

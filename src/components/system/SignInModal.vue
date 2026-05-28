@@ -1,7 +1,7 @@
 <template>
     <el-dialog
         v-model="dialogVisible"
-        title="每日签到"
+        :title="t('signIn.title')"
         width="400px"
         custom-class="sign-in-dialog"
         :show-close="true"
@@ -13,11 +13,11 @@
             <div class="sign-in-header">
                 <div class="consecutive-days">
                     <span class="days-count">{{ signInData.consecutiveDays }}</span>
-                    <span class="days-text">连续签到天数</span>
+                    <span class="days-text">{{ t('signIn.consecutiveDays') }}</span>
                 </div>
                 <div class="next-reward">
-                    <div class="reward-text">下次签到可获得</div>
-                    <div class="reward-amount">{{ signInData.nextReward }} 积分</div>
+                    <div class="reward-text">{{ t('signIn.nextReward') }}</div>
+                    <div class="reward-amount">{{ signInData.nextReward }} {{ t('signIn.creditsUnit') }}</div>
                 </div>
             </div>
 
@@ -54,23 +54,23 @@
                     @click="handleSignIn"
                     :loading="loading"
                 >
-                    {{ signInData.hasSigned ? '今日已签到' : '立即签到' }}
+                    {{ signInData.hasSigned ? t('signIn.signedToday') : t('signIn.signInNow') }}
                 </el-button>
             </div>
 
             <div class="credit-rules">
-                <div class="rule-title">签到规则</div>
+                <div class="rule-title">{{ t('signIn.signInRules') }}</div>
                 <div class="rule-item">
-                    <div class="rule-days">连续签到1-2天</div>
-                    <div class="rule-credits">+100积分/天</div>
+                    <div class="rule-days">{{ t('signIn.consecutive1to2') }}</div>
+                    <div class="rule-credits">{{ t('signIn.credits100') }}</div>
                 </div>
                 <div class="rule-item">
-                    <div class="rule-days">连续签到3-5天</div>
-                    <div class="rule-credits">+150积分/天</div>
+                    <div class="rule-days">{{ t('signIn.consecutive3to5') }}</div>
+                    <div class="rule-credits">{{ t('signIn.credits150') }}</div>
                 </div>
                 <div class="rule-item">
-                    <div class="rule-days">连续签到6天及以上</div>
-                    <div class="rule-credits">+200积分/天</div>
+                    <div class="rule-days">{{ t('signIn.consecutive6plus') }}</div>
+                    <div class="rule-credits">{{ t('signIn.credits200') }}</div>
                 </div>
             </div>
         </div>
@@ -81,7 +81,10 @@
 import { ref, computed, watchEffect } from 'vue';
 import { Check } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import { getSignInStatus, signIn, type SignInStatus } from '../../utils/apiService';
+
+const { t } = useI18n();
 
 const props = defineProps({
     visible: Boolean
@@ -116,7 +119,7 @@ const currentDay = currentDate.getDate();
 const loading = ref(false);
 
 // 星期名称
-const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+const weekdays = t('calendar.weekdays') as unknown as string[];
 
 // 计算当月的日历数据
 const calendarDays = computed(() => {
@@ -158,7 +161,7 @@ const fetchSignInStatus = async () => {
         const token = localStorage.getItem('auth_token');
         
         if (!token) {
-            ElMessage.warning('请先登录');
+            ElMessage.warning(t('login.pleaseLogin'));
             closeDialog();
             return;
         }
@@ -170,7 +173,7 @@ const fetchSignInStatus = async () => {
         }
     } catch (error) {
         console.error('获取签到状态失败:', error);
-        ElMessage.error('获取签到状态失败');
+        ElMessage.error(t('signIn.fetchStatusFailed'));
     } finally {
         loading.value = false;
     }
@@ -183,7 +186,7 @@ const handleSignIn = async () => {
         const token = localStorage.getItem('auth_token');
         
         if (!token) {
-            ElMessage.warning('请先登录');
+            ElMessage.warning(t('login.pleaseLogin'));
             closeDialog();
             return;
         }
@@ -194,14 +197,14 @@ const handleSignIn = async () => {
             const result = response.data;
             // 刷新签到状态
             await fetchSignInStatus();
-            ElMessage.success(`签到成功！获得 ${result.creditsAdded} 积分`);
+            ElMessage.success(`${t('signIn.signInSuccess')} ${result.creditsAdded} ${t('signIn.creditsUnit')}`);
         }
     } catch (error: any) {
         console.error('签到失败:', error);
         if (error?.response?.data?.message) {
             ElMessage.error(error.response.data.message);
         } else {
-            ElMessage.error('签到失败，请稍后再试');
+            ElMessage.error(t('signIn.signInFailedRetry'));
         }
     } finally {
         loading.value = false;

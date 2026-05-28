@@ -5,7 +5,7 @@ import { mockData, mockSSEResponse } from './mockData';
 let isPreviewMode = true;
 
 // 后端接口
-const API_BASE_URL = 'https://ai.moejue.cn';
+const API_BASE_URL = 'https://ai.HongTui.cn';
 
 // 类型定义
 export interface User {

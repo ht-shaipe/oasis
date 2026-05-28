@@ -1,6 +1,6 @@
 <template>
     <MacWindow 
-        title="关于" 
+        :title="t('about.title')" 
         :isMinimized="isMinimized" 
         @close="closeApp" 
         @minimize="toggleMinimize"
@@ -11,18 +11,21 @@
                 <img src="/assets/icons/WebAI.png" alt="WebAI" width="80">
             </div>
             <h2>WebAI</h2>
-            <p>版本 1.0.0</p>
-            <p>一个基于AI的Web开发工具</p>
-            <p>集成了多种UI框架和JS框架支持</p>
+            <p>{{ t('about.version') }} 1.0.0</p>
+            <p>{{ t('about.description') }}</p>
+            <p>{{ t('about.features') }}</p>
         </div>
         <div class="copyright-info">
-            <p>© 2025 <a href="https://moejue.cn/" target="_blank">MoeJue</a></p>
+            <p>© 2026 <a href="https://htui.tech/" target="_blank">HongTui</a></p>
         </div>
     </MacWindow>
 </template>
 
 <script setup lang="ts">
 import MacWindow from '@/components/common/MacWindow.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 // 定义属性
 const props = defineProps({

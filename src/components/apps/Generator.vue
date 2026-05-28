@@ -1,6 +1,6 @@
 <template>
     <MacWindow 
-        title="Web AI - 前端代码生成" 
+        :title="t('generator.windowTitle')" 
         :isMinimized="isMinimized" 
         @close="closeApp" 
         @minimize="toggleMinimize"
@@ -8,33 +8,33 @@
         height="600"
     >
         <el-form :model="form" label-width="120px" style="padding: 20px;">
-            <el-form-item label="描述内容">
+            <el-form-item :label="t('generator.descriptionLabel')">
                 <el-input v-model="form.description" type="textarea" :rows="4"
-                    placeholder="请描述您想要生成的前端代码（HTML/CSS/JavaScript/Vue/React等）..."
+                    :placeholder="t('generator.description')"
                     @focus.stop
                     @click.stop
                     ref="descriptionInputRef" />
             </el-form-item>
-            <el-form-item label="AI模型选择">
+            <el-form-item :label="t('generator.modelSelectLabel')">
                 <div class="model-selection-wrapper" style="width: 300px;">
-                    <el-select v-model="form.model" placeholder="请选择AI模型">
+                    <el-select v-model="form.model" :placeholder="t('generator.modelSelect')">
                         <el-option 
                             v-for="(cost, model) in modelCreditCosts" 
                             :key="model" 
-                            :label="`${model} (${cost}积分)`" 
+                            :label="`${model} (${cost}${t('signIn.creditsUnit')})`" 
                             :value="model" 
                         >
                             <div class="model-option">
                                 <span>{{ model }}</span>
-                                <span class="credit-badge">{{ cost }}积分</span>
+                                <span class="credit-badge">{{ cost }}{{ t('signIn.creditsUnit') }}</span>
                             </div>
                         </el-option>
                     </el-select>
                 </div>
             </el-form-item>
 
-            <el-form-item label="UI框架选择">
-                <el-select v-model="form.uiLibrary" placeholder="请选择UI框架">
+            <el-form-item :label="t('generator.uiFrameworkLabel')">
+                <el-select v-model="form.uiLibrary" :placeholder="t('generator.uiFrameworkSelect')">
                     <el-option label="原生样式" value="native" />
                     <el-option label="Element UI" value="element-ui" />
                     <el-option label="Element Plus" value="element-plus" />
@@ -45,8 +45,8 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="JS框架选择">
-                <el-select v-model="form.jsFramework" placeholder="请选择JS框架">
+            <el-form-item :label="t('generator.jsFrameworkLabel')">
+                <el-select v-model="form.jsFramework" :placeholder="t('generator.jsFrameworkSelect')">
                     <el-option label="原生JavaScript" value="vanilla" />
                     <el-option label="jQuery" value="jquery" />
                     <el-option label="Vue 2" value="vue2" />
@@ -56,8 +56,8 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="UI界面风格">
-                <el-select v-model="form.uiStyle" placeholder="请选择UI界面风格">
+            <el-form-item :label="t('generator.uiStyleLabel')">
+                <el-select v-model="form.uiStyle" :placeholder="t('generator.styleSelect')">
                     <el-option label="现代简约" value="modern" />
                     <el-option label="暗黑风格" value="dark" />
                     <el-option label="明亮风格" value="light" />
@@ -69,8 +69,8 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="CDN来源">
-                <el-select v-model="form.cdnProvider" placeholder="请选择CDN来源">
+            <el-form-item :label="t('generator.cdnLabel')">
+                <el-select v-model="form.cdnProvider" :placeholder="t('generator.cdnSelect')">
                     <el-option label="自动选择" value="auto" />
                     <el-option label="jsDelivr" value="jsdelivr" />
                     <el-option label="百度CDN" value="baidu" />
@@ -81,8 +81,8 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="设备适配">
-                <el-select v-model="form.deviceType" placeholder="请选择设备适配类型">
+            <el-form-item :label="t('generator.deviceLabel')">
+                <el-select v-model="form.deviceType" :placeholder="t('generator.deviceSelect')">
                     <el-option label="响应式设计" value="responsive" />
                     <el-option label="桌面网页版" value="desktop" />
                     <el-option label="移动端" value="mobile" />
@@ -91,8 +91,8 @@
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="代码风格">
-                <el-select v-model="form.style" placeholder="请选择代码风格">
+            <el-form-item :label="t('generator.codeStyleLabel')">
+                <el-select v-model="form.style" :placeholder="t('generator.codeStyleSelect')">
                     <el-option label="简洁风格" value="simple" />
                     <el-option label="详细注释" value="detailed" />
                     <el-option label="函数式编程" value="functional" />
@@ -102,7 +102,7 @@
 
             <el-form-item>
                 <el-button type="primary" @click="generateCode" :loading="isGenerating">
-                    {{ isGenerating ? '生成中...' : '生成代码' }}
+                    {{ isGenerating ? t('generator.generating') : t('generator.generate') }}
                 </el-button>
             </el-form-item>
         </el-form>
@@ -112,8 +112,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import MacWindow from '@/components/common/MacWindow.vue';
 import { generateCodeStream, getModelCreditCosts } from '@/utils/apiService';
+
+const { t } = useI18n();
 
 // 定义属性
 const props = defineProps({
@@ -160,8 +163,8 @@ onMounted(async () => {
             form.value.model = models[models.length - 1];
         }
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : '未知错误';
-        ElMessage.error(`获取模型积分配置失败，请刷新页面重试: ${errorMessage}`);
+        const errorMessage = error instanceof Error ? error.message : t('app.unknownError');
+        ElMessage.error(`${t('generator.modelCostFailed')}: ${errorMessage}`);
     }
 });
 
@@ -178,12 +181,12 @@ const toggleMinimize = () => {
 // 生成代码方法
 const generateCode = async () => {
     if (!form.value.description) {
-        ElMessage.warning('请输入描述内容');
+        ElMessage.warning(t('generator.pleaseInputDescription'));
         return;
     }
 
     isGenerating.value = true;
-    currentGeneratedCode.value = '// 代码正在生成中...\n// 请稍候...';
+    currentGeneratedCode.value = `// ${t('generator.codeGenerating')}\n// ${t('generator.pleaseWait')}`;
     projectId.value = ''; 
 
     // 立刻更新编辑器显示加载状态
@@ -211,7 +214,7 @@ const generateCode = async () => {
         }
 
         if (data.code) {
-            if (currentGeneratedCode.value.startsWith('// 代码正在生成中')) {
+            if (currentGeneratedCode.value.includes(`// ${t('generator.codeGenerating')}`)) {
                 currentGeneratedCode.value = '';
             }
             currentGeneratedCode.value += data.code;
@@ -233,11 +236,11 @@ const generateCode = async () => {
 
         console.log('生成完成，最终项目ID:', projectId.value);
         console.log('生成完成，最终版本ID:', versionId.value);
-        ElMessage.success('代码生成完成');
+        ElMessage.success(t('generator.generateComplete'));
 
         emit('updateGeneratedCode', currentGeneratedCode.value);
 
-        const isCodeGenerating = currentGeneratedCode.value.includes('// 代码正在生成中');
+        const isCodeGenerating = currentGeneratedCode.value.includes(`// ${t('generator.codeGenerating')}`);
         emit('updateSessionInfo', form.value.description, projectId.value, versionId.value, !isCodeGenerating);
 
         emit('openApp', 'safari');
@@ -246,8 +249,8 @@ const generateCode = async () => {
     const handleError = (errorMessage: string) => {
         console.error('SSE Error Callback:', errorMessage);
         isGenerating.value = false;
-        ElMessage.error('生成代码时发生错误: ' + errorMessage);
-        currentGeneratedCode.value += `\n\n// 生成代码时发生错误: ${errorMessage}`;
+        ElMessage.error(`${t('generator.generateError')}: ${errorMessage}`);
+        currentGeneratedCode.value += `\n\n// ${t('generator.generateError')}: ${errorMessage}`;
         emit('updateGeneratedCode', currentGeneratedCode.value);
         emit('updateSessionInfo', form.value.description, projectId.value, false);
     };

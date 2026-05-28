@@ -2,7 +2,7 @@
     <div class="login-container" :class="{ 'slide-up-exit': loginSuccess }">
         <div class="login-content" :class="{ 'content-success': loadingProgress >= 100 && verificationSuccess }">
             <div class="profile-image">
-                <img src="/assets/profile.jpg" alt="用户头像" />
+                <img src="/assets/profile.jpg" :alt="t('login.userAvatar')" />
             </div>
             
             <div class="login-username">{{ username }}</div>
@@ -14,7 +14,7 @@
                     v-model="inviteCode" 
                     class="invite-code-input" 
                     type="password" 
-                    placeholder="请输入邀请码：MoeJue"
+                    :placeholder="t('login.inviteCodePlaceholder')"
                     @keyup.enter="verifyInviteCode"
                 />
                 <button class="invite-code-button" @click="verifyInviteCode">
@@ -31,7 +31,7 @@
                     <div class="dot"></div>
                     <div class="dot"></div>
                 </div>
-                <div class="login-text">验证中...</div>
+                <div class="login-text">{{ t('login.verifying') }}</div>
             </div>
             
             <!-- 验证失败提示 -->
@@ -41,8 +41,8 @@
                         <path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z" />
                     </svg>
                 </div>
-                <span>邀请码不正确，请重试</span>
-                <button class="retry-button" @click="resetVerification">重试</button>
+                <span>{{ t('login.incorrectCode') }}</span>
+                <button class="retry-button" @click="resetVerification">{{ t('login.retry') }}</button>
             </div>
             
             <!-- 进度条 -->
@@ -57,6 +57,9 @@
 import { ref, onMounted, watch, nextTick } from 'vue';
 import * as FingerprintJS from '@fingerprintjs/fingerprintjs';
 import { registerUser } from '@/utils/apiService';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 // 定义组件属性
 const props = defineProps({
@@ -80,8 +83,8 @@ const isVerifying = ref(false);
 const verificationFailed = ref(false);
 const verificationSuccess = ref(false);
 const hasStoredValidInviteCode = ref(false);
-const CORRECT_INVITE_CODE = 'MoeJue'; // 正确的邀请码
-const INVITE_CODE_STORAGE_KEY = 'valid_invite_code'; // 存储邀请码的键名
+const CORRECT_INVITE_CODE = 'HongTui'; // t('signIn.correctInviteCode')
+const INVITE_CODE_STORAGE_KEY = 'valid_invite_code'; // t('signIn.storageKey')
 
 // 加载状态
 const loadingProgress = ref(0);
@@ -131,7 +134,7 @@ const getAndStoreFingerprint = async () => {
         browserFingerprint.value = visitorId; 
         return visitorId;
     } catch (error) {
-        console.error('获取浏览器指纹失败:', error);
+        console.error(t('login.fingerprintFailed'));
         return null;
     }
 };
@@ -139,7 +142,7 @@ const getAndStoreFingerprint = async () => {
 // 注册用户
 const tryRegisterUser = async (fingerprint: string | null, code: string) => {
     if (!fingerprint) {
-        console.error('无法注册用户：缺少指纹');
+        console.error(t('login.cannotRegister'));
         return false;
     }
     try {
@@ -162,7 +165,7 @@ const verifyInviteCode = async () => {
     if (!browserFingerprint.value) {
         await getAndStoreFingerprint();
         if (!browserFingerprint.value) {
-            console.error("无法获取浏览器指纹，无法继续验证。");
+            console.error(t('login.cannotRegister'));
             return;
         }
     }

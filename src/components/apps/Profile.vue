@@ -1,6 +1,6 @@
 <template>
     <MacWindow
-        title="个人中心"
+        :title="t('profile.title')"
         :isMinimized="isMinimized"
         width="480"
         height="600"
@@ -10,64 +10,64 @@
         <div class="window-content">
             <div class="loading-container" v-if="loading">
                 <div class="mac-spinner"></div>
-                <p>正在加载用户信息...</p>
+                <p>{{ t('profile.loadingUserInfo') }}</p>
             </div>
             <div class="profile-container" v-else>
                 <div class="profile-header">
                     <div class="avatar">
-                        <img :src="avatarUrl" alt="用户头像">
+                        <img :src="avatarUrl" :alt="t('profile.userAvatar')">
                     </div>
                     <div class="user-info">
-                        <h2>{{ userInfo.username || '未设置用户名' }}</h2>
+                        <h2>{{ userInfo.username || t('profile.unsetUsername') }}</h2>
                         <div class="member-badge" :class="memberLevelClass">
                             {{ memberLevelText }}
                         </div>
                     </div>
                     <button class="sign-in-btn" @click="openSignInModal">
                         <span class="sign-in-icon">📅</span>
-                        立即签到
+                        {{ t('profile.signInNow') }}
                     </button>
                 </div>
                 
                 
                 <div class="info-section">
-                    <h3>基本信息</h3>
+                    <h3>{{ t('profile.basicInfo') }}</h3>
                     <div class="info-row">
-                        <span class="label">邮箱：</span>
-                        <span class="value">{{ userInfo.email || '未绑定邮箱' }}</span>
+                        <span class="label">{{ t('profile.emailColon') }}</span>
+                        <span class="value">{{ userInfo.email || t('profile.unbindEmail') }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="label">注册时间：</span>
+                        <span class="label">{{ t('profile.registerTimeColon') }}</span>
                         <span class="value">{{ formatDate(userInfo.registrationDate) }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="label">上次登录：</span>
+                        <span class="label">{{ t('profile.lastLoginColon') }}</span>
                         <span class="value">{{ formatDate(userInfo.lastLoginDate) }}</span>
                     </div>
                 </div>
                 
                 <div class="credits-section">
-                    <h3>积分信息</h3>
+                    <h3>{{ t('profile.creditsInfo') }}</h3>
                     <div class="credits-container">
                         <div class="credit-card">
                             <div class="credit-icon">🎁</div>
                             <div class="credit-amount">{{ userInfo.freeCredits || 0 }}</div>
-                            <div class="credit-label">免费积分</div>
+                            <div class="credit-label">{{ t('profile.freeCredits') }}</div>
                         </div>
                         <div class="credit-card">
                             <div class="credit-icon">💎</div>
                             <div class="credit-amount">{{ userInfo.paidCredits || 0 }}</div>
-                            <div class="credit-label">付费积分</div>
+                            <div class="credit-label">{{ t('profile.paidCredits') }}</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="actions-section">
                     <button class="mac-btn primary" v-if="!userInfo.email" @click="showBindEmailDialog">
-                        绑定邮箱
+                        {{ t('profile.bindEmail') }}
                     </button>
                     <button class="mac-btn" @click="refreshUserInfo">
-                        刷新信息
+                        {{ t('profile.refreshInfo') }}
                     </button>
                 </div>
 
@@ -86,8 +86,11 @@
 import { ref, computed, onMounted } from 'vue';
 import { getCurrentUser } from '@/utils/apiService';
 import { ElMessage } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import MacWindow from '@/components/common/MacWindow.vue';
 import SignInModal from '@/components/system/SignInModal.vue';
+
+const { t } = useI18n();
 
 // 定义用户信息类型
 interface UserInfo {
@@ -137,10 +140,10 @@ const memberLevelClass = computed(() => {
 // 计算会员等级文本
 const memberLevelText = computed(() => {
     const level = userInfo.value.memberLevel || 0;
-    if (level === 0) return '免费用户';
-    if (level === 1) return '基础会员';
-    if (level === 2) return '高级会员';
-    return '专业会员';
+    if (level === 0) return t('profile.freeUser');
+    if (level === 1) return t('profile.basicMember');
+    if (level === 2) return t('profile.premiumMember');
+    return t('profile.proMember');
 });
 
 // 获取用户信息
@@ -153,12 +156,12 @@ const fetchUserInfo = async () => {
         if ((response as any).success) {
             userInfo.value = (response as any).user;
         } else {
-            error.value = (response as any).message || '获取用户信息失败';
+            error.value = (response as any).message || t('profile.fetchUserFailed');
         }
     } catch (err: unknown) {
         console.error('获取用户信息出错:', err);
-        const errorMessage = err instanceof Error ? err.message : '未知错误';
-        error.value = `网络错误，请稍后再试: ${errorMessage}`;
+        const errorMessage = err instanceof Error ? err.message : t('app.unknownError');
+        error.value = `${t('profile.networkErrorRetry')}: ${errorMessage}`;
     } finally {
         loading.value = false;
     }
@@ -186,7 +189,7 @@ const formatDate = (dateString: string | number | undefined) => {
 
 // 绑定邮箱对话框（暂时只显示提示）
 const showBindEmailDialog = () => {
-    ElMessage.warning('邮箱绑定功能正在开发中...');
+    ElMessage.warning(t('profile.bindEmailDev'));
 };
 
 // 打开签到弹窗

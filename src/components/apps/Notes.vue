@@ -1,6 +1,6 @@
 <template>
     <MacWindow 
-        title="使用帮助" 
+        :title="t('notes.helpTitle')" 
         :isMinimized="isMinimized" 
         @close="closeApp" 
         @minimize="toggleMinimize"
@@ -10,77 +10,77 @@
         <div class="notes-container">
             <div class="notes-sidebar">
                 <div class="sidebar-header">
-                    <h3>笔记</h3>
-                    <button class="add-note-btn" title="新建笔记">
+                    <h3>{{ t('notes.title') }}</h3>
+                    <button class="add-note-btn" :title="t('notes.newNote')">
                         <i class="el-icon-plus"></i>
                     </button>
                 </div>
                 <div class="notes-list">
                     <div class="note-item active">
-                        <div class="note-title">使用帮助</div>
-                        <div class="note-preview">欢迎使用WebAI前端代码生成器...</div>
+                        <div class="note-title">{{ t('notes.helpTitle') }}</div>
+                        <div class="note-preview">{{ t('notes.helpPreview') }}</div>
                     </div>
                 </div>
             </div>
             <div class="notes-content">
                 <div class="note-editor">
-                    <h1>WebAI 前端代码生成器使用帮助</h1>
+                    <h1>{{ t('notes.mainTitle') }}</h1>
                     
-                    <h2>简介</h2>
-                    <p>WebAI 是一款强大的AI驱动的前端代码生成器，帮助用户通过自然语言描述快速创建网页和应用程序界面。</p>
+                    <h2>{{ t('notes.introduction') }}</h2>
+                    <p>{{ t('notes.introDesc') }}</p>
                     
-                    <h2>基本使用流程</h2>
+                    <h2>{{ t('help.basicUsage') }}</h2>
                     <ol>
-                        <li><strong>点击桌面上的"使用帮助"图标</strong>：了解系统功能和操作方法。</li>
-                        <li><strong>打开代码生成器</strong>：通过桌面图标或Dock栏打开前端代码生成器。</li>
-                        <li><strong>描述您的需求</strong>：在文本框中输入您想要创建的界面描述。</li>
-                        <li><strong>选择配置</strong>：根据需要选择AI模型、UI框架、JS框架等选项。</li>
-                        <li><strong>生成代码</strong>：点击"生成代码"按钮，系统将开始生成您描述的界面代码。</li>
-                        <li><strong>预览和编辑</strong>：代码生成后，您可以在编辑器中查看并修改代码，同时预览窗口会显示实时效果。</li>
+                        <li><strong>{{ t('notes.step0') }}</strong></li>
+                        <li><strong>{{ t('notes.openCodeGenerator') }}</strong></li>
+                        <li><strong>{{ t('notes.describeNeeds') }}</strong>{{ t('notes.step2Desc') }}</li>
+                        <li><strong>{{ t('notes.selectConfig') }}</strong></li>
+                        <li><strong>{{ t('notes.step4Desc') }}</strong></li>
+                        <li><strong>{{ t('notes.step5Desc') }}</strong></li>
                     </ol>
                     
-                    <h2>功能介绍</h2>
-                    <h3>1. 代码生成器</h3>
-                    <p>通过AI将您的文字描述转换为实际可用的前端代码，支持多种框架和库。</p>
+                    <h2>{{ t('help.features') }}</h2>
+                    <h3>{{ t('notes.codeGeneratorTitle') }}</h3>
+                    <p>{{ t('notes.codeGeneratorDesc') }}</p>
                     <ul>
-                        <li><strong>AI模型</strong>：可选择不同的AI模型，如GPT-3.5、GPT-4等，不同模型有不同的能力和特点。</li>
-                        <li><strong>UI框架</strong>：支持多种流行的UI框架，如Element UI、Ant Design、Bootstrap等。</li>
-                        <li><strong>JS框架</strong>：支持原生JavaScript、Vue、React等多种前端框架。</li>
-                        <li><strong>CDN来源</strong>：可选择不同的CDN提供商，以获得更好的加载速度。</li>
-                        <li><strong>设备适配</strong>：可选择针对不同设备类型优化的代码生成。</li>
+                        <li><strong>{{ t('notes.aiModel') }}</strong></li>
+                        <li><strong>{{ t('notes.uiFramework') }}</strong></li>
+                        <li><strong>{{ t('notes.jsFramework') }}</strong></li>
+                        <li><strong>{{ t('notes.cdnSource') }}</strong></li>
+                        <li><strong>{{ t('notes.deviceAdapt') }}</strong></li>
                     </ul>
                     
-                    <h3>2. 代码编辑器</h3>
-                    <p>内置的代码编辑器允许您查看和修改生成的代码。</p>
+                    <h3>{{ t('notes.editorTitle') }}</h3>
+                    <p>{{ t('notes.editorDesc') }}</p>
                     <ul>
-                        <li>支持语法高亮</li>
-                        <li>代码格式化</li>
-                        <li>自动保存</li>
+                        <li>{{ t('codeEditor.syntaxHighlight') }}</li>
+                        <li>{{ t('generator.codeFormatting') }}</li>
+                        <li>{{ t('generator.autoSave') }}</li>
                     </ul>
                     
-                    <h3>3. 实时预览</h3>
-                    <p>预览窗口实时显示生成代码的运行效果，帮助您直观地了解代码的表现。</p>
+                    <h3>{{ t('notes.previewTitle') }}</h3>
+                    <p>{{ t('notes.previewDesc') }}</p>
                     
-                    <h3>4. 版本管理</h3>
-                    <p>系统会自动保存您生成的代码版本，方便您随时回溯或比较不同版本。</p>
+                    <h3>{{ t('notes.versionTitle') }}</h3>
+                    <p>{{ t('notes.versionDesc') }}</p>
                     
-                    <h2>使用技巧</h2>
+                    <h2>{{ t('help.tips') }}</h2>
                     <ul>
-                        <li><strong>详细描述</strong>：尽量详细描述您想要的界面元素、布局、交互行为等。</li>
-                        <li><strong>指定技术栈</strong>：在描述中明确指出您想使用的技术栈，如"使用Vue3和Element Plus创建一个登录表单"。</li>
-                        <li><strong>持续对话</strong>：使用"继续对话"功能，可以对已生成的代码进行进一步的修改和完善。</li>
-                        <li><strong>保存版本</strong>：重要的代码版本可以在版本管理器中进行标记和命名，方便日后查找。</li>
+                        <li><strong>{{ t('notes.detailDesc') }}</strong></li>
+                        <li><strong>{{ t('notes.specifyStack') }}</strong></li>
+                        <li><strong>{{ t('notes.continueConv') }}</strong></li>
+                        <li><strong>{{ t('notes.saveVersion') }}</strong></li>
                     </ul>
                     
-                    <h2>常见问题</h2>
-                    <p><strong>Q: 为什么我的代码生成速度较慢？</strong></p>
-                    <p>A: 代码生成速度受网络状况、服务器负载和所选AI模型的影响。高级模型通常需要更长的处理时间，但生成质量更高。</p>
+                    <h2>{{ t('help.faq') }}</h2>
+                    <p><strong>{{ t('notes.faq3FullQ') }}</strong></p>
+                    <p>{{ t('notes.faq3FullA') }}</p>
                     
-                    <p><strong>Q: 如何修改已生成的代码？</strong></p>
-                    <p>A: 您可以直接在代码编辑器中修改，或使用"继续对话"功能，通过自然语言描述您想要的修改。</p>
+                    <p><strong>{{ t('notes.faq1FullQ') }}</strong></p>
+                    <p>{{ t('notes.faq1FullA') }}</p>
                     
-                    <p><strong>Q: 我可以导出代码吗？</strong></p>
-                    <p>A: 是的，您可以复制代码或使用导出功能将代码保存到本地文件。</p>
+                    <p><strong>{{ t('notes.faq2FullQ') }}</strong></p>
+                    <p>{{ t('notes.faq2FullA') }}</p>
                 </div>
             </div>
         </div>
@@ -88,7 +88,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import MacWindow from '@/components/common/MacWindow.vue';
+
+const { t } = useI18n();
 
 // 定义属性
 const props = defineProps({
@@ -236,4 +239,4 @@ const toggleMinimize = () => {
 .note-editor strong {
     font-weight: 600;
 }
-</style> 
+</style>

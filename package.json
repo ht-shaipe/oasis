@@ -20,6 +20,7 @@
     "fingerprintjs": "^0.5.3",
     "pinia": "^3.0.4",
     "vue": "^3.5.35",
+    "vue-i18n": "^11.4.4",
     "vue-router": "^5.0.7",
     "vue3-eventbus": "^2.0.0",
     "vuex": "^4.1.0"
