@@ -48,7 +48,8 @@
     "photos": "Photos",
     "blog": "Blog",
     "github": "Github",
-    "music": "MoeKoeMusic"
+    "music": "MoeKoeMusic",
+    "credentialManager": "Credential Manager"
   },
   "contextMenu": {
     "changeWallpaper": "Change Wallpaper",
@@ -107,7 +108,7 @@
   },
   "generator": {
     "title": "Code Generator",
-    "windowTitle": "Web AI - Frontend Code Generator",
+    "windowTitle": "Oasis - Frontend Code Generator",
     "description": "Describe the frontend code you want to generate (HTML/CSS/JavaScript/Vue/React etc.)",
     "inputPlaceholder": "Enter your description",
     "generate": "Generate Code",
@@ -163,7 +164,7 @@
     "editorBody": "Editor Body",
     "mainEditor": "Main Editor Area",
     "welcome": "Welcome",
-    "welcomeWebAI": "Welcome to Web AI",
+    "welcomeWebAI": "Welcome to Oasis",
     "codeEditing": "Code Editing, Redefined.",
     "start": "Start",
     "openFolder": "Open Folder...",
@@ -409,5 +410,75 @@
     "pleaseInputContent": "Please enter content to continue the conversation",
     "generateError": "Error occurred while generating code",
     "modelCostFailed": "Failed to get model credit config, please refresh and retry"
+  },
+  "credential": {
+    "title": "Credential Manager",
+    "setup": {
+      "title": "Set Master Key",
+      "password": "Master Key",
+      "confirmPassword": "Confirm Master Key",
+      "passwordHint": "At least 8 characters. Keep it safe — it cannot be recovered if lost.",
+      "submit": "Set Key",
+      "mismatch": "Passwords do not match",
+      "tooShort": "Password must be at least 8 characters"
+    },
+    "unlock": {
+      "title": "Unlock Vault",
+      "password": "Enter Master Key",
+      "submit": "Unlock",
+      "wrongPassword": "Incorrect master key",
+      "tooManyAttempts": "Too many attempts, please try again later"
+    },
+    "category": {
+      "all": "All Credentials",
+      "add": "Add Category",
+      "name": "Category Name",
+      "social": "Social Media",
+      "email": "Email",
+      "devtools": "Developer Tools",
+      "apikey": "API Keys",
+      "cloud": "Cloud Services",
+      "database": "Databases",
+      "custom": "Custom"
+    },
+    "list": {
+      "search": "Search credentials...",
+      "add": "Add Credential",
+      "empty": "No credentials yet",
+      "title": "Title",
+      "username": "Username",
+      "url": "URL",
+      "category": "Category",
+      "updatedAt": "Updated",
+      "actions": "Actions",
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Are you sure you want to delete this credential? This cannot be undone."
+    },
+    "detail": {
+      "title": "Credential Detail",
+      "editTitle": "Edit Credential",
+      "createTitle": "New Credential",
+      "basicInfo": "Basic Info",
+      "sensitiveInfo": "Sensitive Info",
+      "password": "Password",
+      "apiKey": "API Key",
+      "secretKey": "Secret Key",
+      "accessToken": "Access Token",
+      "refreshToken": "Refresh Token",
+      "customFields": "Custom Fields",
+      "addField": "Add Field",
+      "tags": "Tags",
+      "notes": "Notes",
+      "save": "Save",
+      "cancel": "Cancel",
+      "copy": "Copy",
+      "copied": "Copied",
+      "show": "Show",
+      "hide": "Hide"
+    },
+    "lock": "Lock",
+    "autoLockWarning": "Vault has been auto-locked"
   }
 }

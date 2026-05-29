@@ -12,6 +12,12 @@
             </div>
             <div class="icon-text">{{ t('desktop.about') }}</div>
         </div>
+        <div class="desktop-icon" @click="openApp('credential-manager')">
+            <div class="icon-container">
+                <img src="/assets/icons/Keychain.png" :alt="t('dock.credentialManager')">
+            </div>
+            <div class="icon-text">{{ t('dock.credentialManager') }}</div>
+        </div>
     </div>
 </template>
 

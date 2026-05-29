@@ -18,7 +18,7 @@
                 </div>
             </div>
             <div class="menubar-items">
-                <span class="menubar-item active">Web AI</span>
+                <span class="menubar-item active">Oasis</span>
                 <span class="menubar-item" @click="toggleFileMenu">
                     {{ t('menu.file') }}
                     <!-- File Menu -->

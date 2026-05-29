@@ -1,3 +1,5 @@
+mod credential;
+
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -8,7 +10,21 @@ use tauri::{
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, update_tray_locale])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            update_tray_locale,
+            credential::commands::is_master_key_set,
+            credential::commands::setup_master_key,
+            credential::commands::verify_master_key,
+            credential::commands::list_categories,
+            credential::commands::create_category,
+            credential::commands::list_credentials,
+            credential::commands::get_credential,
+            credential::commands::create_credential,
+            credential::commands::update_credential,
+            credential::commands::delete_credential,
+            credential::commands::change_master_key,
+        ])
         .setup(|app| {
             setup_tray(app)?;
             Ok(())

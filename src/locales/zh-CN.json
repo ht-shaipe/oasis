@@ -48,7 +48,8 @@
     "photos": "照片",
     "blog": "Blog",
     "github": "Github",
-    "music": "MoeKoeMusic"
+    "music": "MoeKoeMusic",
+    "credentialManager": "凭证管理"
   },
   "contextMenu": {
     "changeWallpaper": "切换壁纸",
@@ -107,7 +108,7 @@
   },
   "generator": {
     "title": "代码生成器",
-    "windowTitle": "Web AI - 前端代码生成",
+    "windowTitle": "Oasis - 前端代码生成",
     "description": "请描述您想要生成的前端代码（HTML/CSS/JavaScript/Vue/React等）",
     "inputPlaceholder": "请输入描述内容",
     "generate": "生成代码",
@@ -163,7 +164,7 @@
     "editorBody": "编辑器主体",
     "mainEditor": "主编辑区域",
     "welcome": "欢迎使用",
-    "welcomeWebAI": "欢迎使用 Web AI",
+    "welcomeWebAI": "欢迎使用 Oasis",
     "codeEditing": "代码编辑，重新定义。",
     "start": "开始",
     "openFolder": "打开文件夹...",
@@ -417,5 +418,75 @@
     "pleaseInputContent": "请输入继续对话的内容",
     "generateError": "生成代码时发生错误",
     "modelCostFailed": "获取模型积分配置失败，请刷新页面重试"
+  },
+  "credential": {
+    "title": "凭证管理",
+    "setup": {
+      "title": "设置主密钥",
+      "password": "主密钥",
+      "confirmPassword": "确认主密钥",
+      "passwordHint": "至少8个字符，请妥善保管，丢失无法恢复",
+      "submit": "设置密钥",
+      "mismatch": "两次输入的密钥不一致",
+      "tooShort": "密钥至少需要8个字符"
+    },
+    "unlock": {
+      "title": "解锁凭证库",
+      "password": "输入主密钥",
+      "submit": "解锁",
+      "wrongPassword": "密钥不正确",
+      "tooManyAttempts": "尝试次数过多，请稍后再试"
+    },
+    "category": {
+      "all": "全部凭证",
+      "add": "新增分类",
+      "name": "分类名称",
+      "social": "社交媒体",
+      "email": "邮箱",
+      "devtools": "开发工具",
+      "apikey": "API密钥",
+      "cloud": "云服务",
+      "database": "数据库",
+      "custom": "自定义"
+    },
+    "list": {
+      "search": "搜索凭证...",
+      "add": "新增凭证",
+      "empty": "暂无凭证",
+      "title": "标题",
+      "username": "用户名",
+      "url": "网址",
+      "category": "分类",
+      "updatedAt": "更新时间",
+      "actions": "操作",
+      "view": "查看",
+      "edit": "编辑",
+      "delete": "删除",
+      "deleteConfirm": "确定删除此凭证吗？此操作不可恢复。"
+    },
+    "detail": {
+      "title": "凭证详情",
+      "editTitle": "编辑凭证",
+      "createTitle": "新增凭证",
+      "basicInfo": "基本信息",
+      "sensitiveInfo": "敏感信息",
+      "password": "密码",
+      "apiKey": "API Key",
+      "secretKey": "Secret Key",
+      "accessToken": "Access Token",
+      "refreshToken": "Refresh Token",
+      "customFields": "自定义字段",
+      "addField": "添加字段",
+      "tags": "标签",
+      "notes": "备注",
+      "save": "保存",
+      "cancel": "取消",
+      "copy": "复制",
+      "copied": "已复制",
+      "show": "显示",
+      "hide": "隐藏"
+    },
+    "lock": "锁定",
+    "autoLockWarning": "凭证库已自动锁定"
   }
 }

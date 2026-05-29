@@ -119,6 +119,16 @@
                 @minimize="isProfileMinimized = !isProfileMinimized"
             />
         </Teleport>
+
+        <!-- 凭证管理窗口 -->
+        <Teleport to="body">
+            <CredentialManager
+                v-if="showCredentialManager"
+                :isMinimized="isCredentialManagerMinimized"
+                @close="showCredentialManager = false"
+                @minimize="isCredentialManagerMinimized = !isCredentialManagerMinimized"
+            />
+        </Teleport>
     </div>
 </template>
 
@@ -141,6 +151,7 @@ import Finder from '@/components/apps/Finder.vue';
 import ContinueDialog from '@/components/apps/ContinueDialog.vue';
 import Notes from '@/components/apps/Notes.vue';
 import Profile from '@/components/apps/Profile.vue';
+import CredentialManager from '@/components/apps/CredentialManager.vue';
 
 // 加载状态
 const isLoading = ref(true);
@@ -163,6 +174,8 @@ const isFinderMinimized = ref(false);
 const isContinueDialogMinimized = ref(false);
 const isNotesMinimized = ref(false);
 const isProfileMinimized = ref(false);
+const showCredentialManager = ref(false);
+const isCredentialManagerMinimized = ref(false);
 
 // 右键菜单状态
 const showContextMenu = ref(false);
@@ -243,6 +256,10 @@ const openApp = (appName: string | { type: string; url: string; target: string }
             case 'profile':
                 showProfile.value = true;
                 isProfileMinimized.value = false;
+                break;
+            case 'credential-manager':
+                showCredentialManager.value = true;
+                isCredentialManagerMinimized.value = false;
                 break;
         }
     }

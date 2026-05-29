@@ -15,6 +15,9 @@
         <div class="dock-item" @click="openApp('about')">
             <img src="/assets/icons/Settings.png" :alt="t('dock.about')" :title="t('dock.about')">
         </div>
+        <div class="dock-item" @click="openApp('credential-manager')">
+            <img src="/assets/icons/Keychain.png" :alt="t('dock.credentialManager')" :title="t('dock.credentialManager')">
+        </div>
         <div class="dock-item" @click="openApp('profile')">
             <img src="/assets/icons/Contacts.png" :alt="t('dock.profile')" :title="t('dock.profile')">
         </div>

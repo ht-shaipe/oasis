@@ -65,7 +65,7 @@ const { t } = useI18n();
 const props = defineProps({
     username: {
         type: String,
-        default: 'Web AI'
+        default: 'Oasis'
     },
     isResourcesLoaded: {
         type: Boolean,

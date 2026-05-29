@@ -199,7 +199,7 @@
                     <div class="editor-main">
                         <div class="editor-container" ref="editorContainer">
                             <div v-if="editorTabs.length === 0" class="welcome-content">
-                                <div class="welcome-title">欢迎使用 Web AI</div>
+                                <div class="welcome-title">欢迎使用 Oasis</div>
                                 <div class="welcome-subtitle">代码编辑，重新定义。</div>
                                 <div class="welcome-actions">
                                     <div class="welcome-action">
