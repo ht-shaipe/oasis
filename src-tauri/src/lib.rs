@@ -18,6 +18,7 @@ pub fn run() {
             credential::commands::verify_master_key,
             credential::commands::list_categories,
             credential::commands::create_category,
+            credential::commands::delete_category,
             credential::commands::list_credentials,
             credential::commands::get_credential,
             credential::commands::create_credential,

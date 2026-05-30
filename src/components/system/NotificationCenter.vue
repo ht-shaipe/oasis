@@ -6,14 +6,14 @@
         </div>
         <div class="notification-content">
             <div class="notification-item">
-                <img src="/assets/icons/Messages.png" alt="消息" width="40" height="40">
+                <img src="/assets/icons/Messages.svg" alt="消息" width="40" height="40" />
                 <div class="notification-text">
                     <strong>{{ t('notification.newMessage') }}</strong>
                     <p>{{ t('notification.mockDataNotice') }}</p>
                 </div>
             </div>
             <div class="notification-item">
-                <img src="/assets/icons/Mail.png" alt="邮件" width="40" height="40">
+                <img src="/assets/icons/Mail.svg" alt="邮件" width="40" height="40" />
                 <div class="notification-text">
                     <strong>{{ t('notification.mail') }}</strong>
                     <p>{{ t('notification.noUnreadMail') }}</p>
@@ -46,7 +46,7 @@ const closeNotificationCenter = () => {
     width: 300px;
     background-color: rgba(240, 240, 240, 0.9);
     backdrop-filter: blur(10px);
-    z-index: 1900; 
+    z-index: 1900;
     box-shadow: -2px 0 15px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
 }
@@ -110,4 +110,4 @@ const closeNotificationCenter = () => {
     color: var(--color-text-secondary);
     font-size: 13px;
 }
-</style> 
+</style>

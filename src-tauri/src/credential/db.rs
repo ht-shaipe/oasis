@@ -31,6 +31,7 @@ pub fn init_db(app_data_dir: &Path) -> Result<Connection> {
 
         CREATE TABLE IF NOT EXISTS categories (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            parent_id   INTEGER REFERENCES categories(id),
             name        TEXT NOT NULL UNIQUE,
             icon        TEXT,
             sort_order  INTEGER DEFAULT 0,
@@ -52,6 +53,17 @@ pub fn init_db(app_data_dir: &Path) -> Result<Connection> {
         );
         "
     )?;
+
+    // Migration: Add parent_id to categories if it doesn't exist
+    let has_parent_id: bool = conn.query_row(
+        "SELECT count(*) FROM pragma_table_info('categories') WHERE name='parent_id'",
+        [],
+        |row| Ok(row.get::<_, i64>(0)? > 0),
+    ).unwrap_or(false);
+
+    if !has_parent_id {
+        conn.execute("ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id)", [])?;
+    }
 
     // Insert default categories if empty
     let count: i64 = conn.query_row(
@@ -130,21 +142,22 @@ pub fn get_master_key_salts(conn: &Connection) -> Result<(Vec<u8>, Vec<u8>)> {
 
 pub fn list_categories(conn: &Connection) -> Result<Vec<Category>> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, icon, sort_order, created_at FROM categories ORDER BY sort_order"
+        "SELECT id, parent_id, name, icon, sort_order, created_at FROM categories ORDER BY sort_order"
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(Category {
             id: row.get(0)?,
-            name: row.get(1)?,
-            icon: row.get(2)?,
-            sort_order: row.get(3)?,
-            created_at: row.get(4)?,
+            parent_id: row.get(1)?,
+            name: row.get(2)?,
+            icon: row.get(3)?,
+            sort_order: row.get(4)?,
+            created_at: row.get(5)?,
         })
     })?;
     rows.collect()
 }
 
-pub fn create_category(conn: &Connection, name: &str, icon: Option<&str>) -> Result<Category> {
+pub fn create_category(conn: &Connection, name: &str, icon: Option<&str>, parent_id: Option<i64>) -> Result<Category> {
     let now = now_iso();
     let max_order: Option<i64> = conn.query_row(
         "SELECT MAX(sort_order) FROM categories",
@@ -153,12 +166,13 @@ pub fn create_category(conn: &Connection, name: &str, icon: Option<&str>) -> Res
     ).ok();
     let sort_order = max_order.unwrap_or(0) + 1;
     conn.execute(
-        "INSERT INTO categories (name, icon, sort_order, created_at) VALUES (?1, ?2, ?3, ?4)",
-        params![name, icon, sort_order, now],
+        "INSERT INTO categories (name, icon, sort_order, created_at, parent_id) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![name, icon, sort_order, now, parent_id],
     )?;
     let id = conn.last_insert_rowid();
     Ok(Category {
         id,
+        parent_id,
         name: name.to_string(),
         icon: icon.map(String::from),
         sort_order,
@@ -291,6 +305,39 @@ pub fn update_credential(conn: &Connection, id: i64, cred: &UpdateCredential) ->
     }
 
     get_credential(conn, id)
+}
+
+pub fn delete_category(conn: &Connection, id: i64) -> Result<()> {
+    // Check if category or its subcategories have credentials
+    let has_credentials: bool = conn.query_row(
+        "WITH RECURSIVE category_tree(id) AS (
+            SELECT id FROM categories WHERE id = ?1
+            UNION ALL
+            SELECT c.id FROM categories c
+            JOIN category_tree ct ON c.parent_id = ct.id
+        )
+        SELECT EXISTS(SELECT 1 FROM credentials WHERE category_id IN (SELECT id FROM category_tree))",
+        params![id],
+        |row| row.get(0),
+    )?;
+
+    if has_credentials {
+        return Err(rusqlite::Error::InvalidParameterName("Cannot delete category: contains credentials".into()));
+    }
+
+    // Check if it has direct children
+    let has_children: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM categories WHERE parent_id = ?1)",
+        params![id],
+        |row| row.get(0),
+    )?;
+
+    if has_children {
+        return Err(rusqlite::Error::InvalidParameterName("Cannot delete category: has sub-categories".into()));
+    }
+
+    conn.execute("DELETE FROM categories WHERE id = ?1", params![id])?;
+    Ok(())
 }
 
 pub fn delete_credential(conn: &Connection, id: i64) -> Result<()> {

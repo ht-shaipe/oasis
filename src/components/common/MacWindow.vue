@@ -1,16 +1,18 @@
 <template>
-    <div class="mac-window" 
-         :class="{ 
-            'minimized': isMinimized, 
-            'closing': isClosing, 
-            'opening': isOpening,
-            'maximized': isMaximized 
-         }" 
-         :style="windowStyle"
-         @click.self="bringToFront"
-         ref="windowRef"
-         tabindex="0"
-         @keydown.esc="closeWindow">
+    <div
+        class="mac-window"
+        :class="{
+            minimized: isMinimized,
+            closing: isClosing,
+            opening: isOpening,
+            maximized: isMaximized,
+        }"
+        :style="windowStyle"
+        @click.self="bringToFront"
+        @contextmenu.prevent.stop
+        ref="windowRef"
+        tabindex="0"
+        @keydown.esc="closeWindow">
         <div class="window-titlebar" @mousedown="startDrag" @dblclick="toggleMaximize">
             <div class="window-buttons">
                 <div class="window-button close" @click="closeWindow"></div>
@@ -41,28 +43,28 @@ import { computed, ref, onMounted } from 'vue';
 const props = defineProps({
     title: {
         type: String,
-        default: 'Window'
+        default: 'Window',
     },
     isMinimized: {
         type: Boolean,
-        default: false
+        default: false,
     },
     width: {
         type: [String, Number],
-        default: '600px'
+        default: '600px',
     },
     height: {
         type: [String, Number],
-        default: 'auto'
+        default: 'auto',
     },
     startMaximized: {
         type: Boolean,
-        default: false
+        default: false,
     },
     zIndex: {
         type: Number,
-        default: 1000
-    }
+        default: 1000,
+    },
 });
 
 // 窗口引用
@@ -82,7 +84,7 @@ const isRestoring = ref(false); // 添加恢复动画状态
 const windowPosition = ref({ x: 0, y: 0 });
 const windowSize = ref({
     width: typeof props.width === 'number' ? props.width : parseInt(props.width) || 600,
-    height: typeof props.height === 'number' ? props.height : parseInt(props.height) || 400
+    height: typeof props.height === 'number' ? props.height : parseInt(props.height) || 400,
 });
 
 // 拖动状态
@@ -99,7 +101,7 @@ const resizeStartPosition = ref({ x: 0, y: 0 });
 // 存储最大化前的窗口状态
 const preMaximizeState = ref({
     position: { x: 0, y: 0 },
-    size: { width: 0, height: 0 }
+    size: { width: 0, height: 0 },
 });
 
 // 获取菜单栏高度
@@ -123,23 +125,23 @@ const bringToFront = () => {
     // 获取所有窗口并查找当前最高的z-index
     const allWindows = document.querySelectorAll('.mac-window');
     let maxZIndex = 1000; // 基础z-index
-    
-    allWindows.forEach(window => {
+
+    allWindows.forEach((window) => {
         const computedStyle = getComputedStyle(window);
         const zIndex = parseInt(computedStyle.zIndex || '1000');
         if (zIndex > maxZIndex) {
             maxZIndex = zIndex;
         }
     });
-    
+
     // 设置当前窗口的z-index比最高值大1
     currentZIndex.value = maxZIndex + 1;
-    
+
     // 聚焦窗口以便可以接收键盘事件
     if (windowRef.value) {
         windowRef.value.focus();
     }
-    
+
     // 通知父组件窗口已聚焦
     emit('focus');
 };
@@ -162,42 +164,42 @@ const toggleMaximize = () => {
     if (isMaximized.value) {
         // 开始恢复动画
         isRestoring.value = true;
-        
+
         setTimeout(() => {
             // 恢复到之前的大小和位置
             windowPosition.value = { ...preMaximizeState.value.position };
             windowSize.value = { ...preMaximizeState.value.size };
             isMaximized.value = false;
-            
+
             // 延迟结束恢复动画
             setTimeout(() => {
                 isRestoring.value = false;
             }, 300);
-            
+
             emit('maximize', false);
         }, 50);
     } else {
         // 保存当前状态并开始最大化动画
         preMaximizeState.value = {
             position: { ...windowPosition.value },
-            size: { ...windowSize.value }
+            size: { ...windowSize.value },
         };
-        
+
         isMaximizing.value = true;
-        
+
         setTimeout(() => {
             windowPosition.value = { x: 0, y: menuBarHeight.value };
-            windowSize.value = { 
+            windowSize.value = {
                 width: window.innerWidth,
-                height: window.innerHeight - menuBarHeight.value
+                height: window.innerHeight - menuBarHeight.value,
             };
             isMaximized.value = true;
-            
+
             // 延迟结束最大化动画
             setTimeout(() => {
                 isMaximizing.value = false;
             }, 300);
-            
+
             emit('maximize', true);
         }, 50);
     }
@@ -207,20 +209,20 @@ const toggleMaximize = () => {
 const startDrag = (event: MouseEvent) => {
     // 如果是最大化状态，不允许拖动
     if (isMaximized.value) return;
-    
+
     // 如果点击的是按钮，不进行拖动
     if ((event.target as HTMLElement).classList.contains('window-button')) return;
-    
+
     // 确保窗口在最前
     bringToFront();
-    
+
     isDragging.value = true;
     const rect = (windowRef.value as HTMLElement).getBoundingClientRect();
     dragOffset.value = {
         x: event.clientX - rect.left,
-        y: event.clientY - rect.top
+        y: event.clientY - rect.top,
     };
-    
+
     document.addEventListener('mousemove', doDrag);
     document.addEventListener('mouseup', stopDrag);
 };
@@ -228,13 +230,13 @@ const startDrag = (event: MouseEvent) => {
 // 执行拖动
 const doDrag = (event: MouseEvent) => {
     if (!isDragging.value) return;
-    
+
     const x = event.clientX - dragOffset.value.x;
     const y = event.clientY - dragOffset.value.y;
-    
+
     // 限制不能拖出顶部
     const limitedY = Math.max(menuBarHeight.value, y);
-    
+
     windowPosition.value = { x, y: limitedY };
 };
 
@@ -249,19 +251,19 @@ const stopDrag = () => {
 const startResize = (event: MouseEvent, direction: string) => {
     event.preventDefault();
     event.stopPropagation();
-    
+
     // 如果是最大化状态，不允许调整大小
     if (isMaximized.value) return;
-    
+
     // 确保窗口在最前
     bringToFront();
-    
+
     isResizing.value = true;
     resizeDirection.value = direction;
     resizeStartPos.value = { x: event.clientX, y: event.clientY };
     resizeStartSize.value = { ...windowSize.value };
     resizeStartPosition.value = { ...windowPosition.value };
-    
+
     document.addEventListener('mousemove', doResize);
     document.addEventListener('mouseup', stopResize);
 };
@@ -269,14 +271,14 @@ const startResize = (event: MouseEvent, direction: string) => {
 // 执行调整大小
 const doResize = (event: MouseEvent) => {
     if (!isResizing.value) return;
-    
+
     const dx = event.clientX - resizeStartPos.value.x;
     const dy = event.clientY - resizeStartPos.value.y;
     const dir = resizeDirection.value;
-    
+
     const newSize = { ...windowSize.value };
     const newPosition = { ...windowPosition.value };
-    
+
     // 根据不同方向调整大小和位置
     if (dir.includes('e')) {
         newSize.width = Math.max(300, resizeStartSize.value.width + dx);
@@ -294,7 +296,7 @@ const doResize = (event: MouseEvent) => {
         // 确保不超过菜单栏
         const potentialY = resizeStartPosition.value.y + (resizeStartSize.value.height - newHeight);
         newPosition.y = Math.max(menuBarHeight.value, potentialY);
-        
+
         // 根据实际可用的Y位置重新计算高度
         if (potentialY < menuBarHeight.value) {
             const heightAdjustment = menuBarHeight.value - potentialY;
@@ -303,7 +305,7 @@ const doResize = (event: MouseEvent) => {
             newSize.height = newHeight;
         }
     }
-    
+
     windowSize.value = newSize;
     windowPosition.value = newPosition;
 };
@@ -322,34 +324,34 @@ onMounted(() => {
             toggleMaximize();
         }, 0);
     }
-    
+
     isOpening.value = true;
     setTimeout(() => {
         isOpening.value = false;
     }, 500);
-    
+
     // 初始化窗口位置为居中
     const windowWidth = typeof props.width === 'number' ? props.width : parseInt(props.width) || 600;
     const windowHeight = typeof props.height === 'number' ? props.height : parseInt(props.height) || 400;
-    
+
     windowPosition.value = {
         x: (window.innerWidth - windowWidth) / 2,
-        y: Math.max(menuBarHeight.value, (window.innerHeight - windowHeight) / 2)
+        y: Math.max(menuBarHeight.value, (window.innerHeight - windowHeight) / 2),
     };
-    
+
     // 添加窗口调整大小事件监听
     window.addEventListener('resize', handleWindowResize);
-    
+
     // 初始时聚焦窗口，使其可以接收键盘事件
     setTimeout(() => {
         if (windowRef.value) {
             windowRef.value.focus();
-            
+
             // 确保新创建的窗口在最顶层
             bringToFront();
         }
     }, 100);
-    
+
     // 立即将窗口置于最顶层（不等待DOM更新）
     bringToFront();
 });
@@ -360,32 +362,36 @@ const handleWindowResize = () => {
         windowPosition.value = { x: 0, y: menuBarHeight.value };
         windowSize.value = {
             width: window.innerWidth,
-            height: window.innerHeight - menuBarHeight.value
+            height: window.innerHeight - menuBarHeight.value,
         };
     }
 };
 
 // 窗口样式计算
 const windowStyle = computed(() => {
-    const baseStyle: Record<string, string> = isMaximized.value ? {
-        top: `${menuBarHeight.value}px`,
-        left: '0',
-        width: '100vw',
-        height: `calc(100vh - ${menuBarHeight.value}px)`,
-        transform: 'none',
-        borderRadius: '0',
-        transition: isMaximizing.value || isRestoring.value ? 'all 0.3s ease-in-out' : 'opacity 0.3s, transform 0.3s'
-    } : {
-        top: `${windowPosition.value.y}px`,
-        left: `${windowPosition.value.x}px`,
-        width: `${windowSize.value.width}px`,
-        height: `${windowSize.value.height}px`,
-        transform: 'none',
-        transition: isMaximizing.value || isRestoring.value ? 'all 0.3s ease-in-out' : 'opacity 0.3s, transform 0.3s'
-    };
-    
+    const baseStyle: Record<string, string> = isMaximized.value
+        ? {
+              top: `${menuBarHeight.value}px`,
+              left: '0',
+              width: '100vw',
+              height: `calc(100vh - ${menuBarHeight.value}px)`,
+              transform: 'none',
+              borderRadius: '0',
+              transition:
+                  isMaximizing.value || isRestoring.value ? 'all 0.3s ease-in-out' : 'opacity 0.3s, transform 0.3s',
+          }
+        : {
+              top: `${windowPosition.value.y}px`,
+              left: `${windowPosition.value.x}px`,
+              width: `${windowSize.value.width}px`,
+              height: `${windowSize.value.height}px`,
+              transform: 'none',
+              transition:
+                  isMaximizing.value || isRestoring.value ? 'all 0.3s ease-in-out' : 'opacity 0.3s, transform 0.3s',
+          };
+
     baseStyle.zIndex = String(currentZIndex.value);
-    
+
     return baseStyle;
 });
 
@@ -511,10 +517,6 @@ const contentStyle = computed(() => {
     pointer-events: none;
 }
 
-.window-content {
-    /* overflow: auto; */
-}
-
 /* 最小化状态 */
 .minimized {
     transform: translate(0, 100vh) !important;
@@ -594,4 +596,4 @@ const contentStyle = computed(() => {
 .maximized .resize-handle {
     display: none;
 }
-</style> 
+</style>

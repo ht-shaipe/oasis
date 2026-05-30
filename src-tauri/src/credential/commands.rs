@@ -82,9 +82,15 @@ pub fn list_categories(app: AppHandle) -> Result<Vec<Category>, String> {
 }
 
 #[tauri::command]
-pub fn create_category(app: AppHandle, name: String, icon: Option<String>) -> Result<Category, String> {
+pub fn create_category(app: AppHandle, name: String, icon: Option<String>, parent_id: Option<i64>) -> Result<Category, String> {
     let conn = get_conn(&app)?;
-    db::create_category(&conn, &name, icon.as_deref()).map_err(|e| e.to_string())
+    db::create_category(&conn, &name, icon.as_deref(), parent_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_category(app: AppHandle, id: i64) -> Result<(), String> {
+    let conn = get_conn(&app)?;
+    db::delete_category(&conn, id).map_err(|e| e.to_string())
 }
 
 // ── Credential Commands ────────────────────────────────────────────────────────────

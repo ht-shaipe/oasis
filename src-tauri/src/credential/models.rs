@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Category {
     pub id: i64,
+    pub parent_id: Option<i64>,
     pub name: String,
     pub icon: Option<String>,
     pub sort_order: i64,
@@ -56,6 +57,8 @@ pub struct CredentialDetail {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SensitiveData {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub secret_key: Option<String>,
@@ -65,6 +68,8 @@ pub struct SensitiveData {
     pub refresh_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_fields: Option<std::collections::HashMap<String, String>>,
 }

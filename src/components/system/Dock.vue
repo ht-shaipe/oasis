@@ -1,35 +1,38 @@
 <template>
     <div class="mac-dock">
         <div class="dock-item" @click="openApp('Finder')">
-            <img src="/assets/icons/Finder.png" :alt="t('dock.finder')" :title="t('dock.finder')">
+            <img src="/assets/icons/Finder.svg" :alt="t('dock.finder')" :title="t('dock.finder')" />
         </div>
         <div class="dock-item" @click="openApp('generator')">
-            <img src="/assets/icons/Reminders.png" :alt="t('dock.codeGenerator')" :title="t('dock.codeGenerator')">
+            <img src="/assets/icons/Reminders.svg" :alt="t('dock.codeGenerator')" :title="t('dock.codeGenerator')" />
         </div>
         <div class="dock-item" @click="openApp('editor')">
-            <img src="/assets/icons/vscode.png" alt="VsCode" title="VsCode">
+            <img src="/assets/icons/vscode.svg" :alt="t('dock.editor')" :title="t('dock.editor')" />
         </div>
         <div class="dock-item" @click="openApp('safari')">
-            <img src="/assets/icons/Safari.png" :alt="t('dock.safari')" :title="t('dock.safari')">
+            <img src="/assets/icons/Safari.svg" :alt="t('dock.safari')" :title="t('dock.safari')" />
         </div>
         <div class="dock-item" @click="openApp('about')">
-            <img src="/assets/icons/Settings.png" :alt="t('dock.about')" :title="t('dock.about')">
+            <img src="/assets/icons/Settings.svg" :alt="t('dock.about')" :title="t('dock.about')" />
         </div>
         <div class="dock-item" @click="openApp('credential-manager')">
-            <img src="/assets/icons/Keychain.png" :alt="t('dock.credentialManager')" :title="t('dock.credentialManager')">
+            <img
+                src="/assets/icons/Keychain.svg"
+                :alt="t('dock.credentialManager')"
+                :title="t('dock.credentialManager')" />
         </div>
-        <div class="dock-item" @click="openApp('profile')">
-            <img src="/assets/icons/Contacts.png" :alt="t('dock.profile')" :title="t('dock.profile')">
-        </div>
-        <div class="dock-item" @click="openSystemMail">
-            <img src="/assets/icons/Mail.png" :alt="t('dock.mail')" :title="t('dock.mail')">
+        <!-- <div class="dock-item" @click="openApp('profile')">
+            <img src="/assets/icons/Contacts.svg" :alt="t('dock.profile')" :title="t('dock.profile')" />
+        </div> -->
+        <!-- <div class="dock-item" @click="openSystemMail">
+            <img src="/assets/icons/Mail.svg" :alt="t('dock.mail')" :title="t('dock.mail')" />
         </div>
         <div class="dock-item" @click="openWeb('https://photo.HongTui.cn/')">
-            <img src="/assets/icons/Photos.png" :alt="t('dock.photos')" :title="t('dock.photos')">
+            <img src="/assets/icons/Photos.svg" :alt="t('dock.photos')" :title="t('dock.photos')" />
         </div>
         <div class="dock-item" @click="openWeb('https://HongTui.cn/')">
-            <img src="/assets/icons/Maps.png" alt="Blog" title="Blog">
-        </div>
+            <img src="/assets/icons/Maps.svg" :alt="t('dock.maps')" :title="t('dock.maps')" />
+        </div> -->
     </div>
 </template>
 
@@ -55,7 +58,9 @@ const openWeb = (url: string, target = '_self') => {
 const openSystemMail = () => {
     const email = 'HongTui@qq.com';
     const subject = encodeURIComponent('WebAI反馈Bug');
-    const body = encodeURIComponent('我在使用WebAI时发现了以下问题：\n\n[请在此描述您遇到的问题]\n\n系统信息：\n浏览器：' + navigator.userAgent);
+    const body = encodeURIComponent(
+        '我在使用WebAI时发现了以下问题：\n\n[请在此描述您遇到的问题]\n\n系统信息：\n浏览器：' + navigator.userAgent,
+    );
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
 };
 </script>
@@ -96,4 +101,4 @@ const openSystemMail = () => {
 .dock-item:hover {
     transform: translateY(-8px) scale(1.1);
 }
-</style> 
+</style>

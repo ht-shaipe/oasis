@@ -11,8 +11,12 @@ Oasis Tauri 2 应用，项目根目录: /Users/shaipe/workspace/rust/tools/oasis
 
 ```
 src/
-├── components/apps/
-│   └── CredentialManager.vue     # 主组件（MacWindow 包裹，三视图状态机）
+├── apps/
+│   └── CredentialManager/
+│       ├── index.vue             # 主组件（MacWindow 包裹，三视图状态机）
+│       ├── AuthCard.vue          # 认证卡片
+│       ├── Sidebar.vue           # 分类导航
+│       └── Toolbar.vue           # 搜索与操作工具栏
 ├── composables/
 │   └── useCredential.ts          # Tauri invoke 封装 + DEK 内存管理
 ├── locales/
@@ -168,7 +172,7 @@ export interface UpdateCredentialRequest {
 }
 ```
 
-## 3. CredentialManager.vue - 主组件
+## 3. CredentialManager/index.vue - 主组件
 
 ### 三视图状态机
 ```
@@ -259,7 +263,7 @@ viewState: 'setup' | 'unlock' | 'main'
 
 添加:
 ```typescript
-import CredentialManager from '@/components/apps/CredentialManager.vue'
+import CredentialManager from '@/apps/CredentialManager/index.vue'
 
 // 新增状态
 const showCredentialManager = ref(false)

@@ -2,19 +2,19 @@
     <div class="desktop-icons">
         <div class="desktop-icon" @click="openApp('notes')">
             <div class="icon-container">
-                <img src="/assets/icons/Notes.png" :alt="t('contextMenu.useHelp')">
+                <img src="/assets/icons/Notes.svg" :alt="t('contextMenu.useHelp')" />
             </div>
             <div class="icon-text">{{ t('contextMenu.useHelp') }}</div>
         </div>
         <div class="desktop-icon" @click="openApp('about')">
             <div class="icon-container">
-                <img src="/assets/icons/Settings.png" :alt="t('desktop.about')">
+                <img src="/assets/icons/Settings.svg" :alt="t('desktop.about')" />
             </div>
             <div class="icon-text">{{ t('desktop.about') }}</div>
         </div>
         <div class="desktop-icon" @click="openApp('credential-manager')">
             <div class="icon-container">
-                <img src="/assets/icons/Keychain.png" :alt="t('dock.credentialManager')">
+                <img src="/assets/icons/Keychain.svg" :alt="t('dock.credentialManager')" />
             </div>
             <div class="icon-text">{{ t('dock.credentialManager') }}</div>
         </div>

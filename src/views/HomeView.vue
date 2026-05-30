@@ -1,10 +1,6 @@
 <template>
     <!-- 使用登录组件 -->
-    <LoginScreen 
-        v-if="isLoading" 
-        :isResourcesLoaded="resourcesLoaded"
-        @login-complete="handleLoginComplete"
-    />
+    <LoginScreen v-if="isLoading" :isResourcesLoaded="resourcesLoaded" @login-complete="handleLoginComplete" />
 
     <!-- 主桌面界面 -->
     <div class="mac-desktop" @click="closeAllMenus" @contextmenu.prevent="handleContextMenu">
@@ -18,48 +14,41 @@
         <Dock @openApp="openApp" />
 
         <!-- 右键菜单 -->
-        <ContextMenu 
-            :visible="showContextMenu" 
-            :position="contextMenuPosition"
-            @close="showContextMenu = false"
-        />
+        <ContextMenu :visible="showContextMenu" :position="contextMenuPosition" @close="showContextMenu = false" />
 
         <!-- 生成器窗口 -->
         <Teleport to="body">
-            <Generator 
-                v-if="showGenerator" 
+            <Generator
+                v-if="showGenerator"
                 :isMinimized="isGeneratorMinimized"
                 @close="showGenerator = false"
                 @minimize="isGeneratorMinimized = !isGeneratorMinimized"
                 @updateGeneratedCode="updateGeneratedCode"
                 @updateSessionInfo="updateSessionInfo"
-                @openApp="openApp"
-            />
+                @openApp="openApp" />
         </Teleport>
 
         <!-- 编辑器窗口 -->
         <Teleport to="body">
-            <CodeEditor 
-                v-if="showEditor" 
+            <CodeEditor
+                v-if="showEditor"
                 :isMinimized="isEditorMinimized"
                 :code="generatedCode"
                 :filename="filename"
                 @close="showEditor = false"
                 @minimize="isEditorMinimized = !isEditorMinimized"
                 @codeUpdated="handleCodeUpdated"
-                @openApp="openApp"
-            />
+                @openApp="openApp" />
         </Teleport>
 
         <!-- Mac风格浏览器预览窗口 -->
         <Teleport to="body">
-            <Preview 
-                v-if="showPreview" 
+            <Preview
+                v-if="showPreview"
                 :isMinimized="isPreviewMinimized"
                 :code="generatedCode"
                 @close="showPreview = false"
-                @minimize="isPreviewMinimized = !isPreviewMinimized"
-            />
+                @minimize="isPreviewMinimized = !isPreviewMinimized" />
         </Teleport>
 
         <!-- 版本管理器窗口 -->
@@ -71,8 +60,7 @@
                 @close="showFinder = false"
                 @minimize="isFinderMinimized = !isFinderMinimized"
                 @loadVersion="handleLoadVersion"
-                @continueVersion="handleContinueVersion"
-            />
+                @continueVersion="handleContinueVersion" />
         </Teleport>
 
         <!-- 继续对话窗口 -->
@@ -86,38 +74,34 @@
                 :currentCode="generatedCode"
                 @close="showContinueDialog = false"
                 @minimize="isContinueDialogMinimized = !isContinueDialogMinimized"
-                @codeGenerated="handleContinueCodeGenerated"
-            />
+                @codeGenerated="handleContinueCodeGenerated" />
         </Teleport>
 
         <!-- 关于窗口 -->
         <Teleport to="body">
-            <About 
-                v-if="showAbout" 
+            <About
+                v-if="showAbout"
                 :isMinimized="isAboutMinimized"
                 @close="showAbout = false"
-                @minimize="isAboutMinimized = !isAboutMinimized"
-            />
+                @minimize="isAboutMinimized = !isAboutMinimized" />
         </Teleport>
 
         <!-- Notes应用窗口 -->
         <Teleport to="body">
-            <Notes 
-                v-if="showNotes" 
+            <Notes
+                v-if="showNotes"
                 :isMinimized="isNotesMinimized"
                 @close="showNotes = false"
-                @minimize="isNotesMinimized = !isNotesMinimized"
-            />
+                @minimize="isNotesMinimized = !isNotesMinimized" />
         </Teleport>
 
         <!-- 个人中心窗口 -->
         <Teleport to="body">
-            <Profile 
-                v-if="showProfile" 
+            <Profile
+                v-if="showProfile"
                 :isMinimized="isProfileMinimized"
                 @close="showProfile = false"
-                @minimize="isProfileMinimized = !isProfileMinimized"
-            />
+                @minimize="isProfileMinimized = !isProfileMinimized" />
         </Teleport>
 
         <!-- 凭证管理窗口 -->
@@ -126,8 +110,7 @@
                 v-if="showCredentialManager"
                 :isMinimized="isCredentialManagerMinimized"
                 @close="showCredentialManager = false"
-                @minimize="isCredentialManagerMinimized = !isCredentialManagerMinimized"
-            />
+                @minimize="isCredentialManagerMinimized = !isCredentialManagerMinimized" />
         </Teleport>
     </div>
 </template>
@@ -143,15 +126,15 @@ import DesktopIcons from '@/components/system/DesktopIcons.vue';
 import ContextMenu from '@/components/system/ContextMenu.vue';
 
 // 导入应用组件
-import Generator from '@/components/apps/Generator.vue';
-import CodeEditor from '@/components/apps/CodeEditor.vue';
-import Preview from '@/components/apps/Safari.vue';
-import About from '@/components/apps/About.vue';
-import Finder from '@/components/apps/Finder.vue';
-import ContinueDialog from '@/components/apps/ContinueDialog.vue';
-import Notes from '@/components/apps/Notes.vue';
-import Profile from '@/components/apps/Profile.vue';
-import CredentialManager from '@/components/apps/CredentialManager.vue';
+import Generator from '@/apps/Generator.vue';
+import CodeEditor from '@/apps/CodeEditor.vue';
+import Preview from '@/apps/Safari.vue';
+import About from '@/apps/About.vue';
+import Finder from '@/apps/Finder.vue';
+import ContinueDialog from '@/apps/ContinueDialog.vue';
+import Notes from '@/apps/Notes.vue';
+import Profile from '@/apps/Profile.vue';
+import CredentialManager from '@/apps/CredentialManager/index.vue';
 
 // 加载状态
 const isLoading = ref(true);
@@ -195,13 +178,13 @@ const filename = ref('');
 const handleContextMenu = (event: MouseEvent) => {
     // 阻止默认的浏览器右键菜单
     event.preventDefault();
-    
+
     // 设置菜单位置
     contextMenuPosition.value = {
         x: event.clientX,
-        y: event.clientY
+        y: event.clientY,
     };
-    
+
     // 显示自定义菜单
     showContextMenu.value = true;
 };
@@ -281,7 +264,7 @@ const updateSessionInfo = (prompt: string, projectId: string, versionId: string,
     originalPrompt.value = prompt || '';
     currentprojectId.value = projectId || '';
     currentVersionId.value = versionId || '';
-    
+
     // 打开相关窗口的逻辑
     if (!showPreview.value && generatedCode.value && !generatedCode.value.startsWith('// 代码正在生成中')) {
         // 延迟打开预览窗口
@@ -289,7 +272,7 @@ const updateSessionInfo = (prompt: string, projectId: string, versionId: string,
             openApp('safari');
         }, 800);
     }
-    
+
     // 根据请求决定是否打开继续对话组件
     if (shouldOpenContinueDialog && projectId && !showContinueDialog.value) {
         setTimeout(() => {
@@ -309,11 +292,11 @@ const handleLoadVersion = (versionDetail: { code?: string; prompt?: string } | n
     if (versionDetail && versionDetail.code) {
         generatedCode.value = versionDetail.code;
         originalPrompt.value = versionDetail.prompt || '';
-        
+
         // 打开编辑器和预览
         showEditor.value = true;
         isEditorMinimized.value = false;
-        
+
         setTimeout(() => {
             showPreview.value = true;
             isPreviewMinimized.value = false;
@@ -326,7 +309,7 @@ const handleContinueVersion = (version: { code?: string; prompt?: string } | nul
     if (version) {
         // 先加载这个版本
         handleLoadVersion(version);
-        
+
         // 打开继续对话窗口
         setTimeout(() => {
             showContinueDialog.value = true;
@@ -339,16 +322,16 @@ const handleContinueVersion = (version: { code?: string; prompt?: string } | nul
 const handleContinueCodeGenerated = async (code: string, _additionalPrompt: string) => {
     // 更新代码
     generatedCode.value = code;
-    
+
     // 确保编辑器和预览窗口打开并更新
     showEditor.value = true;
     isEditorMinimized.value = false;
-    
+
     setTimeout(() => {
         showPreview.value = true;
         isPreviewMinimized.value = false;
     }, 500);
-    
+
     // 如果版本管理器打开，刷新它
     if (showFinder.value) {
         // 通过重新打开来刷新
@@ -383,7 +366,7 @@ onMounted(async () => {
     checkResourcesLoaded().then(() => {
         resourcesLoaded.value = true;
     });
-    
+
     // 从本地存储加载保存的壁纸
     const savedWallpaper = localStorage.getItem('wallpaper') || '1';
     currentWallpaper.value = parseInt(savedWallpaper);
@@ -415,7 +398,9 @@ onMounted(async () => {
     flex-direction: column;
     cursor: default;
     box-sizing: border-box;
-    transition: background-image 1s ease-in-out, filter 0.3s ease;
+    transition:
+        background-image 1s ease-in-out,
+        filter 0.3s ease;
 }
 
 @keyframes spin {

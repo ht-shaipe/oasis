@@ -2,7 +2,7 @@
     <div class="mac-menubar" @click.stop>
         <div class="menubar-left">
             <div class="mac-logo" @click="toggleAppleMenu">
-                <img src="/assets/icons/mac.png" alt="Mac Logo">
+                <img src="/assets/icons/mac.svg" alt="Mac Logo" />
                 <!-- Apple Menu -->
                 <div class="apple-menu" v-if="showAppleMenu">
                     <div class="menu-item">{{ t('menu.about') }}</div>
@@ -44,13 +44,19 @@
                 <span class="menubar-icon">
                     <el-icon><CopyDocument /></el-icon>
                 </span>
-                <span class="menubar-icon" @click="toggleSignInModal"> 
+                <span class="menubar-icon" @click="toggleSignInModal">
                     <el-icon><Coin /></el-icon>
                 </span>
-                <span class="menubar-icon theme-toggle" @click="theme.toggle()" :title="theme.isDark ? t('theme.switchToLight') : t('theme.switchToDark')">
+                <span
+                    class="menubar-icon theme-toggle"
+                    @click="theme.toggle()"
+                    :title="theme.isDark ? t('theme.switchToLight') : t('theme.switchToDark')">
                     <el-icon><Sunny v-if="theme.isDark" /><Moon v-else /></el-icon>
                 </span>
-                <span class="menubar-icon locale-toggle" @click="toggleLocale" :title="localeStore.locale === 'zh-CN' ? 'English' : '中文'">
+                <span
+                    class="menubar-icon locale-toggle"
+                    @click="toggleLocale"
+                    :title="localeStore.locale === 'zh-CN' ? 'English' : '中文'">
                     {{ localeStore.locale === 'zh-CN' ? 'EN' : '中' }}
                 </span>
                 <span class="menubar-battery">
@@ -66,11 +72,11 @@
         </div>
     </div>
     <!-- Sign-in Dialog -->
-    <SignInModal v-model:visible="showSignInModal"/>
-    
+    <SignInModal v-model:visible="showSignInModal" />
+
     <!-- Notification Center -->
     <NotificationCenter v-if="showNotificationCenter" @close="showNotificationCenter = false" />
-    
+
     <!-- Calendar -->
     <Calendar v-if="showCalendar" @close="showCalendar = false" />
 </template>
@@ -220,7 +226,8 @@ onBeforeUnmount(() => {
     position: relative;
 }
 
-.menubar-item:hover, .menubar-item.active {
+.menubar-item:hover,
+.menubar-item.active {
     opacity: 1;
 }
 
@@ -348,4 +355,4 @@ onBeforeUnmount(() => {
     background-color: var(--color-menu-divider);
     margin: 5px 0;
 }
-</style> 
+</style>
