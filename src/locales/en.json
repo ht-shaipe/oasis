@@ -44,13 +44,13 @@
         "safari": "Safari",
         "about": "About",
         "profile": "Profile",
-        "mail": "Mail",
         "photos": "Photos",
         "blog": "Blog",
         "github": "Github",
         "music": "MoeKoeMusic",
         "credentialManager": "Credential Manager"
     },
+
     "contextMenu": {
         "changeWallpaper": "Change Wallpaper",
         "displaySettings": "Display Settings",
@@ -420,14 +420,19 @@
             "passwordHint": "At least 8 characters. Keep it safe — it cannot be recovered if lost.",
             "submit": "Set Key",
             "mismatch": "Passwords do not match",
-            "tooShort": "Password must be at least 8 characters"
+            "tooShort": "Password must be at least 8 characters",
+            "loadingVerifying": "Generating and verifying key, please wait...",
+            "loadingSyncing": "Loading credential data..."
         },
         "unlock": {
             "title": "Unlock Vault",
             "password": "Enter Master Key",
             "submit": "Unlock",
+            "submitting": "Unlocking...",
             "wrongPassword": "Incorrect master key",
-            "tooManyAttempts": "Too many attempts, please try again later"
+            "tooManyAttempts": "Too many attempts, please try again later",
+            "loadingVerifying": "Verifying master key, please wait...",
+            "loadingSyncing": "Master key verified, loading credentials..."
         },
         "form": {
             "typeDescription": "Current template:",

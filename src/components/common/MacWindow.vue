@@ -13,7 +13,11 @@
         ref="windowRef"
         tabindex="0"
         @keydown.esc="closeWindow">
-        <div class="window-titlebar" @mousedown="startDrag" @dblclick="toggleMaximize">
+        <div
+            class="window-titlebar"
+            :class="{ dragging: isDragging }"
+            @mousedown.prevent="startDrag"
+            @dblclick="toggleMaximize">
             <div class="window-buttons">
                 <div class="window-button close" @click="closeWindow"></div>
                 <div class="window-button minimize" @click="toggleMinimize"></div>
@@ -412,7 +416,7 @@ const contentStyle = computed(() => {
 .mac-window {
     position: fixed;
     background-color: var(--color-bg-glass);
-    border-radius: 10px;
+    border-radius: 18px;
     box-shadow: 0 10px 30px var(--color-shadow);
     overflow: hidden;
     backdrop-filter: blur(10px);
@@ -473,8 +477,14 @@ const contentStyle = computed(() => {
     border-bottom: 1px solid var(--color-window-titlebar-border);
     padding: 0 12px;
     position: relative;
-    cursor: move;
+    cursor: grab;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-app-region: no-drag;
+}
+
+.window-titlebar.dragging {
+    cursor: grabbing;
 }
 
 .window-buttons {

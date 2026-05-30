@@ -82,6 +82,7 @@ pub struct NewCredential {
     pub url: Option<String>,
     pub sensitive_data_json: String,
     pub dek_base64: String,
+    pub nonce_base64: String,
     pub tags: Option<String>,
     pub notes: Option<String>,
 }
@@ -95,6 +96,7 @@ pub struct UpdateCredential {
     pub url: Option<String>,
     pub sensitive_data_json: Option<String>,
     pub dek_base64: Option<String>,
+    pub nonce_base64: Option<String>,
     pub tags: Option<String>,
     pub notes: Option<String>,
 }

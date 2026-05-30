@@ -420,14 +420,19 @@
             "passwordHint": "至少8个字符，请妥善保管，丢失无法恢复",
             "submit": "设置密钥",
             "mismatch": "两次输入的密钥不一致",
-            "tooShort": "密钥至少需要8个字符"
+            "tooShort": "密钥至少需要8个字符",
+            "loadingVerifying": "正在生成并验证密钥，请稍候...",
+            "loadingSyncing": "正在加载凭证数据..."
         },
         "unlock": {
             "title": "解锁凭证库",
             "password": "输入主密钥",
             "submit": "解锁",
+            "submitting": "解锁中...",
             "wrongPassword": "密钥不正确",
-            "tooManyAttempts": "尝试次数过多，请稍后再试"
+            "tooManyAttempts": "尝试次数过多，请稍后再试",
+            "loadingVerifying": "正在验证主密钥，请稍候...",
+            "loadingSyncing": "主密钥验证成功，正在加载凭证..."
         },
         "form": {
             "typeDescription": "当前模板：",

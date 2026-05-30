@@ -1,54 +1,56 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Oasis",
-  "version": "0.1.0",
-  "identifier": "com.oasis.app",
-  "build": {
-    "beforeDevCommand": "bun run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
-    "frontendDist": "../dist"
-  },
-  "app": {
-    "windows": [
-      {
-        "title": "Oasis",
-        "width": 1024,
-        "height": 768,
-        "minWidth": 800,
-        "minHeight": 600,
-        "decorations": false
-      }
-    ],
-    "security": {
-      "csp": null
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": ["app", "dmg"],
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
-    "macOS": {
-      "dmg": {
-        "windowSize": {
-          "width": 600,
-          "height": 400
+    "$schema": "https://schema.tauri.app/config/2",
+    "productName": "Oasis",
+    "version": "0.1.0",
+    "identifier": "com.oasis.app",
+    "build": {
+        "beforeDevCommand": "bun run dev",
+        "devUrl": "http://localhost:1420",
+        "beforeBuildCommand": "bun run build",
+        "frontendDist": "../dist"
+    },
+    "app": {
+        "withGlobalTauri": true,
+        "windows": [
+            {
+                "title": "Oasis",
+                "label": "main",
+                "url": "/",
+                "fullscreen": false,
+                "resizable": true,
+                "center": true,
+                "width": 1200,
+                "height": 800,
+                "transparent": false,
+                "visible": true,
+                "titleBarStyle": "Overlay",
+                "hiddenTitle": true
+            }
+        ],
+        "security": {
+            "csp": null
         },
-        "appPosition": {
-          "x": 150,
-          "y": 200
-        },
-        "applicationFolderPosition": {
-          "x": 450,
-          "y": 200
+        "macOSPrivateApi": true
+    },
+    "bundle": {
+        "active": true,
+        "targets": ["app", "dmg"],
+        "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+        "macOS": {
+            "dmg": {
+                "windowSize": {
+                    "width": 600,
+                    "height": 400
+                },
+                "appPosition": {
+                    "x": 150,
+                    "y": 200
+                },
+                "applicationFolderPosition": {
+                    "x": 450,
+                    "y": 200
+                }
+            }
         }
-      }
     }
-  }
 }

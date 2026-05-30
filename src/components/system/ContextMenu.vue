@@ -1,10 +1,5 @@
 <template>
-    <div 
-        class="context-menu" 
-        v-show="visible" 
-        :style="{ top: position.y + 'px', left: position.x + 'px' }"
-        @click.stop
-    >
+    <div class="context-menu" v-show="visible" :style="{ top: position.y + 'px', left: position.x + 'px' }" @click.stop>
         <div class="menu-group">
             <div class="menu-item" @click="handleViewAction">
                 <span>{{ t('app.view') }}</span>
@@ -53,12 +48,12 @@ const { t } = useI18n();
 const props = defineProps({
     visible: {
         type: Boolean,
-        default: false
+        default: false,
     },
     position: {
         type: Object,
-        default: () => ({ x: 0, y: 0 })
-    }
+        default: () => ({ x: 0, y: 0 }),
+    },
 });
 
 const emit = defineEmits(['close']);
@@ -91,13 +86,13 @@ const handleChangeWallpaper = () => {
     do {
         newWallpaper = Math.floor(Math.random() * 10) + 1;
     } while (newWallpaper === currentWallpaper);
-    
+
     localStorage.setItem('wallpaper', newWallpaper.toString());
-    
+
     const preloadImage = new Image();
-    
+
     preloadImage.src = `/assets/wallpaper/${newWallpaper}.jpg`;
-    
+
     preloadImage.onload = () => {
         nextTick(() => {
             const desktop = document.querySelector('.mac-desktop');
@@ -115,11 +110,11 @@ const handleChangeWallpaper = () => {
             }
         });
     };
-    
+
     preloadImage.onerror = () => {
         alert('壁纸加载失败，请检查图片路径是否正确');
     };
-    
+
     emit('close');
 };
 
@@ -131,11 +126,18 @@ const handlePersonalizeAction = () => {
     emit('close');
 };
 
-// 处理点击外部关闭菜单
-const handleOutsideClick = (_event: MouseEvent) => {
-    if (props.visible) {
-        emit('close');
+// 处理左键点击外部关闭菜单
+const handleOutsideClick = (event: MouseEvent) => {
+    if (!props.visible || event.button !== 0) {
+        return;
     }
+
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.context-menu')) {
+        return;
+    }
+
+    emit('close');
 };
 
 // 阻止默认的浏览器右键菜单
@@ -147,12 +149,12 @@ const preventDefaultContextMenu = (event: MouseEvent) => {
 
 // 组件挂载和卸载时绑定/解绑全局事件监听器
 onMounted(() => {
-    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('mousedown', handleOutsideClick);
     document.addEventListener('contextmenu', preventDefaultContextMenu);
 });
 
 onUnmounted(() => {
-    document.removeEventListener('click', handleOutsideClick);
+    document.removeEventListener('mousedown', handleOutsideClick);
     document.removeEventListener('contextmenu', preventDefaultContextMenu);
 });
 </script>
@@ -204,4 +206,4 @@ onUnmounted(() => {
         transform: scale(1);
     }
 }
-</style> 
+</style>

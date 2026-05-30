@@ -1,8 +1,14 @@
 <template>
-    <div class="mac-menubar" @click.stop>
+    <div
+        class="mac-menubar"
+        ref="menuBarRef"
+        :class="{ 'mac-windowed': isMacPlatform && !isFullscreenMode }"
+        @click.stop
+        @mousedown="handleMenuBarMouseDown"
+        data-tauri-drag-region>
         <div class="menubar-left">
             <div class="mac-logo" @click="toggleAppleMenu">
-                <img src="/assets/icons/mac.svg" alt="Mac Logo" />
+                <img src="/assets/logo.png" alt="Logo" />
                 <!-- Apple Menu -->
                 <div class="apple-menu" v-if="showAppleMenu">
                     <div class="menu-item">{{ t('menu.about') }}</div>
@@ -18,7 +24,7 @@
                 </div>
             </div>
             <div class="menubar-items">
-                <span class="menubar-item active">Oasis</span>
+                <!-- <span class="menubar-item active">Oasis</span> -->
                 <span class="menubar-item" @click="toggleFileMenu">
                     {{ t('menu.file') }}
                     <!-- File Menu -->
@@ -38,34 +44,39 @@
         </div>
         <div class="menubar-right">
             <div class="menubar-icons">
-                <span class="menubar-icon" @click="toggleNotificationCenter">
+                <span
+                    v-if="menuBarConfig.rightVisible.notification"
+                    class="menubar-icon"
+                    @click="toggleNotificationCenter">
                     <el-icon><Bell /></el-icon>
                 </span>
-                <span class="menubar-icon">
+                <span v-if="menuBarConfig.rightVisible.clipboard" class="menubar-icon">
                     <el-icon><CopyDocument /></el-icon>
                 </span>
-                <span class="menubar-icon" @click="toggleSignInModal">
+                <span v-if="menuBarConfig.rightVisible.credits" class="menubar-icon" @click="toggleSignInModal">
                     <el-icon><Coin /></el-icon>
                 </span>
                 <span
+                    v-if="menuBarConfig.rightVisible.theme"
                     class="menubar-icon theme-toggle"
                     @click="theme.toggle()"
                     :title="theme.isDark ? t('theme.switchToLight') : t('theme.switchToDark')">
                     <el-icon><Sunny v-if="theme.isDark" /><Moon v-else /></el-icon>
                 </span>
                 <span
+                    v-if="menuBarConfig.rightVisible.locale"
                     class="menubar-icon locale-toggle"
                     @click="toggleLocale"
                     :title="localeStore.locale === 'zh-CN' ? 'English' : '中文'">
                     {{ localeStore.locale === 'zh-CN' ? 'EN' : '中' }}
                 </span>
-                <span class="menubar-battery">
+                <span v-if="menuBarConfig.rightVisible.battery" class="menubar-battery">
                     <div class="battery-icon">
                         <div class="battery-level"></div>
                     </div>
                     <span>100%</span>
                 </span>
-                <span class="menubar-date-time" @click="toggleCalendar">
+                <span v-if="menuBarConfig.rightVisible.clock" class="menubar-date-time" @click="toggleCalendar">
                     <span class="menubar-time">{{ currentTime }}</span>
                 </span>
             </div>
@@ -83,17 +94,27 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { CopyDocument, Bell, Coin, Sunny, Moon } from '@element-plus/icons-vue';
 import SignInModal from './SignInModal.vue';
 import NotificationCenter from './NotificationCenter.vue';
 import Calendar from './Calendar.vue';
 import { useThemeStore } from '@/store/theme';
 import { useLocaleStore } from '@/store/locale';
+import { menuBarConfig } from '@/config/menuBar';
 import { useI18n } from 'vue-i18n';
 
 const theme = useThemeStore();
 const localeStore = useLocaleStore();
 const { t } = useI18n();
+const appWindow = getCurrentWindow();
+
+const isMacPlatform = /Mac/i.test(navigator.userAgent);
+const isFullscreenMode = ref(false);
+const menuBarRef = ref<HTMLElement | null>(null);
+let syncFrame: number | null = null;
+let unlistenResize: (() => void) | null = null;
+let unlistenScaleChange: (() => void) | null = null;
 
 // 菜单状态
 const showAppleMenu = ref(false);
@@ -145,6 +166,50 @@ const toggleLocale = () => {
     localeStore.toggleLocale();
 };
 
+const closeMenuPanels = () => {
+    showAppleMenu.value = false;
+    showFileMenu.value = false;
+    showNotificationCenter.value = false;
+    showCalendar.value = false;
+};
+
+const handleDocumentMouseDown = (event: MouseEvent) => {
+    const target = event.target as Node | null;
+    if (!target) {
+        return;
+    }
+
+    if (menuBarRef.value?.contains(target)) {
+        return;
+    }
+
+    closeMenuPanels();
+};
+
+const syncWindowMode = async () => {
+    const [fullscreen, maximized] = await Promise.all([appWindow.isFullscreen(), appWindow.isMaximized()]);
+    isFullscreenMode.value = fullscreen || maximized;
+};
+
+const scheduleSyncWindowMode = () => {
+    if (syncFrame !== null) {
+        cancelAnimationFrame(syncFrame);
+    }
+
+    syncFrame = window.requestAnimationFrame(() => {
+        syncFrame = null;
+        void syncWindowMode();
+    });
+};
+
+const handleMenuBarMouseDown = (event: MouseEvent) => {
+    if (event.button !== 0 || event.target !== event.currentTarget) {
+        return;
+    }
+
+    void appWindow.startDragging();
+};
+
 // 当前时间
 const currentTime = ref('');
 let timeInterval: ReturnType<typeof setInterval> | null = null;
@@ -154,14 +219,24 @@ const updateTime = () => {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
-    currentTime.value = `${hours}:${minutes}`;
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    currentTime.value = `${hours}:${minutes}:${seconds}`;
 };
 
 // 组件挂载后初始化
 onMounted(() => {
     // 初始化时间并设置定时器
     updateTime();
-    timeInterval = setInterval(updateTime, 60000);
+    timeInterval = setInterval(updateTime, 1000);
+    void syncWindowMode();
+    void appWindow.onResized(scheduleSyncWindowMode).then((unlisten) => {
+        unlistenResize = unlisten;
+    });
+    void appWindow.onScaleChanged(scheduleSyncWindowMode).then((unlisten) => {
+        unlistenScaleChange = unlisten;
+    });
+    window.addEventListener('resize', scheduleSyncWindowMode);
+    document.addEventListener('mousedown', handleDocumentMouseDown);
 });
 
 // 组件卸载前清理
@@ -171,6 +246,20 @@ onBeforeUnmount(() => {
         clearInterval(timeInterval);
         timeInterval = null;
     }
+
+    if (syncFrame !== null) {
+        cancelAnimationFrame(syncFrame);
+        syncFrame = null;
+    }
+
+    unlistenResize?.();
+    unlistenResize = null;
+
+    unlistenScaleChange?.();
+    unlistenScaleChange = null;
+
+    window.removeEventListener('resize', scheduleSyncWindowMode);
+    document.removeEventListener('mousedown', handleDocumentMouseDown);
 });
 </script>
 
@@ -181,8 +270,8 @@ onBeforeUnmount(() => {
     top: 0;
     left: 0;
     width: 100%;
-    height: 25px;
-    background-color: var(--color-menubar-bg);
+    height: 32px;
+    /* background-color: var(--color-menubar-bg); */
     backdrop-filter: blur(10px);
     color: var(--color-menubar-text);
     display: flex;
@@ -193,6 +282,11 @@ onBeforeUnmount(() => {
     z-index: 2000;
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
     box-sizing: border-box;
+}
+
+.mac-menubar.mac-windowed {
+    padding-left: 74px;
+    padding-right: 14px;
 }
 
 .menubar-left {
@@ -206,6 +300,7 @@ onBeforeUnmount(() => {
     margin-right: 15px;
     position: relative;
     cursor: pointer;
+    margin-left: 8px;
 }
 
 .mac-logo img {
@@ -234,6 +329,7 @@ onBeforeUnmount(() => {
 .menubar-right {
     display: flex;
     align-items: center;
+    padding-right: 8px;
 }
 
 .menubar-icons {

@@ -12,7 +12,7 @@
                 v-if="viewState === 'setup'"
                 :title="t('credential.setup.title')"
                 :loading="setupLoading"
-                loading-text="正在解密并同步数据...">
+                :loading-text="setupLoadingText">
                 <template #icon>
                     <el-icon :size="56"><Lock /></el-icon>
                 </template>
@@ -44,8 +44,9 @@
                             native-type="submit"
                             :loading="setupLoading"
                             :disabled="setupLoading"
+                            size="large"
                             style="width: 100%">
-                            {{ t('credential.setup.submit') }}
+                            {{ setupLoading ? t('credential.setup.submitting') : t('credential.setup.submit') }}
                         </el-button>
                     </el-form-item>
                 </el-form>
@@ -56,7 +57,7 @@
                 v-else-if="viewState === 'unlock'"
                 :title="t('credential.unlock.title')"
                 :loading="unlockLoading"
-                loading-text="正在解密并同步数据...">
+                :loading-text="unlockLoadingText">
                 <template #icon>
                     <el-icon :size="56"><Unlock /></el-icon>
                 </template>
@@ -71,7 +72,8 @@
                             v-model="unlockForm.password"
                             type="password"
                             show-password
-                            :disabled="unlockLoading" />
+                            :disabled="unlockLoading"
+                            @keyup.enter="handleUnlock" />
                     </el-form-item>
                     <p v-if="unlockError" class="unlock-error">{{ unlockError }}</p>
                     <el-form-item>
@@ -81,7 +83,7 @@
                             :loading="unlockLoading"
                             :disabled="unlockLoading"
                             style="width: 100%">
-                            {{ t('credential.unlock.submit') }}
+                            {{ unlockLoading ? t('credential.unlock.submitting') : t('credential.unlock.submit') }}
                         </el-button>
                     </el-form-item>
                 </el-form>
@@ -748,6 +750,7 @@ const viewState = ref<ViewState>('unlock');
 const setupFormRef = ref<FormInstance>();
 const setupForm = reactive({ password: '', confirmPassword: '' });
 const setupLoading = ref(false);
+const setupLoadingText = ref(t('credential.setup.loadingVerifying'));
 
 const setupRules = computed<FormRules>(() => ({
     password: [
@@ -774,16 +777,11 @@ const handleSetup = async () => {
     if (!form) return;
     await form.validate();
     setupLoading.value = true;
-    const startTime = Date.now();
+    setupLoadingText.value = t('credential.setup.loadingVerifying');
     try {
         await setupMasterKey(setupForm.password);
+        setupLoadingText.value = t('credential.setup.loadingSyncing');
         await loadMainData();
-
-        // Ensure minimum loading time for visual feedback
-        const elapsed = Date.now() - startTime;
-        if (elapsed < 800) {
-            await new Promise((r) => setTimeout(r, 800 - elapsed));
-        }
 
         viewState.value = 'main';
     } catch (err: unknown) {
@@ -798,6 +796,7 @@ const handleSetup = async () => {
 const unlockFormRef = ref<FormInstance>();
 const unlockForm = reactive({ password: '' });
 const unlockLoading = ref(false);
+const unlockLoadingText = ref(t('credential.unlock.loadingVerifying'));
 const unlockError = ref('');
 const unlockAttempts = ref(0);
 
@@ -806,29 +805,26 @@ const unlockRules = computed<FormRules>(() => ({
 }));
 
 const handleUnlock = async () => {
+    if (unlockLoading.value) return;
+
     const form = unlockFormRef.value;
     if (!form) return;
     await form.validate();
     unlockError.value = '';
 
     unlockLoading.value = true;
+    unlockLoadingText.value = t('credential.unlock.loadingVerifying');
 
     // Show a warning after 5 failed attempts
     if (unlockAttempts.value >= 5) {
         unlockError.value = t('credential.unlock.tooManyAttempts');
     }
 
-    const startTime = Date.now();
     try {
         await unlock(unlockForm.password);
         unlockAttempts.value = 0;
+        unlockLoadingText.value = t('credential.unlock.loadingSyncing');
         await loadMainData();
-
-        // Ensure minimum loading time for visual feedback
-        const elapsed = Date.now() - startTime;
-        if (elapsed < 800) {
-            await new Promise((r) => setTimeout(r, 800 - elapsed));
-        }
 
         viewState.value = 'main';
     } catch {

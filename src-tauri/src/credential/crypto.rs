@@ -1,12 +1,13 @@
-use ring::aead::{Aad, AES_256_GCM, Nonce, UnboundKey, LessSafeKey};
+use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
 use ring::error::Unspecified;
-use ring::hkdf::{HKDF_SHA256, Salt as HkdfSalt, KeyType};
+use ring::hkdf::{KeyType, Salt as HkdfSalt, HKDF_SHA256};
 use ring::pbkdf2::PBKDF2_HMAC_SHA256;
 
 const DEK_LEN: usize = 32;
 const SALT_LEN: usize = 32;
 const NONCE_LEN: usize = 12;
 const HKDF_INFO: &[u8] = b"oasis-credential-key";
+const PBKDF2_ROUNDS: u32 = 600_000;
 
 /// Key type for HKDF output length.
 struct DekKeyType;
@@ -31,11 +32,17 @@ pub fn generate_nonce() -> [u8; NONCE_LEN] {
     nonce
 }
 
-/// Derive master key hash via PBKDF2-SHA256 with 600,000 rounds.
+/// Derive master key hash via PBKDF2-SHA256.
 pub fn derive_master_key(password: &str, salt: &[u8]) -> [u8; 32] {
     let mut hash = [0u8; 32];
-    let rounds = std::num::NonZeroU32::new(600_000).expect("rounds must be non-zero");
-    ring::pbkdf2::derive(PBKDF2_HMAC_SHA256, rounds, salt, password.as_bytes(), &mut hash);
+    let rounds = std::num::NonZeroU32::new(PBKDF2_ROUNDS).expect("rounds must be non-zero");
+    ring::pbkdf2::derive(
+        PBKDF2_HMAC_SHA256,
+        rounds,
+        salt,
+        password.as_bytes(),
+        &mut hash,
+    );
     hash
 }
 
@@ -43,20 +50,31 @@ pub fn derive_master_key(password: &str, salt: &[u8]) -> [u8; 32] {
 pub fn derive_dek(password: &str, dek_salt: &[u8]) -> [u8; 32] {
     // First: PBKDF2 to get intermediate key material
     let mut intermediate = [0u8; 32];
-    let rounds = std::num::NonZeroU32::new(600_000).expect("rounds must be non-zero");
-    ring::pbkdf2::derive(PBKDF2_HMAC_SHA256, rounds, dek_salt, password.as_bytes(), &mut intermediate);
+    let rounds = std::num::NonZeroU32::new(PBKDF2_ROUNDS).expect("rounds must be non-zero");
+    ring::pbkdf2::derive(
+        PBKDF2_HMAC_SHA256,
+        rounds,
+        dek_salt,
+        password.as_bytes(),
+        &mut intermediate,
+    );
 
     // Second: HKDF to derive final DEK
     let salt = HkdfSalt::new(HKDF_SHA256, dek_salt);
     let prk = salt.extract(&intermediate);
-    let okm = prk.expand(&[HKDF_INFO], DekKeyType).expect("HKDF expand failed");
+    let okm = prk
+        .expand(&[HKDF_INFO], DekKeyType)
+        .expect("HKDF expand failed");
     let mut dek = [0u8; DEK_LEN];
     okm.fill(&mut dek).expect("HKDF fill failed");
     dek
 }
 
 /// AES-256-GCM encrypt. Returns (ciphertext_with_tag, nonce).
-pub fn encrypt(dek: &[u8; 32], plaintext: &[u8]) -> Result<(Vec<u8>, [u8; NONCE_LEN]), Unspecified> {
+pub fn encrypt(
+    dek: &[u8; 32],
+    plaintext: &[u8],
+) -> Result<(Vec<u8>, [u8; NONCE_LEN]), Unspecified> {
     let nonce_bytes = generate_nonce();
     let nonce = Nonce::assume_unique_for_key(nonce_bytes);
 
@@ -73,7 +91,11 @@ pub fn encrypt(dek: &[u8; 32], plaintext: &[u8]) -> Result<(Vec<u8>, [u8; NONCE_
 }
 
 /// AES-256-GCM decrypt.
-pub fn decrypt(dek: &[u8; 32], ciphertext: &[u8], nonce: &[u8; NONCE_LEN]) -> Result<Vec<u8>, Unspecified> {
+pub fn decrypt(
+    dek: &[u8; 32],
+    ciphertext: &[u8],
+    nonce: &[u8; NONCE_LEN],
+) -> Result<Vec<u8>, Unspecified> {
     let nonce = Nonce::assume_unique_for_key(*nonce);
 
     let unbound_key = UnboundKey::new(&AES_256_GCM, dek)?;

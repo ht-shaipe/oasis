@@ -1,30 +1,26 @@
 <template>
     <div class="desktop-icons">
-        <div class="desktop-icon" @click="openApp('notes')">
-            <div class="icon-container">
-                <img src="/assets/icons/Notes.svg" :alt="t('contextMenu.useHelp')" />
+        <template v-for="app in apps" :key="app.id">
+            <div v-if="app.showOnDesktop" class="desktop-icon" @click="openApp(app.id)">
+                <div class="icon-container">
+                    <img :src="app.icon" :alt="t(app.nameKey || '')" />
+                </div>
+                <div class="icon-text">{{ t(app.nameKey || '') }}</div>
             </div>
-            <div class="icon-text">{{ t('contextMenu.useHelp') }}</div>
-        </div>
-        <div class="desktop-icon" @click="openApp('about')">
-            <div class="icon-container">
-                <img src="/assets/icons/Settings.svg" :alt="t('desktop.about')" />
-            </div>
-            <div class="icon-text">{{ t('desktop.about') }}</div>
-        </div>
-        <div class="desktop-icon" @click="openApp('credential-manager')">
-            <div class="icon-container">
-                <img src="/assets/icons/Keychain.svg" :alt="t('dock.credentialManager')" />
-            </div>
-            <div class="icon-text">{{ t('dock.credentialManager') }}</div>
-        </div>
+        </template>
     </div>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import type { AppConfig } from '@/config/apps';
 
 const { t } = useI18n();
+
+// Props 定义
+defineProps<{
+    apps: AppConfig[];
+}>();
 
 // 事件发射
 const emit = defineEmits(['openApp']);
@@ -41,7 +37,7 @@ const openApp = (app: string) => {
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
-    padding: 35px 0 0 20px;
+    padding: 45px 0 0 20px;
     margin: 0;
 }
 

@@ -1,7 +1,9 @@
+use rusqlite::{params, Connection, Result};
 use std::path::Path;
-use rusqlite::{Connection, Result, params};
 
-use crate::credential::models::{Category, Credential, CredentialView, NewCredential, UpdateCredential};
+use crate::credential::models::{
+    Category, Credential, CredentialView, NewCredential, UpdateCredential,
+};
 
 const DEFAULT_CATEGORIES: &[(&str, &str)] = &[
     ("社交媒体", "users"),
@@ -51,26 +53,27 @@ pub fn init_db(app_data_dir: &Path) -> Result<Connection> {
             created_at      TEXT NOT NULL,
             updated_at      TEXT NOT NULL
         );
-        "
+        ",
     )?;
 
     // Migration: Add parent_id to categories if it doesn't exist
-    let has_parent_id: bool = conn.query_row(
-        "SELECT count(*) FROM pragma_table_info('categories') WHERE name='parent_id'",
-        [],
-        |row| Ok(row.get::<_, i64>(0)? > 0),
-    ).unwrap_or(false);
+    let has_parent_id: bool = conn
+        .query_row(
+            "SELECT count(*) FROM pragma_table_info('categories') WHERE name='parent_id'",
+            [],
+            |row| Ok(row.get::<_, i64>(0)? > 0),
+        )
+        .unwrap_or(false);
 
     if !has_parent_id {
-        conn.execute("ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id)", [])?;
+        conn.execute(
+            "ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id)",
+            [],
+        )?;
     }
 
     // Insert default categories if empty
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM categories",
-        [],
-        |row| row.get(0),
-    )?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM categories", [], |row| row.get(0))?;
     if count == 0 {
         let now = chrono_now();
         for (i, (name, icon)) in DEFAULT_CATEGORIES.iter().enumerate() {
@@ -104,15 +107,16 @@ fn chrono_now() -> String {
 // ── Master Key ──────────────────────────────────────────────────────────────────
 
 pub fn is_master_key_set(conn: &Connection) -> Result<bool> {
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM master_key",
-        [],
-        |row| row.get(0),
-    )?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM master_key", [], |row| row.get(0))?;
     Ok(count > 0)
 }
 
-pub fn set_master_key(conn: &Connection, key_hash: &[u8], salt: &[u8], dek_salt: &[u8]) -> Result<()> {
+pub fn set_master_key(
+    conn: &Connection,
+    key_hash: &[u8],
+    salt: &[u8],
+    dek_salt: &[u8],
+) -> Result<()> {
     let now = now_iso();
     conn.execute(
         "INSERT OR REPLACE INTO master_key (id, key_hash, salt, dek_salt, created_at, updated_at) VALUES (1, ?1, ?2, ?3, ?4, ?4)",
@@ -122,11 +126,10 @@ pub fn set_master_key(conn: &Connection, key_hash: &[u8], salt: &[u8], dek_salt:
 }
 
 pub fn verify_master_key(conn: &Connection, key_hash: &[u8]) -> Result<bool> {
-    let stored: Vec<u8> = conn.query_row(
-        "SELECT key_hash FROM master_key WHERE id = 1",
-        [],
-        |row| row.get(0),
-    )?;
+    let stored: Vec<u8> =
+        conn.query_row("SELECT key_hash FROM master_key WHERE id = 1", [], |row| {
+            row.get(0)
+        })?;
     Ok(stored == key_hash)
 }
 
@@ -157,13 +160,18 @@ pub fn list_categories(conn: &Connection) -> Result<Vec<Category>> {
     rows.collect()
 }
 
-pub fn create_category(conn: &Connection, name: &str, icon: Option<&str>, parent_id: Option<i64>) -> Result<Category> {
+pub fn create_category(
+    conn: &Connection,
+    name: &str,
+    icon: Option<&str>,
+    parent_id: Option<i64>,
+) -> Result<Category> {
     let now = now_iso();
-    let max_order: Option<i64> = conn.query_row(
-        "SELECT MAX(sort_order) FROM categories",
-        [],
-        |row| row.get(0),
-    ).ok();
+    let max_order: Option<i64> = conn
+        .query_row("SELECT MAX(sort_order) FROM categories", [], |row| {
+            row.get(0)
+        })
+        .ok();
     let sort_order = max_order.unwrap_or(0) + 1;
     conn.execute(
         "INSERT INTO categories (name, icon, sort_order, created_at, parent_id) VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -197,7 +205,10 @@ fn to_credential_view(row: &rusqlite::Row) -> rusqlite::Result<CredentialView> {
     })
 }
 
-pub fn list_credentials(conn: &Connection, category_id: Option<i64>) -> Result<Vec<CredentialView>> {
+pub fn list_credentials(
+    conn: &Connection,
+    category_id: Option<i64>,
+) -> Result<Vec<CredentialView>> {
     let sql = if category_id.is_some() {
         "SELECT c.id, c.category_id, c.title, c.username, c.url, c.tags, c.notes,
                 c.created_at, c.updated_at, cat.name
@@ -247,11 +258,23 @@ pub fn get_credential(conn: &Connection, id: i64) -> Result<Credential> {
 
 pub fn create_credential(conn: &Connection, cred: &NewCredential) -> Result<Credential> {
     let now = now_iso();
-    let enc_data = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &cred.sensitive_data_json)
-        .map_err(|_| rusqlite::Error::InvalidParameterName("invalid base64".to_string()))?;
+    let enc_data = base64::Engine::decode(
+        &base64::engine::general_purpose::STANDARD,
+        &cred.sensitive_data_json,
+    )
+    .map_err(|_| rusqlite::Error::InvalidParameterName("invalid base64".to_string()))?;
 
-    // Generate nonce for this credential
-    let nonce_bytes = crate::credential::crypto::generate_nonce();
+    // Decode provided nonce (expected base64) or generate a new one
+    let nonce_bytes = base64::Engine::decode(
+        &base64::engine::general_purpose::STANDARD,
+        &cred.nonce_base64,
+    )
+    .map(|v| {
+        let mut arr = [0u8; 12];
+        arr.copy_from_slice(&v[..12]);
+        arr
+    })
+    .unwrap_or_else(|_| crate::credential::crypto::generate_nonce());
 
     conn.execute(
         "INSERT INTO credentials (category_id, title, username, url, encrypted_data, nonce, tags, notes, created_at, updated_at)
@@ -272,36 +295,70 @@ pub fn create_credential(conn: &Connection, cred: &NewCredential) -> Result<Cred
     get_credential(conn, id)
 }
 
-pub fn update_credential(conn: &Connection, id: i64, cred: &UpdateCredential) -> Result<Credential> {
+pub fn update_credential(
+    conn: &Connection,
+    id: i64,
+    cred: &UpdateCredential,
+) -> Result<Credential> {
     let now = now_iso();
 
     // Build dynamic update
     if let Some(cid) = cred.category_id {
-        conn.execute("UPDATE credentials SET category_id = ?1, updated_at = ?2 WHERE id = ?3", params![cid, now, id])?;
+        conn.execute(
+            "UPDATE credentials SET category_id = ?1, updated_at = ?2 WHERE id = ?3",
+            params![cid, now, id],
+        )?;
     }
     if let Some(ref title) = cred.title {
-        conn.execute("UPDATE credentials SET title = ?1, updated_at = ?2 WHERE id = ?3", params![title, now, id])?;
+        conn.execute(
+            "UPDATE credentials SET title = ?1, updated_at = ?2 WHERE id = ?3",
+            params![title, now, id],
+        )?;
     }
     if let Some(ref username) = cred.username {
-        conn.execute("UPDATE credentials SET username = ?1, updated_at = ?2 WHERE id = ?3", params![username, now, id])?;
+        conn.execute(
+            "UPDATE credentials SET username = ?1, updated_at = ?2 WHERE id = ?3",
+            params![username, now, id],
+        )?;
     }
     if let Some(ref url) = cred.url {
-        conn.execute("UPDATE credentials SET url = ?1, updated_at = ?2 WHERE id = ?3", params![url, now, id])?;
+        conn.execute(
+            "UPDATE credentials SET url = ?1, updated_at = ?2 WHERE id = ?3",
+            params![url, now, id],
+        )?;
     }
     if let Some(ref enc_json) = cred.sensitive_data_json {
         let enc_data = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, enc_json)
             .map_err(|_| rusqlite::Error::InvalidParameterName("invalid base64".to_string()))?;
-        let nonce_bytes = crate::credential::crypto::generate_nonce();
+        // Use provided nonce if present in UpdateCredential (we expect base64), otherwise generate
+        let nonce_bytes = if let Some(ref nb64) = cred.nonce_base64 {
+            base64::Engine::decode(&base64::engine::general_purpose::STANDARD, nb64)
+                .map(|v| {
+                    let mut arr = [0u8; 12];
+                    arr.copy_from_slice(&v[..12]);
+                    arr
+                })
+                .unwrap_or_else(|_| crate::credential::crypto::generate_nonce())
+        } else {
+            crate::credential::crypto::generate_nonce()
+        };
+
         conn.execute(
             "UPDATE credentials SET encrypted_data = ?1, nonce = ?2, updated_at = ?3 WHERE id = ?4",
             params![enc_data, nonce_bytes.as_ref(), now, id],
         )?;
     }
     if let Some(ref tags) = cred.tags {
-        conn.execute("UPDATE credentials SET tags = ?1, updated_at = ?2 WHERE id = ?3", params![tags, now, id])?;
+        conn.execute(
+            "UPDATE credentials SET tags = ?1, updated_at = ?2 WHERE id = ?3",
+            params![tags, now, id],
+        )?;
     }
     if let Some(ref notes) = cred.notes {
-        conn.execute("UPDATE credentials SET notes = ?1, updated_at = ?2 WHERE id = ?3", params![notes, now, id])?;
+        conn.execute(
+            "UPDATE credentials SET notes = ?1, updated_at = ?2 WHERE id = ?3",
+            params![notes, now, id],
+        )?;
     }
 
     get_credential(conn, id)
@@ -322,7 +379,9 @@ pub fn delete_category(conn: &Connection, id: i64) -> Result<()> {
     )?;
 
     if has_credentials {
-        return Err(rusqlite::Error::InvalidParameterName("Cannot delete category: contains credentials".into()));
+        return Err(rusqlite::Error::InvalidParameterName(
+            "Cannot delete category: contains credentials".into(),
+        ));
     }
 
     // Check if it has direct children
@@ -333,7 +392,9 @@ pub fn delete_category(conn: &Connection, id: i64) -> Result<()> {
     )?;
 
     if has_children {
-        return Err(rusqlite::Error::InvalidParameterName("Cannot delete category: has sub-categories".into()));
+        return Err(rusqlite::Error::InvalidParameterName(
+            "Cannot delete category: has sub-categories".into(),
+        ));
     }
 
     conn.execute("DELETE FROM categories WHERE id = ?1", params![id])?;
