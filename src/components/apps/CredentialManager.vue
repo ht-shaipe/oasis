@@ -493,7 +493,6 @@ const {
   isMasterKeySet, setupMasterKey, unlock, lock,
   listCategories, createCategory,
   listCredentials, getCredential, createCredential, updateCredential, deleteCredential,
-  isLocked,
 } = useCredential()
 
 // ── Props / Emits ──

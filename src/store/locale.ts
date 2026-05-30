@@ -25,7 +25,7 @@ export const useLocaleStore = defineStore('locale', () => {
   // 同步到 i18n 实例和 localStorage，并更新原生托盘菜单文字
   watch(locale, async (val) => {
     localStorage.setItem('locale', val)
-    i18n.global.locale.value = val
+    ;(i18n.global.locale as any).value = val
     // 更新 Rust 端托盘菜单
     try {
       const { invoke } = await import('@tauri-apps/api/core')

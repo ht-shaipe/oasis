@@ -7,7 +7,6 @@ interface Window {
   macOS?: any;
   config?: any;
   tool?: any;
-  loadingInterval?: ReturnType<typeof setInterval> | null;
 }
 
 // vue-i18n 类型声明

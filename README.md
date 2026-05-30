@@ -1,26 +1,68 @@
 # Oasis
 
-> 基于 GPUI 的插件化桌面效率工具箱，让开发者专注创造，而非琐碎
+> 基于 Tauri v2 + Vue 3 构建的轻量级 Mac 风格桌面效率平台。
 
-Oasis 是一个使用 Rust + GPUI 构建的原生桌面应用，采用插件化架构设计。支持三种插件模式：静态链接（rlib）、动态库（cdylib）、WebAssembly（WASM），让开发者可以轻松扩展功能。
+Oasis 是一个模拟 macOS 桌面体验的桌面应用，旨在为开发者和效率追求者提供一个集成化的工具环境。它结合了 Rust 的高性能后端与 Vue 3 的灵活前端，通过多窗口管理系统集成了多种实用工具。
 
 ---
 
 ## ✨ 核心特性
 
-### 🖥️ 强大的宿主功能
-- **浮动窗口管理** — 插件在主窗口内以浮动方式运行，支持拖拽、缩放、最小化、最大化
-- **应用启动器** — 全屏网格启动器，一键打开插件
-- **Dock 栏** — 底部浮动 Dock，悬停放大动画，快速访问所有插件
-- **主题系统** — 深色/浅色切换，支持自定义主题热加载
-- **国际化** — 内置中英文，可随时切换
+### 🖥️ 沉浸式桌面体验
+- **Mac 风格界面** — 包含顶部菜单栏 (MenuBar)、底部 Dock 栏和桌面图标 (Desktop Icons)，提供原生的操作感受。
+- **多窗口管理** — 支持应用窗口的拖拽、层级管理，模拟真实的操作系统多任务环境。
+- **系统托盘** — 支持多语言快速切换（中/英），后台常驻运行。
 
-### 🔌 丰富的插件生态
-- **📝 Markdown 编辑器** — 基于 ropey 的高性能文本编辑器，支持语法高亮、文件浏览器、撤销/重做
-- **🗒️ 记事本** — 轻量级文本编辑，实时字数/行数统计
-- **🧰 工具箱** — CSV 统计/分割/转换、批量重命名、Excel 处理、API 请求、JSON 合并等多工具集合
-- **🔐 凭据管理** — AES-GCM 加密存储（开发中）
-- **🌐 WASM 插件** — 基于 wasmi 沙箱运行，安全隔离
+### 🔌 内置应用集
+- **Generator** — 快速生成代码或数据片段。
+- **CodeEditor** — 轻量级代码编辑器。
+- **Safari Preview** — 内置网页预览工具，支持快速查看网页内容。
+- **Finder** — 文件资源管理。
+- **Notes** — 随时随地记录灵感与笔记。
+- **CredentialManager** — 安全的凭据管理器，保护您的敏感信息。
+
+### ⚙️ 后端技术支撑
+- **凭据安全** — 基于 SQLite 的持久化存储，并采用 AES-GCM (Ring) 工业级加密算法。
+- **高性能** — 利用 Tauri v2 的优势，提供极小的内存占用与极快的响应速度。
+- **跨平台** — 继承 Tauri 的跨平台特性，支持 macOS、Windows 等主流系统。
+
+---
+
+## 🛠️ 技术栈
+
+- **前端 (Frontend)**: [Vue 3](https://vuejs.org/) (Composition API), [TypeScript](https://www.typescriptlang.org/), [Vite](https://vitejs.dev/)
+- **UI 框架**: [Element Plus](https://element-plus.org/)
+- **状态管理**: [Pinia](https://pinia.vuejs.org/)
+- **后端 (Backend)**: [Tauri v2](https://v2.tauri.app/), [Rust](https://www.rust-lang.org/)
+- **数据库**: [SQLite](https://sqlite.org/) ([Rusqlite](https://github.com/rusqlite/rusqlite))
+- **加密安全**: [Ring](https://github.com/briansmith/ring) (AES-GCM Encryption)
+- **包管理**: [Bun](https://bun.sh/)
+
+---
+
+## 📁 项目结构
+
+```text
+oasis/
+├── src/                        # 前端源码 (Vue 3 + TS)
+│   ├── components/
+│   │   ├── apps/               # 窗口应用 (Generator, CodeEditor, Safari, etc.)
+│   │   ├── system/             # 系统组件 (MenuBar, Dock, DesktopIcons)
+│   │   └── common/             # 通用基础组件
+│   ├── store/                  # Pinia 状态管理
+│   ├── locales/                # 国际化多语言文件
+│   ├── views/                  # 视图页面
+│   └── App.vue                 # 应用根组件
+├── src-tauri/                  # 后端源码 (Rust)
+│   ├── src/
+│   │   ├── credential/         # 凭据管理模块 (数据库操作、加密逻辑、指令集)
+│   │   ├── main.rs             # Tauri 程序入口
+│   │   └── lib.rs              # 核心库逻辑
+│   ├── tauri.conf.json         # Tauri 配置文件
+│   └── Cargo.toml              # Rust 依赖配置
+├── public/                     # 静态资源
+└── package.json                # 前端项目依赖配置
+```
 
 ---
 
@@ -28,180 +70,43 @@ Oasis 是一个使用 Rust + GPUI 构建的原生桌面应用，采用插件化�
 
 ### 前置要求
 
-- Rust stable toolchain（`cargo`）
-- macOS / Linux（Windows 理论支持）
+- [Rust](https://www.rust-lang.org/tools/install) 环境 (stable)
+- [Bun](https://bun.sh/) 运行时
+- 相应的系统开发工具包 (如 macOS 的 Xcode, Windows 的 WebView2 等)
 
-### 运行桌面应用
-
-```bash
-git clone <repository-url>
-cd oasis
-
-# 编译并运行
-cargo run
-
-# Release 构建
-cargo build --release
-```
-
-### 运行 Web（WASM）版本
+### 开发环境启动
 
 ```bash
-# 前置：Rust nightly + wasm32 target + wasm-bindgen-cli + Bun
-rustup target add wasm32-unknown-unknown
-cargo install wasm-bindgen-cli
+# 安装依赖
+bun install
 
-# 构建 WASM + 启动开发服务器
-make dev-web
+# 启动开发服务器 (Tauri dev)
+bun tauri dev
+```
 
-# 访问 http://localhost:3000
+### 构建打包
+
+```bash
+# 构建发布版本
+bun tauri build
 ```
 
 ---
 
-## 📁 项目结构
+## 📚 文档指南
 
-```
-oasis/
-├── src/                     # 宿主应用源码
-│   ├── main.rs             # 桌面二进制入口
-│   ├── lib.rs              # 库根
-│   ├── app/                # 应用基础设施层
-│   │   ├── dock.rs         # 底部浮动 Dock 栏
-│   │   ├── app_launcher.rs # 全屏应用启动器
-│   │   ├── themes.rs       # 主题系统
-│   │   └── ...
-│   └── plugins/            # 插件系统
-│       ├── mod.rs          # PluginRegistry 注册中心
-│       ├── plugin_window.rs # PluginWindow 浮动窗口
-│       └── wasm_*.rs       # WASM 插件支持
-├── crates/                 # 子 crate
-│   ├── plugins/            # 插件相关
-│   │   ├── plugin-sdk/     # 插件 Trait + 元数据
-│   │   ├── notepad-plugin/ # 记事本插件
-│   │   ├── toolbox-plugin/ # 工具箱插件
-│   │   └── md-editor-plugin/ # Markdown 编辑器
-│   └── widgets/            # WASM widgets
-├── docs/                   # 📚 完整文档
-│   ├── user/               # 用户指南
-│   ├── development/        # 开发者指南
-│   └── maintenance/        # 维护者指南
-└── plugins/                # 运行时插件目录
-```
-
----
-
-## 📚 完整文档
-
-### 👤 用户文档
-- **[快速开始](docs/user/getting-started.md)** — 新手入门指南
-- **[用户手册](docs/user/user-guide.md)** — 完整功能说明
-- **[配置参考](docs/user/configuration.md)** — 高级配置选项
-- **[故障排除](docs/user/troubleshooting.md)** — 常见问题解决
-
-### 🔌 开发者文档
-- **[插件开发总览](docs/development/plugin-guide.md)** — 插件开发指南
-- **[WASM 插件](docs/development/wasm-plugins.md)** — WASM 插件详细教程
-- **[API 参考](docs/development/api-reference.md)** — 完整 API 文档
-- **[架构文档](docs/development/architecture.md)** — 技术架构
-
-### 🛠️ 维护者文档
-- **[贡献指南](CONTRIBUTING.md)** — 如何贡献代码
-- **[发布流程](docs/maintenance/release-process.md)** — 版本发布规范
-- **[变更日志](CHANGELOG.md)** — 版本历史记录
-
----
-
-## 🎯 快速上手示例
-
-### 创建你的第一个 WASM 插件
-
-```rust
-// src/lib.rs
-use serde_json::{json, Value};
-
-#[no_mangle]
-pub extern "C" fn plugin_get_manifest() -> i32 {
-    // 返回插件元数据和 UI 描述
-}
-
-#[no_mangle]
-pub extern "C" fn plugin_get_state() -> i32 {
-    // 返回插件状态
-}
-
-#[no_mangle]
-pub extern "C" fn plugin_handle_action(ptr: i32, len: i32) -> i32 {
-    // 处理用户交互
-}
-```
-
-**快速链接**: [完整 WASM 插件教程](docs/development/wasm-plugins.md)
-
----
-
-## 🗺️ 发展路线图
-
-### 已完成 ✅
-- [x] 插件化架构（rlib / cdylib / WASM 三模式）
-- [x] 浮动插件窗口（拖拽/缩放/最大化）
-- [x] Dock 栏 + 应用启动器
-- [x] 主题系统（深色/浅色/自定义）
-- [x] 国际化（中/英文）
-- [x] Markdown 编辑器插件
-- [x] 工具箱插件（CSV/Excel/API 等）
-- [x] WASM 插件沙箱（wasmi）
-
-### 进行中 🚧
-- [ ] 插件间通信（plugin-ipc 协议）
-- [ ] 凭据管理插件（AES-GCM 加密）
-- [ ] 网络工具插件
-
-### 计划中 📋
-- [ ] 插件热重载
-- [ ] LSP 集成（代码补全/诊断）
-- [ ] 插件市场
-
----
-
-## 🤝 贡献
-
-欢迎贡献！请查看：
-
-- **[贡献指南](CONTRIBUTING.md)** — 贡献流程和代码规范
-- **[问题追踪](../../issues)** — 报告问题或建议功能
-- **[讨论区](../../discussions)** — 一般性讨论
-
-### 快速贡献流程
-
-1. Fork 仓库
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'feat: add AmazingFeature'`)
-4. 推送分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
+- **[快速上手](docs/getting-started.md)** — 环境搭建与运行指南。
+- **[架构设计](docs/architecture.md)** — Tauri + Vue 前后端协作架构简述。
+- **[凭据存储方案](docs/credential-storage.md)** — 凭据加密与 SQLite 存储逻辑。
 
 ---
 
 ## 📄 许可证
 
-MIT License — 详见 [LICENSE](LICENSE) 文件
-
----
-
-## 🙏 致谢
-
-- [GPUI](https://github.com/zed-industries/zed) — Zed Industries 出品的 GPU 加速 UI 框架
-- [gpui-component](https://github.com/ht-shaipe/gpui-component) — UI 组件库
-- [wasmi](https://github.com/wasmi-labs/wasmi) — 轻量级 WASM 运行时
+本项目采用 [MIT License](LICENSE) 许可。
 
 ---
 
 <div align="center">
-
-**⭐ 如果觉得有用，请给一个 Star！**
-
-**🔖 关注项目获取最新更新**
-
-*Made with ❤️ by [shaipe](https://github.com/shaipe)*
-
+  <p>Made with ❤️ by Oasis Team</p>
 </div>

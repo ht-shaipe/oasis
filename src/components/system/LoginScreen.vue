@@ -61,6 +61,8 @@ import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
 
+let loadingInterval: any = null;
+
 // 定义组件属性
 const props = defineProps({
     username: {
@@ -207,9 +209,9 @@ const resetVerification = () => {
     inviteCode.value = '';
     isVerifying.value = false;
     // 清除可能正在运行的加载定时器
-    if (window.loadingInterval) {
-        clearInterval(window.loadingInterval);
-        window.loadingInterval = null;
+    if (loadingInterval) {
+        clearInterval(loadingInterval);
+        loadingInterval = null;
     }
     // 自动聚焦到输入框
     nextTick(() => {
@@ -220,8 +222,8 @@ const resetVerification = () => {
 // 模拟Mac登录加载过程
 const simulateLoading = (isSuccess: boolean) => {
     // 清除可能存在的旧定时器
-    if (window.loadingInterval) {
-        clearInterval(window.loadingInterval);
+    if (loadingInterval) {
+        clearInterval(loadingInterval);
     }
 
     const intervalId = setInterval(() => {
@@ -244,12 +246,12 @@ const simulateLoading = (isSuccess: boolean) => {
             // 失败时到达最大值停止
             if (!isSuccess && loadingProgress.value >= maxProgress) {
                 clearInterval(intervalId);
-                window.loadingInterval = null;
+                loadingInterval = null;
             }
         } else if (isSuccess && loadingProgress.value >= 100) {
             // 成功到达100%停止
             clearInterval(intervalId);
-            window.loadingInterval = null;
+            loadingInterval = null;
             
             // 触发登录成功动画和事件
             loginSuccess.value = true;
@@ -259,7 +261,7 @@ const simulateLoading = (isSuccess: boolean) => {
         }
     }, 10); 
 
-    window.loadingInterval = intervalId;
+    loadingInterval = intervalId;
 };
 
 // 监听资源加载状态变化

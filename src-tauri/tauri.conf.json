@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicehash/Tauri/canary/core/tauri-config-schema/schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "Oasis",
   "version": "0.1.0",
   "identifier": "com.oasis.app",
@@ -25,13 +25,29 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app", "dmg"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "dmg": {
+        "windowSize": {
+          "width": 600,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 150,
+          "y": 200
+        },
+        "applicationFolderPosition": {
+          "x": 450,
+          "y": 200
+        }
+      }
+    }
   }
 }
