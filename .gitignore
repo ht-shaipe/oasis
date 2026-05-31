@@ -1,40 +1,7 @@
-# Build artifacts
-/target
-*.pdb
-.github
-*.lock
-
-# WASM build
-/www/node_modules
-/www/dist
-*.wasm
-*.dylib
-
-# Session data
-/sessions
-/docs
-
-# Application state
-/docks-layout.json
-/state.json
-/workspace-config.json
-config.json.backup
-/dist
-/plugins
-
-# IDE
-.workbuddy
-.claude
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
+node_modules/
+dist/
+src-tauri/target/
 .DS_Store
-Thumbs.db
+*.local
 
-# Debug logs
-debug.log
-*.log
+*.lock

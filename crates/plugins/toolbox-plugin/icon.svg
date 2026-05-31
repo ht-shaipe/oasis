@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
-  <!-- Wrench icon — 工具箱 -->
-  <path d="M20 44L8 56" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-  <path d="M38 14C32 14 26 18 26 26C26 28 26.5 30 27.5 31.5L12 47L16 51L31.5 35.5C33 36.5 35 37 37 37C45 37 49 31 49 25L43 31L37 25L43 19L49 25C49 19 45 14 38 14Z" stroke="currentColor" stroke-width="3" stroke-linejoin="round" fill="none"/>
-</svg>
