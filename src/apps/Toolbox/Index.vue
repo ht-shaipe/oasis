@@ -9,9 +9,7 @@
                 <el-splitter-panel>
                     <main class="toolbox-main overflow-y-auto">
                         <Transition name="panel-fade" mode="out-in">
-                            <CsvStats v-if="activeTool === 'csv-stats'" :key="'csv-stats'" />
-                            <CsvSplit v-else-if="activeTool === 'csv-split'" :key="'csv-split'" />
-                            <CsvConvert v-else-if="activeTool === 'csv-convert'" :key="'csv-convert'" />
+                            <CsvTool v-if="activeTool === 'csv-tool'" :key="'csv-tool'" />
                             <ExcelMove v-else-if="activeTool === 'excel-move'" :key="'excel-move'" />
                             <JsonConvert v-else-if="activeTool === 'json-convert'" :key="'json-convert'" />
                             <JsonMerge v-else-if="activeTool === 'json-merge'" :key="'json-merge'" />
@@ -31,9 +29,7 @@ import MacWindow from '@/components/common/MacWindow.vue';
 import Sidebar from './Sidebar.vue';
 import { useToolbox } from './composables/useToolbox';
 import { SIDEBAR_CONFIG } from './constants';
-import CsvStats from './tools/CsvStats.vue';
-import CsvSplit from './tools/CsvSplit.vue';
-import CsvConvert from './tools/CsvConvert.vue';
+import CsvTool from './tools/CsvTool.vue';
 import ExcelMove from './tools/ExcelMove.vue';
 import JsonConvert from './tools/JsonConvert.vue';
 import JsonMerge from './tools/JsonMerge.vue';

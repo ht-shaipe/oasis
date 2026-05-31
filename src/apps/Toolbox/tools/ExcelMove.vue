@@ -3,7 +3,19 @@
         <div class="panel-body">
             <div class="form-group">
                 <label class="form-label">{{ t('toolbox.excelFilePlaceholder') }}</label>
-                <el-input v-model="excelPath" :placeholder="t('toolbox.excelFilePlaceholder')" />
+                <el-input
+                    v-model="excelPath"
+                    size="large"
+                    class="w-full [&_.el-input__wrapper]:!rounded-r-none [&_.el-input__wrapper]:!rounded-l-[10px] [&_.el-input__wrapper]:!shadow-none [&_.el-input-group__append]:!p-0 [&_.el-input-group__append]:!overflow-hidden [&_.el-input-group__append]:!rounded-r-[10px]"
+                    :placeholder="t('toolbox.excelFilePlaceholder')">
+                    <template #append>
+                        <el-button
+                            size="large"
+                            class="w-[40px] min-w-[40px] px-0 rounded-none"
+                            @click="pickExcelPath"
+                            :icon="Folder" />
+                    </template>
+                </el-input>
             </div>
             <div class="form-group">
                 <label class="form-label">{{ t('toolbox.colHeaderPlaceholder') }}</label>
@@ -12,11 +24,35 @@
             <div class="form-row-split">
                 <div class="form-group">
                     <label class="form-label">{{ t('toolbox.inputDirPlaceholder') }}</label>
-                    <el-input v-model="inputDir" :placeholder="t('toolbox.inputDirPlaceholder')" />
+                    <el-input
+                        v-model="inputDir"
+                        size="large"
+                        class="w-full [&_.el-input__wrapper]:!rounded-r-none [&_.el-input__wrapper]:!rounded-l-[10px] [&_.el-input__wrapper]:!shadow-none [&_.el-input-group__append]:!p-0 [&_.el-input-group__append]:!overflow-hidden [&_.el-input-group__append]:!rounded-r-[10px]"
+                        :placeholder="t('toolbox.inputDirPlaceholder')">
+                        <template #append>
+                            <el-button
+                                size="large"
+                                class="w-[40px] min-w-[40px] px-0 rounded-none"
+                                @click="pickInputDir"
+                                :icon="FolderOpened" />
+                        </template>
+                    </el-input>
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ t('toolbox.outputDirPlaceholder') }}</label>
-                    <el-input v-model="outputDir" :placeholder="t('toolbox.outputDirPlaceholder')" />
+                    <el-input
+                        v-model="outputDir"
+                        size="large"
+                        class="w-full [&_.el-input__wrapper]:!rounded-r-none [&_.el-input__wrapper]:!rounded-l-[10px] [&_.el-input__wrapper]:!shadow-none [&_.el-input-group__append]:!p-0 [&_.el-input-group__append]:!overflow-hidden [&_.el-input-group__append]:!rounded-r-[10px]"
+                        :placeholder="t('toolbox.outputDirPlaceholder')">
+                        <template #append>
+                            <el-button
+                                size="large"
+                                class="w-[40px] min-w-[40px] px-0 rounded-none"
+                                @click="pickOutputDir"
+                                :icon="FolderOpened" />
+                        </template>
+                    </el-input>
                 </div>
             </div>
             <div class="form-group">
@@ -51,10 +87,27 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import { Folder, FolderOpened } from '@element-plus/icons-vue';
 import { useExcelMove } from '../composables/tools/useExcelMove';
+import { useFileDialog } from '@/composables/useFileDialog';
 
 const { t } = useI18n();
-const { excelPath, colHeader, inputDir, outputDir, suffixes, loading, preview, hasPlan, runPreview, apply } = useExcelMove();
+const { excelPath, colHeader, inputDir, outputDir, suffixes, loading, preview, hasPlan, runPreview, apply } =
+    useExcelMove();
+const { selectFile, selectFolder } = useFileDialog();
+
+async function pickExcelPath() {
+    const path = await selectFile({ extensions: ['xlsx', 'xls'] });
+    if (path) excelPath.value = path;
+}
+async function pickInputDir() {
+    const path = await selectFolder();
+    if (path) inputDir.value = path;
+}
+async function pickOutputDir() {
+    const path = await selectFolder();
+    if (path) outputDir.value = path;
+}
 </script>
 
 <style scoped>

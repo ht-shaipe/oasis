@@ -23,5 +23,8 @@ export default defineConfig({
         hover: "#369a6d",
       },
     },
+    spacing: {
+      35: "140px",
+    },
   },
 });

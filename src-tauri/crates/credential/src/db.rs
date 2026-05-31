@@ -3,6 +3,7 @@ use std::path::Path;
 
 use crate::models::{
     Category, Credential, CredentialView, NewCredential, UpdateCredential,
+    Site, SiteDetail,
 };
 
 const DEFAULT_CATEGORIES: &[(&str, &str)] = &[
@@ -55,6 +56,30 @@ pub fn init_db(app_data_dir: &Path) -> Result<Connection> {
             notes           TEXT,
             created_at      TEXT NOT NULL,
             updated_at      TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS sites (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_id     INTEGER NOT NULL REFERENCES categories(id),
+            name            TEXT NOT NULL,
+            url             TEXT,
+            tags            TEXT,
+            notes           TEXT,
+            created_at      TEXT NOT NULL,
+            updated_at      TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS site_accounts (
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            site_id                 INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+            username                TEXT NOT NULL,
+            password_encrypted      BLOB NOT NULL,
+            password_nonce          BLOB NOT NULL,
+            api_key_encrypted       BLOB,
+            api_key_nonce           BLOB,
+            secret_key_encrypted    BLOB,
+            secret_key_nonce        BLOB,
+            created_at              TEXT NOT NULL
         );
         ",
     )?;
@@ -407,4 +432,219 @@ pub fn delete_category(conn: &Connection, id: i64) -> Result<()> {
 pub fn delete_credential(conn: &Connection, id: i64) -> Result<()> {
     conn.execute("DELETE FROM credentials WHERE id = ?1", params![id])?;
     Ok(())
+}
+
+// ── Sites ─────────────────────────────────────────────────────────────────────────────
+
+fn to_site(row: &rusqlite::Row) -> rusqlite::Result<Site> {
+    Ok(Site {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        url: row.get(2)?,
+        category_id: row.get(3)?,
+        tags: row.get(4)?,
+        notes: row.get(5)?,
+        created_at: row.get(6)?,
+        updated_at: row.get(7)?,
+        category_name: row.get(8)?,
+        accounts_count: row.get(9)?,
+    })
+}
+
+pub fn list_sites(conn: &Connection, category_id: Option<i64>) -> Result<Vec<Site>> {
+    let sql = if category_id.is_some() {
+        "SELECT s.id, s.name, s.url, s.category_id, s.tags, s.notes, s.created_at, s.updated_at,
+                c.name, COUNT(sa.id) as accounts_count
+         FROM sites s
+         LEFT JOIN categories c ON s.category_id = c.id
+         LEFT JOIN site_accounts sa ON s.id = sa.site_id
+         WHERE s.category_id = ?1
+         GROUP BY s.id
+         ORDER BY s.updated_at DESC"
+    } else {
+        "SELECT s.id, s.name, s.url, s.category_id, s.tags, s.notes, s.created_at, s.updated_at,
+                c.name, COUNT(sa.id) as accounts_count
+         FROM sites s
+         LEFT JOIN categories c ON s.category_id = c.id
+         LEFT JOIN site_accounts sa ON s.id = sa.site_id
+         GROUP BY s.id
+         ORDER BY s.updated_at DESC"
+    };
+    let mut stmt = conn.prepare(sql)?;
+    let rows = if let Some(cid) = category_id {
+        stmt.query_map(params![cid], to_site)?
+    } else {
+        stmt.query_map([], to_site)?
+    };
+    rows.collect()
+}
+
+pub fn get_site(conn: &Connection, id: i64) -> Result<SiteDetail> {
+    // Get site info
+    let site: Site = conn.query_row(
+        "SELECT s.id, s.name, s.url, s.category_id, s.tags, s.notes, s.created_at, s.updated_at,
+                c.name, COUNT(sa.id) as accounts_count
+         FROM sites s
+         LEFT JOIN categories c ON s.category_id = c.id
+         LEFT JOIN site_accounts sa ON s.id = sa.site_id
+         WHERE s.id = ?1
+         GROUP BY s.id",
+        params![id],
+        to_site,
+    )?;
+
+    // Get accounts (encrypted)
+    let mut stmt = conn.prepare(
+        "SELECT username, password_encrypted, password_nonce,
+                api_key_encrypted, api_key_nonce,
+                secret_key_encrypted, secret_key_nonce
+         FROM site_accounts WHERE site_id = ?1"
+    )?;
+
+    let accounts_iter = stmt.query_map(params![id], |row| {
+        Ok((
+            row.get::<_, String>(0)?, // username
+            row.get::<_, Vec<u8>>(1)?, // password_encrypted
+            row.get::<_, Vec<u8>>(2)?, // password_nonce
+            row.get::<_, Option<Vec<u8>>>(3)?, // api_key_encrypted
+            row.get::<_, Option<Vec<u8>>>(4)?, // api_key_nonce
+            row.get::<_, Option<Vec<u8>>>(5)?, // secret_key_encrypted
+            row.get::<_, Option<Vec<u8>>>(6)?, // secret_key_nonce
+        ))
+    })?;
+
+    // Collect encrypted accounts - will be decrypted in commands layer
+    let _encrypted_accounts: Vec<(String, Vec<u8>, Vec<u8>, Option<Vec<u8>>, Option<Vec<u8>>, Option<Vec<u8>>, Option<Vec<u8>>)> =
+        accounts_iter.filter_map(|r| r.ok()).collect();
+
+    // Create SiteDetail with placeholder accounts (decryption happens in commands)
+    Ok(SiteDetail {
+        id: site.id,
+        name: site.name,
+        url: site.url,
+        category_id: site.category_id,
+        tags: site.tags,
+        notes: site.notes,
+        created_at: site.created_at,
+        updated_at: site.updated_at,
+        category_name: site.category_name,
+        accounts: vec![], // Will be populated in commands layer after decryption
+    })
+}
+
+pub fn create_site(conn: &Connection, name: &str, url: Option<&str>, category_id: i64,
+                   tags: Option<&str>, notes: Option<&str>, _accounts_json: &str) -> Result<i64> {
+    let now = now_iso();
+    conn.execute(
+        "INSERT INTO sites (name, url, category_id, tags, notes, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
+        params![name, url, category_id, tags, notes, now],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn update_site(conn: &Connection, id: i64, name: Option<&str>, url: Option<&str>,
+                   category_id: Option<i64>, tags: Option<&str>, notes: Option<&str>) -> Result<()> {
+    let now = now_iso();
+
+    if let Some(n) = name {
+        conn.execute(
+            "UPDATE sites SET name = ?1, updated_at = ?2 WHERE id = ?3",
+            params![n, now, id],
+        )?;
+    }
+    if let Some(u) = url {
+        conn.execute(
+            "UPDATE sites SET url = ?1, updated_at = ?2 WHERE id = ?3",
+            params![u, now, id],
+        )?;
+    }
+    if let Some(cid) = category_id {
+        conn.execute(
+            "UPDATE sites SET category_id = ?1, updated_at = ?2 WHERE id = ?3",
+            params![cid, now, id],
+        )?;
+    }
+    if let Some(t) = tags {
+        conn.execute(
+            "UPDATE sites SET tags = ?1, updated_at = ?2 WHERE id = ?3",
+            params![t, now, id],
+        )?;
+    }
+    if let Some(n) = notes {
+        conn.execute(
+            "UPDATE sites SET notes = ?1, updated_at = ?2 WHERE id = ?3",
+            params![n, now, id],
+        )?;
+    }
+
+    Ok(())
+}
+
+pub fn delete_site(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM sites WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+pub fn search_sites(conn: &Connection, query: &str) -> Result<Vec<Site>> {
+    let pattern = format!("%{}%", query);
+    let mut stmt = conn.prepare(
+        "SELECT s.id, s.name, s.url, s.category_id, s.tags, s.notes, s.created_at, s.updated_at,
+                c.name, COUNT(sa.id) as accounts_count
+         FROM sites s
+         LEFT JOIN categories c ON s.category_id = c.id
+         LEFT JOIN site_accounts sa ON s.id = sa.site_id
+         WHERE s.name LIKE ?1 OR s.url LIKE ?1 OR s.tags LIKE ?1
+         GROUP BY s.id
+         ORDER BY s.updated_at DESC"
+    )?;
+    let rows = stmt.query_map(params![pattern], to_site)?;
+    rows.collect()
+}
+
+// ── Site Accounts ───────────────────────────────────────────────────────────────────
+
+pub fn create_site_account(conn: &Connection, site_id: i64, username: &str,
+                          password_encrypted: &[u8], password_nonce: &[u8],
+                          api_key_encrypted: Option<&[u8]>, api_key_nonce: Option<&[u8]>,
+                          secret_key_encrypted: Option<&[u8]>, secret_key_nonce: Option<&[u8]>) -> Result<i64> {
+    let now = now_iso();
+    conn.execute(
+        "INSERT INTO site_accounts (site_id, username, password_encrypted, password_nonce,
+                                   api_key_encrypted, api_key_nonce,
+                                   secret_key_encrypted, secret_key_nonce, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![site_id, username, password_encrypted, password_nonce,
+               api_key_encrypted, api_key_nonce,
+               secret_key_encrypted, secret_key_nonce, now],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn delete_site_accounts(conn: &Connection, site_id: i64) -> Result<()> {
+    conn.execute("DELETE FROM site_accounts WHERE site_id = ?1", params![site_id])?;
+    Ok(())
+}
+
+pub fn get_encrypted_site_accounts(conn: &Connection, site_id: i64) -> Result<Vec<(String, Vec<u8>, Vec<u8>, Option<Vec<u8>>, Option<Vec<u8>>, Option<Vec<u8>>, Option<Vec<u8>>)>> {
+    let mut stmt = conn.prepare(
+        "SELECT username, password_encrypted, password_nonce,
+                api_key_encrypted, api_key_nonce,
+                secret_key_encrypted, secret_key_nonce
+         FROM site_accounts WHERE site_id = ?1"
+    )?;
+
+    let rows = stmt.query_map(params![site_id], |row| {
+        Ok((
+            row.get::<_, String>(0)?, // username
+            row.get::<_, Vec<u8>>(1)?, // password_encrypted
+            row.get::<_, Vec<u8>>(2)?, // password_nonce
+            row.get::<_, Option<Vec<u8>>>(3)?, // api_key_encrypted
+            row.get::<_, Option<Vec<u8>>>(4)?, // api_key_nonce
+            row.get::<_, Option<Vec<u8>>>(5)?, // secret_key_encrypted
+            row.get::<_, Option<Vec<u8>>>(6)?, // secret_key_nonce
+        ))
+    })?;
+
+    rows.collect()
 }

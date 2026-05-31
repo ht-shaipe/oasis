@@ -104,3 +104,84 @@ pub struct UpdateCredential {
     pub tags: Option<String>,
     pub notes: Option<String>,
 }
+
+// ── Site & Account Models ───────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SiteAccount {
+    pub username: String,
+    pub password: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secret_key: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Site {
+    pub id: i64,
+    pub name: String,
+    pub url: Option<String>,
+    pub category_id: i64,
+    pub tags: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub category_name: Option<String>,
+    pub accounts_count: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SiteDetail {
+    pub id: i64,
+    pub name: String,
+    pub url: Option<String>,
+    pub category_id: i64,
+    pub tags: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub category_name: Option<String>,
+    pub accounts: Vec<SiteAccount>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewSite {
+    pub name: String,
+    pub url: Option<String>,
+    pub category_id: i64,
+    pub tags: Option<String>,
+    pub notes: Option<String>,
+    pub accounts: Vec<SiteAccount>,
+    #[serde(alias = "dekBase64")]
+    pub dek_base64: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct UpdateSite {
+    pub id: i64,
+    pub name: Option<String>,
+    pub url: Option<String>,
+    pub category_id: Option<i64>,
+    pub tags: Option<String>,
+    pub notes: Option<String>,
+    pub accounts: Option<Vec<SiteAccount>>,
+    #[serde(alias = "dekBase64")]
+    pub dek_base64: Option<String>,
+}
+
+// Encrypted account data stored in database
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct EncryptedSiteAccount {
+    pub username: String,
+    pub encrypted_data: Vec<u8>,
+    pub nonce: Vec<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key_encrypted: Option<Vec<u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key_nonce: Option<Vec<u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secret_key_encrypted: Option<Vec<u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secret_key_nonce: Option<Vec<u8>>,
+}

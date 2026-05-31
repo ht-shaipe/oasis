@@ -5,6 +5,7 @@ use crate::crypto;
 use crate::db;
 use crate::models::{
     Category, CredentialDetail, CredentialView, NewCredential, SensitiveData, UpdateCredential,
+    Site, SiteDetail, NewSite, UpdateSite, SiteAccount,
 };
 use chrono::Utc;
 
@@ -513,4 +514,292 @@ pub fn diagnose_credential(
     }
 
     Ok(report)
+}
+
+// ── Site Commands ─────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn list_sites(
+    app: AppHandle,
+    category_id: Option<i64>,
+) -> Result<Vec<Site>, String> {
+    let conn = get_conn(&app)?;
+    db::list_sites(&conn, category_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_site(app: AppHandle, id: i64, dek_base64: String) -> Result<SiteDetail, String> {
+    let conn = get_conn(&app)?;
+
+    // Decode DEK
+    let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &dek_base64)
+        .map_err(|_| "Invalid DEK base64".to_string())?;
+    let dek: [u8; 32] = dek_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+    // Get site info
+    let site = db::get_site(&conn, id).map_err(|e| e.to_string())?;
+
+    // Get encrypted accounts
+    let encrypted_accounts = db::get_encrypted_site_accounts(&conn, id).map_err(|e| e.to_string())?;
+
+    // Decrypt each account
+    let mut accounts = Vec::new();
+    for (username, pwd_enc, pwd_nonce, api_key_enc, api_key_nonce, secret_enc, secret_nonce) in encrypted_accounts {
+        // Decrypt password
+        let pwd_nonce_arr: [u8; 12] = pwd_nonce.as_slice()
+            .try_into()
+            .map_err(|_| "Invalid password nonce".to_string())?;
+        let pwd_plain = crypto::decrypt(&dek, &pwd_enc, &pwd_nonce_arr)
+            .map_err(|e| format!("Failed to decrypt password: {:?}", e))?;
+        let password = String::from_utf8(pwd_plain)
+            .map_err(|e| format!("Invalid password UTF-8: {}", e))?;
+
+        // Build account
+        let mut account = SiteAccount {
+            username,
+            password,
+            api_key: None,
+            secret_key: None,
+        };
+
+        // Decrypt api_key if present
+        if let (Some(akey_enc), Some(akey_nonce)) = (api_key_enc, api_key_nonce) {
+            let akey_nonce_arr: [u8; 12] = akey_nonce.as_slice()
+                .try_into()
+                .map_err(|_| "Invalid API key nonce".to_string())?;
+            let akey_plain = crypto::decrypt(&dek, &akey_enc, &akey_nonce_arr)
+                .map_err(|e| format!("Failed to decrypt API key: {:?}", e))?;
+            account.api_key = Some(String::from_utf8(akey_plain)
+                .map_err(|e| format!("Invalid API key UTF-8: {}", e))?);
+        }
+
+        // Decrypt secret_key if present
+        if let (Some(skey_enc), Some(skey_nonce)) = (secret_enc, secret_nonce) {
+            let skey_nonce_arr: [u8; 12] = skey_nonce.as_slice()
+                .try_into()
+                .map_err(|_| "Invalid secret key nonce".to_string())?;
+            let skey_plain = crypto::decrypt(&dek, &skey_enc, &skey_nonce_arr)
+                .map_err(|e| format!("Failed to decrypt secret key: {:?}", e))?;
+            account.secret_key = Some(String::from_utf8(skey_plain)
+                .map_err(|e| format!("Invalid secret key UTF-8: {}", e))?);
+        }
+
+        accounts.push(account);
+    }
+
+    Ok(SiteDetail {
+        id: site.id,
+        name: site.name,
+        url: site.url,
+        category_id: site.category_id,
+        tags: site.tags,
+        notes: site.notes,
+        created_at: site.created_at,
+        updated_at: site.updated_at,
+        category_name: site.category_name,
+        accounts,
+    })
+}
+
+#[tauri::command]
+pub fn create_site(app: AppHandle, site: NewSite) -> Result<Site, String> {
+    let conn = get_conn(&app)?;
+
+    // Decode DEK
+    let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &site.dek_base64)
+        .map_err(|_| "Invalid DEK base64".to_string())?;
+    let dek: [u8; 32] = dek_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+    // Create site record
+    let site_id = db::create_site(
+        &conn,
+        &site.name,
+        site.url.as_deref(),
+        site.category_id,
+        site.tags.as_deref(),
+        site.notes.as_deref(),
+        "", // placeholder for accounts_json
+    ).map_err(|e| e.to_string())?;
+
+    // Encrypt and create each account
+    for account in &site.accounts {
+        // Encrypt password
+        let (pwd_enc, pwd_nonce) = crypto::encrypt(&dek, account.password.as_bytes())
+            .map_err(|e| format!("Failed to encrypt password: {:?}", e))?;
+
+        // Encrypt api_key if present
+        let (api_key_enc, api_key_nonce) = if let Some(ref key) = account.api_key {
+            let (enc, nonce) = crypto::encrypt(&dek, key.as_bytes())
+                .map_err(|e| format!("Failed to encrypt API key: {:?}", e))?;
+            (Some(enc), Some(nonce))
+        } else {
+            (None, None)
+        };
+
+        // Encrypt secret_key if present
+        let (secret_key_enc, secret_key_nonce) = if let Some(ref key) = account.secret_key {
+            let (enc, nonce) = crypto::encrypt(&dek, key.as_bytes())
+                .map_err(|e| format!("Failed to encrypt secret key: {:?}", e))?;
+            (Some(enc), Some(nonce))
+        } else {
+            (None, None)
+        };
+
+        // Create account record
+        db::create_site_account(
+            &conn,
+            site_id,
+            &account.username,
+            &pwd_enc,
+            &pwd_nonce,
+            api_key_enc.as_deref(),
+            api_key_nonce.as_ref().map(|v| v.as_slice()),
+            secret_key_enc.as_deref(),
+            secret_key_nonce.as_ref().map(|v| v.as_slice()),
+        ).map_err(|e| e.to_string())?;
+    }
+
+    // Get category name
+    let cat_name: Option<String> = conn
+        .query_row(
+            "SELECT name FROM categories WHERE id = ?1",
+            rusqlite::params![site.category_id],
+            |row| row.get(0),
+        )
+        .ok();
+
+    // Get site with timestamp
+    let site_data: Site = conn.query_row(
+        "SELECT id, name, url, category_id, tags, notes, created_at, updated_at, NULL, 0
+         FROM sites WHERE id = ?1",
+        rusqlite::params![site_id],
+        |row| {
+            Ok(Site {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                url: row.get(2)?,
+                category_id: row.get(3)?,
+                tags: row.get(4)?,
+                notes: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                category_name: row.get(8)?,
+                accounts_count: row.get(9)?,
+            })
+        },
+    ).map_err(|e| e.to_string())?;
+
+    // Get accounts count
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM site_accounts WHERE site_id = ?1",
+            rusqlite::params![site_id],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    Ok(Site {
+        id: site_id,
+        name: site_data.name,
+        url: site_data.url,
+        category_id: site_data.category_id,
+        tags: site_data.tags,
+        notes: site_data.notes,
+        created_at: site_data.created_at,
+        updated_at: site_data.updated_at,
+        category_name: cat_name,
+        accounts_count: Some(count),
+    })
+}
+
+#[tauri::command]
+pub fn update_site(app: AppHandle, site: UpdateSite) -> Result<Site, String> {
+    let conn = get_conn(&app)?;
+
+    // Update site fields
+    db::update_site(
+        &conn,
+        site.id,
+        site.name.as_deref(),
+        site.url.as_deref(),
+        site.category_id,
+        site.tags.as_deref(),
+        site.notes.as_deref(),
+    ).map_err(|e| e.to_string())?;
+
+    // Update accounts if provided
+    if let (Some(accounts), Some(dek_base64)) = (site.accounts, &site.dek_base64) {
+        // Decode DEK
+        let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, dek_base64)
+            .map_err(|_| "Invalid DEK base64".to_string())?;
+        let dek: [u8; 32] = dek_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+        // Delete existing accounts
+        db::delete_site_accounts(&conn, site.id).map_err(|e| e.to_string())?;
+
+        // Create new accounts
+        for account in &accounts {
+            // Encrypt password
+            let (pwd_enc, pwd_nonce) = crypto::encrypt(&dek, account.password.as_bytes())
+                .map_err(|e| format!("Failed to encrypt password: {:?}", e))?;
+
+            // Encrypt api_key if present
+            let (api_key_enc, api_key_nonce) = if let Some(ref key) = account.api_key {
+                let (enc, nonce) = crypto::encrypt(&dek, key.as_bytes())
+                    .map_err(|e| format!("Failed to encrypt API key: {:?}", e))?;
+                (Some(enc), Some(nonce))
+            } else {
+                (None, None)
+            };
+
+            // Encrypt secret_key if present
+            let (secret_key_enc, secret_key_nonce) = if let Some(ref key) = account.secret_key {
+                let (enc, nonce) = crypto::encrypt(&dek, key.as_bytes())
+                    .map_err(|e| format!("Failed to encrypt secret key: {:?}", e))?;
+                (Some(enc), Some(nonce))
+            } else {
+                (None, None)
+            };
+
+            // Create account record
+            db::create_site_account(
+                &conn,
+                site.id,
+                &account.username,
+                &pwd_enc,
+                &pwd_nonce,
+                api_key_enc.as_deref(),
+                api_key_nonce.as_ref().map(|v| v.as_slice()),
+                secret_key_enc.as_deref(),
+                secret_key_nonce.as_ref().map(|v| v.as_slice()),
+            ).map_err(|e| e.to_string())?;
+        }
+    }
+
+    // Get updated site
+    let sites = db::list_sites(&conn, None).map_err(|e| e.to_string())?;
+    sites.into_iter()
+        .find(|s| s.id == site.id)
+        .ok_or_else(|| "Site not found after update".to_string())
+}
+
+#[tauri::command]
+pub fn delete_site(app: AppHandle, id: i64) -> Result<(), String> {
+    let conn = get_conn(&app)?;
+    db::delete_site(&conn, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn search_sites(app: AppHandle, query: String) -> Result<Vec<Site>, String> {
+    let conn = get_conn(&app)?;
+    db::search_sites(&conn, &query).map_err(|e| e.to_string())
 }

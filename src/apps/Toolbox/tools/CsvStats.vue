@@ -3,9 +3,13 @@
         <div class="panel-body">
             <div class="form-group">
                 <label class="form-label">{{ t('toolbox.dirPlaceholder') }}</label>
-                <el-input v-model="dir" :placeholder="t('toolbox.dirPlaceholder')">
+                <el-input
+                    v-model="dir"
+                    size="large"
+                    class="w-full [&_.el-input__wrapper]:!rounded-r-none [&_.el-input__wrapper]:!rounded-l-[10px] [&_.el-input__wrapper]:!shadow-none [&_.el-input-group__append]:!p-0 [&_.el-input-group__append]:!overflow-hidden [&_.el-input-group__append]:!rounded-r-[10px]"
+                    :placeholder="t('toolbox.dirPlaceholder')">
                     <template #append>
-                        <el-button @click="run" :loading="loading" type="primary">
+                        <el-button size="large" class="rounded-none" @click="run" :loading="loading" type="primary">
                             {{ t('toolbox.run') }}
                         </el-button>
                     </template>

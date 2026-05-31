@@ -65,6 +65,51 @@ export interface UpdateCredentialRequest {
     notes?: string;
 }
 
+// ── Site & Account Types ───────────────────────────────────────────────
+
+export interface SiteAccount {
+    username: string;
+    password: string;
+    api_key?: string;
+    secret_key?: string;
+}
+
+export interface Site {
+    id: number;
+    name: string;
+    url: string;
+    category_id: number;
+    tags: string;
+    notes: string;
+    created_at: string;
+    updated_at: string;
+    category_name?: string;
+    accounts_count?: number;
+}
+
+export interface SiteDetail extends Site {
+    accounts: SiteAccount[];
+}
+
+export interface CreateSiteRequest {
+    name: string;
+    url?: string;
+    category_id: number;
+    tags?: string;
+    notes?: string;
+    accounts: SiteAccount[];
+}
+
+export interface UpdateSiteRequest {
+    id: number;
+    name?: string;
+    url?: string;
+    category_id?: number;
+    tags?: string;
+    notes?: string;
+    accounts?: SiteAccount[];
+}
+
 // ── Composable ─────────────────────────────────────────────────────────
 
 export function useCredential() {
@@ -158,6 +203,45 @@ export function useCredential() {
         dek.value = dekBase64;
     };
 
+    // ── Site & Account Management ──
+
+    const listSites = async (categoryId?: number): Promise<Site[]> => {
+        return invoke<Site[]>('list_sites', { categoryId: categoryId ?? null });
+    };
+
+    const getSite = async (id: number): Promise<SiteDetail> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<SiteDetail>('get_site', { id, dekBase64: dek.value });
+    };
+
+    const createSite = async (data: CreateSiteRequest): Promise<Site> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<Site>('create_site', {
+            site: {
+                ...data,
+                dekBase64: dek.value,
+            },
+        });
+    };
+
+    const updateSite = async (data: UpdateSiteRequest): Promise<Site> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<Site>('update_site', {
+            site: {
+                ...data,
+                dekBase64: dek.value,
+            },
+        });
+    };
+
+    const deleteSite = async (id: number): Promise<void> => {
+        return invoke('delete_site', { id });
+    };
+
+    const searchSites = async (query: string): Promise<Site[]> => {
+        return invoke<Site[]>('search_sites', { query });
+    };
+
     return {
         // state
         dek,
@@ -181,6 +265,14 @@ export function useCredential() {
         createCredential,
         updateCredential,
         deleteCredential,
+
+        // site & account
+        listSites,
+        getSite,
+        createSite,
+        updateSite,
+        deleteSite,
+        searchSites,
 
         // diagnostic
         diagnoseCredential,

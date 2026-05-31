@@ -3,12 +3,36 @@
         <div class="panel-body">
             <div class="form-group">
                 <label class="form-label">{{ t('toolbox.jsonFilePlaceholder') }}</label>
-                <el-input v-model="inputPath" :placeholder="t('toolbox.jsonFilePlaceholder')" />
+                <el-input
+                    v-model="inputPath"
+                    size="large"
+                    class="w-full [&_.el-input__wrapper]:!rounded-r-none [&_.el-input__wrapper]:!rounded-l-[10px] [&_.el-input__wrapper]:!shadow-none [&_.el-input-group__append]:!p-0 [&_.el-input-group__append]:!overflow-hidden [&_.el-input-group__append]:!rounded-r-[10px]"
+                    :placeholder="t('toolbox.jsonFilePlaceholder')">
+                    <template #append>
+                        <el-button
+                            size="large"
+                            class="w-[40px] min-w-[40px] px-0 rounded-none"
+                            @click="pickInputPath"
+                            :icon="Folder" />
+                    </template>
+                </el-input>
             </div>
             <div class="form-row-split">
                 <div class="form-group">
                     <label class="form-label">{{ t('toolbox.outputFilePlaceholder') }}</label>
-                    <el-input v-model="outputPath" :placeholder="t('toolbox.outputFilePlaceholder')" />
+                    <el-input
+                        v-model="outputPath"
+                        size="large"
+                        class="w-full [&_.el-input__wrapper]:!rounded-r-none [&_.el-input__wrapper]:!rounded-l-[10px] [&_.el-input__wrapper]:!shadow-none [&_.el-input-group__append]:!p-0 [&_.el-input-group__append]:!overflow-hidden [&_.el-input-group__append]:!rounded-r-[10px]"
+                        :placeholder="t('toolbox.outputFilePlaceholder')">
+                        <template #append>
+                            <el-button
+                                size="large"
+                                class="w-[40px] min-w-[40px] px-0 rounded-none"
+                                @click="pickOutputPath"
+                                :icon="Document" />
+                        </template>
+                    </el-input>
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ t('toolbox.outputFormat') }}</label>
@@ -38,10 +62,22 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import { Folder, Document } from '@element-plus/icons-vue';
 import { useJsonConvert } from '../composables/tools/useJsonConvert';
+import { useFileDialog } from '@/composables/useFileDialog';
 
 const { t } = useI18n();
 const { inputPath, outputPath, outputFormat, jsonPath, fields, message, run } = useJsonConvert();
+const { selectFile, selectFileSave } = useFileDialog();
+
+async function pickInputPath() {
+    const path = await selectFile({ extensions: ['json'] });
+    if (path) inputPath.value = path;
+}
+async function pickOutputPath() {
+    const path = await selectFileSave({ extensions: ['csv', 'xlsx'] });
+    if (path) outputPath.value = path;
+}
 </script>
 
 <style scoped>

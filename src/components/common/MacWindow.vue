@@ -25,9 +25,9 @@
             </div>
             <div class="window-title">{{ title }}</div>
         </div>
-        <div class="window-content" :style="contentStyle">
+        <el-scrollbar class="window-content" :height="scrollbarHeight">
             <slot></slot>
-        </div>
+        </el-scrollbar>
         <!-- 调整大小的手柄 -->
         <div class="resize-handle resize-handle-se" @mousedown="startResize($event, 'se')"></div>
         <div class="resize-handle resize-handle-sw" @mousedown="startResize($event, 'sw')"></div>
@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
+import { ElScrollbar } from 'element-plus';
 
 // 属性定义
 const props = defineProps({
@@ -399,15 +400,13 @@ const windowStyle = computed(() => {
     return baseStyle;
 });
 
-// 内容区样式
-const contentStyle = computed(() => {
-    const style: Record<string, string> = {};
+// 滚动条高度
+const scrollbarHeight = computed(() => {
     if (isMaximized.value) {
-        style.height = `calc(100vh - ${menuBarHeight.value + 36}px)`;
-    } else if (windowSize.value.height) {
-        style.height = `${windowSize.value.height - 36}px`;
+        return `calc(100vh - ${menuBarHeight.value + 36}px)`;
+    } else {
+        return `${windowSize.value.height - 36}px`;
     }
-    return style;
 });
 </script>
 
@@ -415,6 +414,8 @@ const contentStyle = computed(() => {
 /* Mac风格窗口 */
 .mac-window {
     position: fixed;
+    display: flex;
+    flex-direction: column;
     background-color: var(--color-bg-glass);
     border-radius: 18px;
     box-shadow: 0 10px 30px var(--color-shadow);
@@ -481,6 +482,33 @@ const contentStyle = computed(() => {
     user-select: none;
     -webkit-user-select: none;
     -webkit-app-region: no-drag;
+}
+
+.window-content {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+.window-content :deep(.el-scrollbar) {
+    height: 100%;
+}
+
+.window-content :deep(.el-scrollbar__wrap) {
+    height: 100%;
+    overflow-x: hidden;
+}
+
+.window-content :deep(.el-scrollbar__view) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+}
+
+.window-content :deep(.el-scrollbar__bar) {
+    z-index: 10;
 }
 
 .window-titlebar.dragging {
