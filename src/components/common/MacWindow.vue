@@ -477,14 +477,15 @@ const contentStyle = computed(() => {
     border-bottom: 1px solid var(--color-window-titlebar-border);
     padding: 0 12px;
     position: relative;
-    cursor: grab;
+    /* cursor: grab; */
     user-select: none;
     -webkit-user-select: none;
     -webkit-app-region: no-drag;
 }
 
 .window-titlebar.dragging {
-    cursor: grabbing;
+    /* cursor: grabbing; */
+    user-select: none;
 }
 
 .window-buttons {

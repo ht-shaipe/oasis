@@ -48,7 +48,7 @@
         "blog": "Blog",
         "github": "Github",
         "music": "MoeKoeMusic",
-        "credentialManager": "Credential Manager"
+        "Credential": "Credential Manager"
     },
 
     "contextMenu": {

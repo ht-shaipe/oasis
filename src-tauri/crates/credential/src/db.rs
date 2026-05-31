@@ -20,6 +20,9 @@ pub fn init_db(app_data_dir: &Path) -> Result<Connection> {
     let db_path = app_data_dir.join("credentials.db");
     let conn = Connection::open(db_path)?;
 
+    // Enable foreign keys
+    conn.execute("PRAGMA foreign_keys = ON", [])?;
+
     conn.execute_batch(
         "
         CREATE TABLE IF NOT EXISTS master_key (

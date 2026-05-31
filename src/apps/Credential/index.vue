@@ -4,7 +4,7 @@
         :isMinimized="isMinimized"
         @close="handleClose"
         @minimize="emit('minimize')"
-        width="900"
+        width="1000"
         height="600">
         <div class="credential-container">
             <!-- ═══ Setup View ═══ -->
@@ -90,85 +90,88 @@
             </CredentialAuthCard>
 
             <!-- ═══ Main View ═══ -->
-            <div v-else class="credential-main">
-                <!-- Sidebar -->
-                <CredentialSidebar
-                    :title="t('credential.title')"
-                    :all-label="t('credential.category.all')"
-                    :category-tree="categoryTree"
-                    :selected-category-id="selectedCategoryId"
-                    @add-category="showAddCategoryDialog = true"
-                    @select-category="selectCategory"
-                    @quick-add-sub-category="quickAddSubCategory"
-                    @delete-category="handleDeleteCategory" />
+            <el-splitter v-else class="credential-main">
+                <el-splitter-panel v-model:size="sidebarSize" :min="SIDEBAR_MIN" :max="SIDEBAR_MAX">
+                    <!-- Sidebar -->
+                    <CredentialSidebar
+                        :title="t('credential.title')"
+                        :all-label="t('credential.category.all')"
+                        :category-tree="categoryTree"
+                        :selected-category-id="selectedCategoryId"
+                        @add-category="showAddCategoryDialog = true"
+                        @select-category="selectCategory"
+                        @quick-add-sub-category="quickAddSubCategory"
+                        @delete-category="handleDeleteCategory" />
+                </el-splitter-panel>
+                <el-splitter-panel>
+                    <!-- Content area -->
+                    <div class="credential-content">
+                        <!-- Toolbar -->
+                        <CredentialToolbar
+                            v-model="searchQuery"
+                            :search-placeholder="t('credential.list.search')"
+                            :add-label="t('credential.list.add')"
+                            :lock-label="t('credential.lock')"
+                            @add="openCreateDialog"
+                            @lock="handleLock" />
 
-                <!-- Content area -->
-                <div class="credential-content">
-                    <!-- Toolbar -->
-                    <CredentialToolbar
-                        v-model="searchQuery"
-                        :search-placeholder="t('credential.list.search')"
-                        :add-label="t('credential.list.add')"
-                        :lock-label="t('credential.lock')"
-                        @add="openCreateDialog"
-                        @lock="handleLock" />
-
-                    <!-- Credential table -->
-                    <div class="credential-table-wrapper">
-                        <el-empty
-                            v-if="displayCredentials.length === 0 && !tableLoading"
-                            :description="t('credential.list.empty')" />
-                        <el-table
-                            v-else
-                            v-loading="tableLoading"
-                            :data="displayCredentials"
-                            style="width: 100%"
-                            @row-dblclick="handleViewCredential">
-                            <el-table-column :label="t('credential.list.title')" min-width="160">
-                                <template #default="{ row }">
-                                    <div class="cred-title">
-                                        <el-icon><Key /></el-icon>
-                                        <span>{{ row.title }}</span>
-                                    </div>
-                                </template>
-                            </el-table-column>
-                            <el-table-column :label="t('credential.list.username')" min-width="120">
-                                <template #default="{ row }">
-                                    {{ row.username || '-' }}
-                                </template>
-                            </el-table-column>
-                            <el-table-column :label="t('credential.list.url')" min-width="140">
-                                <template #default="{ row }">
-                                    {{ row.url || '-' }}
-                                </template>
-                            </el-table-column>
-                            <el-table-column :label="t('credential.list.category')" width="120">
-                                <template #default="{ row }">
-                                    {{ row.category_name || '-' }}
-                                </template>
-                            </el-table-column>
-                            <el-table-column :label="t('credential.list.updatedAt')" width="160">
-                                <template #default="{ row }">
-                                    {{ formatDate(row.updated_at) }}
-                                </template>
-                            </el-table-column>
-                            <el-table-column :label="t('credential.list.actions')" width="150" fixed="right">
-                                <template #default="{ row }">
-                                    <el-button link size="small" @click="handleViewCredential(row)">
-                                        <el-icon><View /></el-icon>
-                                    </el-button>
-                                    <el-button link size="small" @click="openEditDialog(row)">
-                                        <el-icon><Edit /></el-icon>
-                                    </el-button>
-                                    <el-button link size="small" type="danger" @click="handleDeleteCredential(row)">
-                                        <el-icon><Delete /></el-icon>
-                                    </el-button>
-                                </template>
-                            </el-table-column>
-                        </el-table>
+                        <!-- Credential table -->
+                        <div class="credential-table-wrapper">
+                            <el-empty
+                                v-if="displayCredentials.length === 0 && !tableLoading"
+                                :description="t('credential.list.empty')" />
+                            <el-table
+                                v-else
+                                v-loading="tableLoading"
+                                :data="displayCredentials"
+                                style="width: 100%"
+                                @row-dblclick="handleViewCredential">
+                                <el-table-column :label="t('credential.list.title')" min-width="160">
+                                    <template #default="{ row }">
+                                        <div class="cred-title">
+                                            <el-icon><Key /></el-icon>
+                                            <span>{{ row.title }}</span>
+                                        </div>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column :label="t('credential.list.username')" min-width="120">
+                                    <template #default="{ row }">
+                                        {{ row.username || '-' }}
+                                    </template>
+                                </el-table-column>
+                                <el-table-column :label="t('credential.list.url')" min-width="140">
+                                    <template #default="{ row }">
+                                        {{ row.url || '-' }}
+                                    </template>
+                                </el-table-column>
+                                <el-table-column :label="t('credential.list.category')" width="120">
+                                    <template #default="{ row }">
+                                        {{ row.category_name || '-' }}
+                                    </template>
+                                </el-table-column>
+                                <el-table-column :label="t('credential.list.updatedAt')" width="160">
+                                    <template #default="{ row }">
+                                        {{ formatDate(row.updated_at) }}
+                                    </template>
+                                </el-table-column>
+                                <el-table-column :label="t('credential.list.actions')" width="110" fixed="right">
+                                    <template #default="{ row }">
+                                        <el-button link size="small" @click="handleViewCredential(row)">
+                                            <el-icon><View /></el-icon>
+                                        </el-button>
+                                        <el-button link size="small" @click="openEditDialog(row)">
+                                            <el-icon><Edit /></el-icon>
+                                        </el-button>
+                                        <el-button link size="small" type="danger" @click="handleDeleteCredential(row)">
+                                            <el-icon><Delete /></el-icon>
+                                        </el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </el-splitter-panel>
+            </el-splitter>
         </div>
 
         <!-- ═══ Add Category Dialog ═══ -->
@@ -197,310 +200,13 @@
             </template>
         </el-dialog>
 
-        <!-- ═══ Credential Edit/Create Dialog ═══ -->
-        <el-dialog
+        <!-- ═══ Credential Form Dialog (standalone component) ═══ -->
+        <CredentialFormDialog
             v-model="showCredDialog"
-            :title="isEditMode ? t('credential.detail.editTitle') : t('credential.detail.createTitle')"
-            width="600"
-            append-to-body
-            destroy-on-close>
-            <el-form ref="credFormRef" :model="credForm" label-position="top" @submit.prevent="handleSaveCredential">
-                <!-- Basic info -->
-                <h4 class="section-heading">{{ t('credential.detail.basicInfo') }}</h4>
-
-                <div class="grid gap-4 md:grid-cols-2">
-                    <el-form-item :label="t('credential.detail.credentialType')">
-                        <el-select
-                            v-model="credForm.credential_type"
-                            style="width: 100%"
-                            @change="handleCredentialTypeChange">
-                            <el-option
-                                v-for="option in credentialTemplateOptions"
-                                :key="option.value"
-                                :label="option.label"
-                                :value="option.value">
-                                <div class="flex flex-col py-1">
-                                    <span class="text-sm font-600 text-[var(--color-text-primary)]">{{
-                                        option.label
-                                    }}</span>
-                                    <span class="text-xs text-[var(--color-text-secondary)]">{{
-                                        option.description
-                                    }}</span>
-                                </div>
-                            </el-option>
-                        </el-select>
-                    </el-form-item>
-
-                    <el-form-item :label="t('credential.list.title')" required>
-                        <el-input v-model="credForm.title" />
-                    </el-form-item>
-
-                    <el-form-item :label="t('credential.list.category')">
-                        <el-select
-                            v-model="credForm.category_id"
-                            :placeholder="t('credential.list.category')"
-                            style="width: 100%">
-                            <el-option
-                                v-for="cat in flattenedCategories"
-                                :key="cat.id"
-                                :label="cat.name"
-                                :value="cat.id">
-                                <span :style="{ paddingLeft: cat.level * 20 + 'px' }">{{ cat.name }}</span>
-                            </el-option>
-                        </el-select>
-                    </el-form-item>
-
-                    <el-form-item :label="t('credential.list.username')">
-                        <el-input v-model="credForm.username" :placeholder="t('credential.form.usernameHint')" />
-                    </el-form-item>
-
-                    <el-form-item :label="t('credential.list.url')">
-                        <el-input v-model="credForm.url" :placeholder="t('credential.form.urlHint')" />
-                    </el-form-item>
-
-                    <el-form-item :label="t('credential.detail.tags')">
-                        <el-input v-model="credForm.tags" :placeholder="t('credential.detail.tags')" />
-                    </el-form-item>
-
-                    <el-form-item :label="t('credential.detail.notes')" class="md:col-span-2">
-                        <el-input v-model="credForm.notes" type="textarea" :rows="2" />
-                    </el-form-item>
-                </div>
-
-                <div
-                    class="mb-4 rounded-xl border border-[rgba(64,158,255,0.12)] bg-[rgba(64,158,255,0.06)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-                    {{ t('credential.form.typeDescription') }}
-                    <span class="font-600 text-[var(--color-text-primary)]">{{
-                        getCredentialTemplateLabel(credForm.credential_type)
-                    }}</span>
-                </div>
-
-                <!-- Sensitive info -->
-                <h4 class="section-heading">{{ t('credential.detail.sensitiveInfo') }}</h4>
-
-                <div v-if="credForm.credential_type === 'account'" class="grid gap-4 md:grid-cols-2">
-                    <el-form-item :label="t('credential.form.passwordLabel')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.password"
-                                :placeholder="t('credential.form.passwordHint')"
-                                :type="visibleFields.password ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('password')">
-                                <el-icon><component :is="visibleFields.password ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.password)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-                </div>
-
-                <div v-else-if="credForm.credential_type === 'api_key'" class="grid gap-4 md:grid-cols-2">
-                    <el-form-item :label="t('credential.form.keyLabel')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.api_key"
-                                :placeholder="t('credential.form.keyHint')"
-                                :type="visibleFields.apiKey ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('apiKey')">
-                                <el-icon><component :is="visibleFields.apiKey ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.api_key)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-                </div>
-
-                <div v-else-if="credForm.credential_type === 'key_secret'" class="grid gap-4 md:grid-cols-2">
-                    <el-form-item :label="t('credential.form.keyLabel')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.api_key"
-                                :placeholder="t('credential.form.keyHint')"
-                                :type="visibleFields.apiKey ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('apiKey')">
-                                <el-icon><component :is="visibleFields.apiKey ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.api_key)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-
-                    <el-form-item :label="t('credential.form.secretLabel')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.secret_key"
-                                :placeholder="t('credential.form.secretHint')"
-                                :type="visibleFields.secretKey ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('secretKey')">
-                                <el-icon><component :is="visibleFields.secretKey ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.secret_key)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-                </div>
-
-                <div v-else-if="credForm.credential_type === 'expiring_key'" class="grid gap-4 md:grid-cols-2">
-                    <el-form-item :label="t('credential.form.keyLabel')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.api_key"
-                                :placeholder="t('credential.form.keyHint')"
-                                :type="visibleFields.apiKey ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('apiKey')">
-                                <el-icon><component :is="visibleFields.apiKey ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.api_key)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-
-                    <el-form-item :label="t('credential.form.expiresAtLabel')">
-                        <el-date-picker
-                            v-model="credForm.sensitive.expires_at"
-                            class="w-full"
-                            type="datetime"
-                            :placeholder="t('credential.form.expiresAtHint')"
-                            value-format="YYYY-MM-DD HH:mm:ss" />
-                    </el-form-item>
-                </div>
-
-                <div v-else class="grid gap-4 md:grid-cols-2">
-                    <el-form-item
-                        v-if="shouldShowField(credForm.credential_type, 'password')"
-                        :label="t('credential.form.passwordLabel')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.password"
-                                :placeholder="t('credential.form.passwordHint')"
-                                :type="visibleFields.password ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('password')">
-                                <el-icon><component :is="visibleFields.password ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.password)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-
-                    <el-form-item
-                        v-if="shouldShowField(credForm.credential_type, 'api_key')"
-                        :label="t('credential.form.keyLabel')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.api_key"
-                                :placeholder="t('credential.form.keyHint')"
-                                :type="visibleFields.apiKey ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('apiKey')">
-                                <el-icon><component :is="visibleFields.apiKey ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.api_key)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-
-                    <el-form-item
-                        v-if="shouldShowField(credForm.credential_type, 'secret_key')"
-                        :label="t('credential.form.secretLabel')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.secret_key"
-                                :placeholder="t('credential.form.secretHint')"
-                                :type="visibleFields.secretKey ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('secretKey')">
-                                <el-icon><component :is="visibleFields.secretKey ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.secret_key)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-
-                    <el-form-item
-                        v-if="shouldShowField(credForm.credential_type, 'expires_at')"
-                        :label="t('credential.form.expiresAtLabel')">
-                        <el-date-picker
-                            v-model="credForm.sensitive.expires_at"
-                            class="w-full"
-                            type="datetime"
-                            :placeholder="t('credential.form.expiresAtHint')"
-                            value-format="YYYY-MM-DD HH:mm:ss" />
-                    </el-form-item>
-
-                    <el-form-item
-                        v-if="shouldShowField(credForm.credential_type, 'access_token')"
-                        :label="t('credential.detail.accessToken')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.access_token"
-                                :placeholder="t('credential.form.accessTokenHint')"
-                                :type="visibleFields.accessToken ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('accessToken')">
-                                <el-icon><component :is="visibleFields.accessToken ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.access_token)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-
-                    <el-form-item
-                        v-if="shouldShowField(credForm.credential_type, 'refresh_token')"
-                        :label="t('credential.detail.refreshToken')">
-                        <div class="sensitive-field">
-                            <el-input
-                                v-model="credForm.sensitive.refresh_token"
-                                :placeholder="t('credential.form.refreshTokenHint')"
-                                :type="visibleFields.refreshToken ? 'text' : 'password'" />
-                            <el-button link @click="toggleVisible('refreshToken')">
-                                <el-icon><component :is="visibleFields.refreshToken ? Hide : View" /></el-icon>
-                            </el-button>
-                            <el-button link @click="copyToClipboard(credForm.sensitive.refresh_token)">
-                                <el-icon><CopyDocument /></el-icon>
-                            </el-button>
-                        </div>
-                    </el-form-item>
-                </div>
-
-                <!-- Custom fields -->
-                <h4 class="section-heading">{{ t('credential.detail.customFields') }}</h4>
-
-                <div v-for="(field, index) in customFields" :key="index" class="custom-field-row">
-                    <el-input v-model="field.key" :placeholder="'Key'" class="custom-key" />
-                    <div class="sensitive-field custom-value">
-                        <el-input
-                            v-model="field.value"
-                            :type="field.visible ? 'text' : 'password'"
-                            :placeholder="'Value'" />
-                        <el-button link @click="field.visible = !field.visible">
-                            <el-icon><component :is="field.visible ? Hide : View" /></el-icon>
-                        </el-button>
-                    </div>
-                    <el-button link type="danger" @click="customFields.splice(index, 1)">
-                        <el-icon><Delete /></el-icon>
-                    </el-button>
-                </div>
-                <el-button text @click="customFields.push({ key: '', value: '', visible: false })">
-                    <el-icon><Plus /></el-icon>
-                    {{ t('credential.detail.addField') }}
-                </el-button>
-                <!-- Hidden submit button to enable Enter key submission -->
-                <button type="submit" style="display: none" />
-            </el-form>
-
-            <template #footer>
-                <el-button @click="showCredDialog = false">{{ t('credential.detail.cancel') }}</el-button>
-                <el-button type="primary" :loading="credSaving" @click="handleSaveCredential">
-                    {{ t('credential.detail.save') }}
-                </el-button>
-            </template>
-        </el-dialog>
+            :categories="flattenedCategories"
+            :dek="dek"
+            :editing-credential="editingRow"
+            @saved="loadMainData" />
 
         <!-- ═══ Credential Detail Dialog ═══ -->
         <el-dialog
@@ -688,7 +394,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, reactive } from 'vue';
+import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
@@ -697,24 +403,9 @@ import MacWindow from '@/components/common/MacWindow.vue';
 import CredentialAuthCard from './AuthCard.vue';
 import CredentialSidebar from './Sidebar.vue';
 import CredentialToolbar from './Toolbar.vue';
-import {
-    buildSensitiveData,
-    defaultCredentialForm,
-    credentialTemplateOptions,
-    getCredentialTemplateLabel,
-    inferCredentialType,
-    normalizeSensitiveFields,
-    shouldShowField,
-    type CredentialFormModel,
-    type CredentialTemplateKey,
-} from './credentialForm';
-import {
-    useCredential,
-    type Category,
-    type CredentialView,
-    type CredentialDetail,
-    type SensitiveData,
-} from '@/composables/useCredential';
+import { getCredentialTemplateLabel, type CredentialTemplateKey } from './credentialForm.ts';
+import { useCredential, type Category, type CredentialView, type CredentialDetail } from '@/composables/useCredential';
+import CredentialFormDialog from './CredentialFormDialog.vue';
 
 const { t } = useI18n();
 const {
@@ -727,10 +418,39 @@ const {
     deleteCategory,
     listCredentials,
     getCredential,
-    createCredential,
-    updateCredential,
     deleteCredential,
+    dek,
 } = useCredential();
+
+// ── Sidebar Size Management ──
+
+const SIDEBAR_MIN = 180;
+const SIDEBAR_MAX = 400;
+const SIDEBAR_DEFAULT = 200;
+const SIDEBAR_STORAGE_KEY = 'credential-sidebar-width';
+
+function loadSidebarWidth(): number {
+    try {
+        const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+        let width = saved ? parseInt(saved, 10) : SIDEBAR_DEFAULT;
+        // Ensure the width is within the valid range
+        width = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, width));
+        return width;
+    } catch {
+        return SIDEBAR_DEFAULT;
+    }
+}
+
+const sidebarSize = ref(loadSidebarWidth());
+
+// 监听尺寸变化，保存到 localStorage
+watch(sidebarSize, (newSize) => {
+    try {
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(newSize));
+    } catch (error) {
+        console.warn('Failed to save sidebar width:', error);
+    }
+});
 
 // ── Props / Emits ──
 
@@ -1028,155 +748,16 @@ const handleDeleteCategory = async (data: Pick<Category, 'id' | 'name'>) => {
 // ── Credential edit/create dialog ──
 
 const showCredDialog = ref(false);
-const isEditMode = ref(false);
-const editingCredId = ref<number | null>(null);
-const credSaving = ref(false);
-
-const credForm = reactive<CredentialFormModel>(defaultCredentialForm(null));
-
-const customFields = ref<Array<{ key: string; value: string; visible: boolean }>>([]);
-
-const visibleFields = reactive({
-    password: false,
-    apiKey: false,
-    secretKey: false,
-    accessToken: false,
-    refreshToken: false,
-});
-
-const toggleVisible = (field: keyof typeof visibleFields) => {
-    visibleFields[field] = !visibleFields[field];
-};
-
-// Clear fields that no longer apply after changing the credential template.
-const handleCredentialTypeChange = () => {
-    normalizeSensitiveFields(credForm);
-};
-
-const resetCredForm = () => {
-    Object.assign(credForm, defaultCredentialForm(selectedCategoryId.value));
-    customFields.value = [];
-    visibleFields.password = false;
-    visibleFields.apiKey = false;
-    visibleFields.secretKey = false;
-    visibleFields.accessToken = false;
-    visibleFields.refreshToken = false;
-};
+const editingRow = ref<CredentialView | CredentialDetail | null>(null);
 
 const openCreateDialog = () => {
-    isEditMode.value = false;
-    editingCredId.value = null;
-    resetCredForm();
+    editingRow.value = null;
     showCredDialog.value = true;
 };
 
-const openEditDialog = async (row: CredentialView | CredentialDetail) => {
-    isEditMode.value = true;
-    editingCredId.value = row.id;
-    resetCredForm();
-
-    // Populate basic fields
-    credForm.title = row.title;
-    credForm.category_id = row.category_id;
-    credForm.username = row.username || '';
-    credForm.url = row.url || '';
-    credForm.tags = row.tags || '';
-    credForm.notes = row.notes || '';
-
-    // If we already have sensitive_data (from detail view), use it
-    const detail = row as CredentialDetail;
-    if (detail.sensitive_data) {
-        credForm.credential_type =
-            (detail.sensitive_data.credential_type as CredentialTemplateKey) ??
-            inferCredentialType(detail.sensitive_data);
-        credForm.sensitive.password = detail.sensitive_data.password || '';
-        credForm.sensitive.api_key = detail.sensitive_data.api_key || '';
-        credForm.sensitive.secret_key = detail.sensitive_data.secret_key || '';
-        credForm.sensitive.expires_at = detail.sensitive_data.expires_at || '';
-        credForm.sensitive.access_token = detail.sensitive_data.access_token || '';
-        credForm.sensitive.refresh_token = detail.sensitive_data.refresh_token || '';
-        if (detail.sensitive_data.custom_fields) {
-            customFields.value = Object.entries(detail.sensitive_data.custom_fields).map(([key, value]) => ({
-                key,
-                value,
-                visible: false,
-            }));
-        }
-    } else {
-        // Need to fetch detail
-        try {
-            const d = await getCredential(row.id);
-            credForm.credential_type =
-                (d.sensitive_data.credential_type as CredentialTemplateKey) ?? inferCredentialType(d.sensitive_data);
-            credForm.sensitive.password = d.sensitive_data.password || '';
-            credForm.sensitive.api_key = d.sensitive_data.api_key || '';
-            credForm.sensitive.secret_key = d.sensitive_data.secret_key || '';
-            credForm.sensitive.expires_at = d.sensitive_data.expires_at || '';
-            credForm.sensitive.access_token = d.sensitive_data.access_token || '';
-            credForm.sensitive.refresh_token = d.sensitive_data.refresh_token || '';
-            if (d.sensitive_data.custom_fields) {
-                customFields.value = Object.entries(d.sensitive_data.custom_fields).map(([key, value]) => ({
-                    key,
-                    value,
-                    visible: false,
-                }));
-            }
-        } catch {
-            // If backend fails, just leave sensitive fields empty
-        }
-    }
-
+const openEditDialog = (row: CredentialView | CredentialDetail) => {
+    editingRow.value = row;
     showCredDialog.value = true;
-};
-
-const handleSaveCredential = async () => {
-    if (!credForm.title.trim()) {
-        ElMessage.warning(t('credential.list.title'));
-        return;
-    }
-
-    // Build sensitive_data_json
-    normalizeSensitiveFields(credForm);
-    const sensitiveData: SensitiveData = buildSensitiveData(credForm);
-    const customObj: Record<string, string> = {};
-    for (const f of customFields.value) {
-        if (f.key.trim()) customObj[f.key.trim()] = f.value;
-    }
-    if (Object.keys(customObj).length > 0) {
-        sensitiveData.custom_fields = customObj;
-    }
-
-    credSaving.value = true;
-    try {
-        if (isEditMode.value && editingCredId.value !== null) {
-            await updateCredential({
-                id: editingCredId.value,
-                category_id: credForm.category_id ?? undefined,
-                title: credForm.title,
-                username: credForm.username || undefined,
-                url: credForm.url || undefined,
-                sensitive_data_json: JSON.stringify(sensitiveData),
-                tags: credForm.tags || undefined,
-                notes: credForm.notes || undefined,
-            });
-        } else {
-            await createCredential({
-                category_id: credForm.category_id ?? 0,
-                title: credForm.title,
-                username: credForm.username || undefined,
-                url: credForm.url || undefined,
-                sensitive_data_json: JSON.stringify(sensitiveData),
-                tags: credForm.tags || undefined,
-                notes: credForm.notes || undefined,
-            });
-        }
-        showCredDialog.value = false;
-        await loadMainData();
-    } catch (err: unknown) {
-        ElMessage.error(err instanceof Error ? err.message : String(err));
-    } finally {
-        credSaving.value = false;
-    }
 };
 
 // ── Delete credential ──
@@ -1224,7 +805,14 @@ const handleViewCredential = async (row: CredentialView) => {
         }
         showDetailDialog.value = true;
     } catch (err: unknown) {
-        ElMessage.error(err instanceof Error ? err.message : String(err));
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        if (errorMsg === 'Vault is locked') {
+            ElMessage.warning('保险库已锁定，请重新输入密码');
+            lock();
+            viewState.value = 'unlock';
+        } else {
+            ElMessage.error(errorMsg);
+        }
     }
 };
 
@@ -1258,6 +846,32 @@ onMounted(async () => {
         // If backend not ready, default to setup
         viewState.value = 'setup';
     }
+
+    // Setup diagnostic functions
+    (window as any).diagnoseCredential = async (id: number) => {
+        try {
+            const { diagnoseCredential } = useCredential();
+            const result = await diagnoseCredential(id);
+            console.log('Diagnostic result:', result);
+            return result;
+        } catch (err: unknown) {
+            console.error('Diagnostic failed:', err);
+            throw err;
+        }
+    };
+
+    (window as any).fixCredential = async (id: number) => {
+        try {
+            const { fixCredential } = useCredential();
+            const result = await fixCredential(id);
+            console.log('Fix result:', result);
+            await loadMainData();
+            return result;
+        } catch (err: unknown) {
+            console.error('Fix failed:', err);
+            throw err;
+        }
+    };
 
     // Activity listeners for auto-lock
     document.addEventListener('mousemove', onUserActivity);
@@ -1318,37 +932,6 @@ onUnmounted(() => {
 
 .cred-title .el-icon {
     color: #e6a23c;
-}
-
-/* ── Sensitive field row ── */
-
-.sensitive-field {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    width: 100%;
-}
-
-.sensitive-field .el-input {
-    flex: 1;
-}
-
-/* ── Custom field row ── */
-
-.custom-field-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.custom-key {
-    width: 140px;
-    flex-shrink: 0;
-}
-
-.custom-value {
-    flex: 1;
 }
 
 /* ── Section heading ── */

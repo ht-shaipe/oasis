@@ -1,7 +1,7 @@
 [package]
-edition = "2021"
+edition = {workspace = true}
 name = "oasis"
-version = "0.1.0"
+version = {workspace = true}
 
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
@@ -28,3 +28,7 @@ tauri-plugin-opener = "2"
 tokio = {version = "1", features = ["full"] }
 toml = "0.8"
 tube = {path = "../../../../rust/kit/tube", features = ["net", "sync_net"] }
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"

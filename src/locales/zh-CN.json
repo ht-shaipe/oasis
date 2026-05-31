@@ -49,7 +49,7 @@
         "blog": "Blog",
         "github": "Github",
         "music": "MoeKoeMusic",
-        "credentialManager": "凭证管理"
+        "Credential": "凭证管理"
     },
     "contextMenu": {
         "changeWallpaper": "切换壁纸",

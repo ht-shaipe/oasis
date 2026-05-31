@@ -81,7 +81,9 @@ pub struct NewCredential {
     pub username: Option<String>,
     pub url: Option<String>,
     pub sensitive_data_json: String,
+    #[serde(alias = "dekBase64")]
     pub dek_base64: String,
+    #[serde(alias = "nonceBase64")]
     pub nonce_base64: String,
     pub tags: Option<String>,
     pub notes: Option<String>,
@@ -95,7 +97,9 @@ pub struct UpdateCredential {
     pub username: Option<String>,
     pub url: Option<String>,
     pub sensitive_data_json: Option<String>,
+    #[serde(alias = "dekBase64")]
     pub dek_base64: Option<String>,
+    #[serde(alias = "nonceBase64")]
     pub nonce_base64: Option<String>,
     pub tags: Option<String>,
     pub notes: Option<String>,

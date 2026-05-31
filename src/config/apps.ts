@@ -7,7 +7,7 @@ import About from '@/apps/About.vue';
 import ContinueDialog from '@/apps/ContinueDialog.vue';
 import Notes from '@/apps/Notes.vue';
 import Profile from '@/apps/Profile.vue';
-import CredentialManager from '@/apps/CredentialManager/index.vue';
+import Credential from '@/apps/Credential/index.vue';
 import Toolbox from '@/apps/Toolbox/Index.vue';
 import Browser from '@/apps/Browser.vue';
 
@@ -67,10 +67,10 @@ export const apps: AppConfig[] = [
         id: 'credential-manager',
         name: 'Credential Manager',
         icon: '/assets/icons/Privacy.svg',
-        component: CredentialManager,
+        component: Credential,
         showInDock: true,
         showOnDesktop: true,
-        nameKey: 'dock.credentialManager',
+        nameKey: 'dock.Credential',
     },
     {
         id: 'notes',

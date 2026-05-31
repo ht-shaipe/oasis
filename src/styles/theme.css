@@ -61,6 +61,27 @@
   /* 阴影 */
   --color-shadow: rgba(0, 0, 0, 0.2);
   --color-shadow-light: rgba(0, 0, 0, 0.1);
+
+  /* 代码编辑器 */
+  --code-bg: #ffffff;
+  --code-bg-secondary: #f3f3f3;
+  --code-bg-tertiary: #ececec;
+  --code-bg-hover: #e8e8e8;
+  --code-bg-active: #d6ebff;
+  --code-bg-input: #ffffff;
+  --code-border: #e7e7e7;
+  --code-text-primary: #333333;
+  --code-text-secondary: #616161;
+  --code-text-tertiary: #999999;
+  --code-accent: #007acc;
+  --code-status-bar-bg: #007acc;
+  --code-status-bar-text: #ffffff;
+  --code-terminal-green: #22da6e;
+  --code-activity-bar-bg: #2c2c2c;
+  --code-activity-bar-text: #858585;
+  --code-activity-bar-text-hover: #ffffff;
+  --code-activity-bar-text-active: #ffffff;
+  --code-status-bar-divider: rgba(255, 255, 255, 0.2);
 }
 
 [data-theme="dark"] {
@@ -127,4 +148,25 @@
   /* 阴影 */
   --color-shadow: rgba(0, 0, 0, 0.5);
   --color-shadow-light: rgba(0, 0, 0, 0.3);
+
+  /* 代码编辑器 */
+  --code-bg: #1e1e1e;
+  --code-bg-secondary: #252526;
+  --code-bg-tertiary: #2d2d2d;
+  --code-bg-hover: #2a2d2e;
+  --code-bg-active: #37373d;
+  --code-bg-input: #3c3c3c;
+  --code-border: #3c3c3c;
+  --code-text-primary: #cccccc;
+  --code-text-secondary: #bbbbbb;
+  --code-text-tertiary: #858585;
+  --code-accent: #007acc;
+  --code-status-bar-bg: #007acc;
+  --code-status-bar-text: #ffffff;
+  --code-terminal-green: #22da6e;
+  --code-activity-bar-bg: #333333;
+  --code-activity-bar-text: #858585;
+  --code-activity-bar-text-hover: #ffffff;
+  --code-activity-bar-text-active: #ffffff;
+  --code-status-bar-divider: rgba(255, 255, 255, 0.2);
 }

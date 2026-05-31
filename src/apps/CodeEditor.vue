@@ -339,6 +339,7 @@ import { ref, onMounted, watch, nextTick, onBeforeUnmount, computed } from 'vue'
 import { ElMessage } from 'element-plus';
 import loader from '@monaco-editor/loader';
 import MacWindow from '@/components/common/MacWindow.vue';
+import { useThemeStore } from '@/store/theme';
 
 // 定义类型接口
 interface EditorTab {
@@ -399,6 +400,8 @@ const props = defineProps({
 
 // 事件发射
 const emit = defineEmits(['close', 'minimize', 'codeUpdated', 'openApp']);
+
+const themeStore = useThemeStore();
 
 // 状态变量
 const editorContainer = ref<HTMLElement | null>(null);
@@ -635,7 +638,7 @@ const initMonacoEditor = async () => {
             monacoEditor = monaco.editor.create(editorContainer.value, {
                 value: props.code,
                 language: detectLanguage(props.code),
-                theme: 'vs-dark',
+                theme: themeStore.isDark ? 'vs-dark' : 'vs',
                 automaticLayout: true,
                 minimap: {
                     enabled: true
@@ -780,6 +783,13 @@ onBeforeUnmount(() => {
     }
 });
 
+// 监听主题变化，同步Monaco编辑器主题
+watch(() => themeStore.isDark, (dark) => {
+    if (monacoEditor) {
+        monacoEditor.updateOptions({ theme: dark ? 'vs-dark' : 'vs' });
+    }
+});
+
 // 监听代码属性变化
 watch(
     () => props.code,
@@ -920,8 +930,8 @@ watch(
         "activity-bar sidebar editor"
         "status-bar status-bar status-bar";
     height: 100%;
-    color: #CCCCCC;
-    background-color: #1E1E1E;
+    color: var(--code-text-primary);
+    background-color: var(--code-bg);
     overflow: hidden;
 }
 
@@ -935,6 +945,7 @@ watch(
     padding-top: 10px;
     flex-shrink: 0;
     z-index: 10;
+    background-color: var(--code-activity-bar-bg);
 }
 
 .activity-bar-item {
@@ -943,17 +954,17 @@ watch(
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #858585;
+    color: var(--code-activity-bar-text);
     position: relative;
     cursor: pointer;
 }
 
 .activity-bar-item:hover {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .activity-bar-item.active {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-active);
 }
 
 .activity-bar-item.active::before {
@@ -962,15 +973,15 @@ watch(
     left: 0;
     height: 100%;
     width: 2px;
-    background-color: #007acc;
+    background-color: var(--code-accent);
 }
 
 .sidebar {
     grid-area: sidebar;
     width: 200px;
     height: 100%;
-    background-color: #252526;
-    border-right: 1px solid #3c3c3c;
+    background-color: var(--code-bg-secondary);
+    border-right: 1px solid var(--code-border);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
@@ -993,7 +1004,7 @@ watch(
     font-weight: 600;
     text-transform: uppercase;
     font-size: 11px;
-    color: #cccccc;
+    color: var(--code-text-primary);
 }
 
 .sidebar-title {
@@ -1012,7 +1023,7 @@ watch(
     align-items: center;
     background: none;
     border: none;
-    color: #cccccc;
+    color: var(--code-text-primary);
     font-size: 16px;
     cursor: pointer;
 }
@@ -1027,7 +1038,7 @@ watch(
 }
 
 .sidebar-action:hover {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .sidebar-content {
@@ -1048,7 +1059,7 @@ watch(
     font-weight: 600;
     font-size: 11px;
     text-transform: uppercase;
-    color: #bbbbbb;
+    color: var(--code-text-secondary);
 }
 
 .sidebar-section-title {
@@ -1058,7 +1069,7 @@ watch(
 .sidebar-section-action {
     background: none;
     border: none;
-    color: #bbbbbb;
+    color: var(--code-text-secondary);
     cursor: pointer;
     font-size: 14px;
 }
@@ -1072,11 +1083,11 @@ watch(
 }
 
 .sidebar-item:hover, .file-tree-item:hover {
-    background-color: #2a2d2e;
+    background-color: var(--code-bg-hover);
 }
 
 .sidebar-item.active {
-    background-color: #37373d;
+    background-color: var(--code-bg-active);
 }
 
 .file-icon, .folder-icon {
@@ -1089,15 +1100,15 @@ watch(
 
 .search-input {
     height: 24px;
-    background-color: #3c3c3c;
-    border: 1px solid #3c3c3c;
-    color: #cccccc;
+    background-color: var(--code-bg-input);
+    border: 1px solid var(--code-border);
+    color: var(--code-text-primary);
     padding: 0 6px;
     outline: none;
 }
 
 .search-input:focus {
-    border-color: #007acc;
+    border-color: var(--code-accent);
 }
 
 .search-box-buttons {
@@ -1108,11 +1119,11 @@ watch(
 .search-box-button {
     background: none;
     border: none;
-    color: #cccccc;
+    color: var(--code-text-primary);
     margin-right: 4px;
     cursor: pointer;
     font-size: 12px;
-    border: 1px solid #3c3c3c;
+    border: 1px solid var(--code-border);
 }
 
 .sidebar-message {
@@ -1144,10 +1155,10 @@ watch(
 
 .editor-tabs {
     height: 35px;
-    background-color: #252526;
+    background-color: var(--code-bg-secondary);
     display: flex;
     align-items: center;
-    border-bottom: 1px solid #3c3c3c;
+    border-bottom: 1px solid var(--code-border);
     overflow-x: auto;
     flex-shrink: 0;
     scrollbar-width: none;
@@ -1161,18 +1172,18 @@ watch(
     display: flex;
     align-items: center;
     padding: 0 8px;
-    background-color: #2d2d2d;
-    border-right: 1px solid #3c3c3c;
+    background-color: var(--code-bg-tertiary);
+    border-right: 1px solid var(--code-border);
     font-size: 13px;
-    color: #cccccc;
+    color: var(--code-text-primary);
     cursor: pointer;
     flex-shrink: 0;
 }
 
 .editor-tab.active {
-    background-color: #1e1e1e;
-    color: #ffffff;
-    border-top: 1px solid #007acc;
+    background-color: var(--code-bg);
+    color: var(--code-activity-bar-text-hover);
+    border-top: 1px solid var(--code-accent);
 }
 
 .tab-filename {
@@ -1186,7 +1197,7 @@ watch(
 .tab-close {
     background: none;
     border: none;
-    color: #cccccc;
+    color: var(--code-text-primary);
     font-size: 16px;
     cursor: pointer;
     opacity: 0.7;
@@ -1216,20 +1227,20 @@ watch(
     align-items: center;
     text-align: center;
     padding: 20px;
-    color: #cccccc;
+    color: var(--code-text-primary);
 }
 
 .welcome-title {
     font-size: 32px;
     font-weight: 300;
     margin-bottom: 10px;
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .welcome-subtitle {
     font-size: 18px;
     margin-bottom: 40px;
-    color: #cccccc;
+    color: var(--code-text-primary);
 }
 
 .welcome-actions {
@@ -1248,12 +1259,12 @@ watch(
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 10px;
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .welcome-action-item {
     margin: 8px 0;
-    color: #007acc;
+    color: var(--code-accent);
     cursor: pointer;
 }
 
@@ -1264,7 +1275,7 @@ watch(
 .panel-area {
     height: 200px;
     max-height: 40%;
-    border-top: 1px solid #3c3c3c;
+    border-top: 1px solid var(--code-border);
     display: flex;
     flex-direction: column;
     position: relative;
@@ -1285,7 +1296,7 @@ watch(
 
 .panel-header {
     height: 35px;
-    background-color: #252526;
+    background-color: var(--code-bg-secondary);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1306,15 +1317,15 @@ watch(
     display: flex;
     align-items: center;
     height: 100%;
-    color: #cccccc;
+    color: var(--code-text-primary);
     cursor: pointer;
     white-space: nowrap;
 }
 
 .panel-tab.active {
-    color: #ffffff;
-    border-top: 1px solid #007acc;
-    background-color: #1e1e1e;
+    color: var(--code-activity-bar-text-hover);
+    border-top: 1px solid var(--code-accent);
+    background-color: var(--code-bg);
 }
 
 .panel-actions {
@@ -1329,19 +1340,19 @@ watch(
     align-items: center;
     background: none;
     border: none;
-    color: #cccccc;
+    color: var(--code-text-primary);
     font-size: 16px;
     cursor: pointer;
 }
 
 .panel-action:hover {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .panel-content {
     flex: 1;
     overflow: auto;
-    background-color: #1e1e1e;
+    background-color: var(--code-bg);
     min-height: 0;
 }
 
@@ -1359,24 +1370,24 @@ watch(
 }
 
 .terminal-prompt {
-    color: #22da6e;
+    color: var(--code-terminal-green);
     margin-right: 8px;
     font-size: 15px;
 }
 
 .terminal-command {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .terminal-output {
-    color: #cccccc;
+    color: var(--code-text-primary);
 }
 
 .terminal-cursor {
     display: inline-block;
     width: 8px;
     height: 1em;
-    background-color: #cccccc;
+    background-color: var(--code-text-primary);
     animation: blink 1s infinite;
 }
 
@@ -1389,8 +1400,8 @@ watch(
     grid-area: status-bar;
     display: flex;
     justify-content: space-between;
-    background-color: #007acc;
-    color: white;
+    background-color: var(--code-status-bar-bg);
+    color: var(--code-status-bar-text);
     height: 22px;
     font-size: 12px;
     width: 100%;
@@ -1420,7 +1431,7 @@ watch(
     padding: 0 8px;
     display: flex;
     align-items: center;
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    border-right: 1px solid var(--code-status-bar-divider);
     height: 100%;
     white-space: nowrap;
     overflow: hidden;
@@ -1441,7 +1452,7 @@ watch(
 .copy-btn {
     background: none;
     border: none;
-    color: white;
+    color: var(--code-status-bar-text);
     display: flex;
     align-items: center;
     gap: 4px;
@@ -1469,8 +1480,8 @@ watch(
 .text-button {
     background: none;
     border: none;
-    background-color: #007acc;
-    color: #ffffff;
+    background-color: var(--code-accent);
+    color: var(--code-status-bar-text);
     cursor: pointer;
     margin-top: 20px;
     padding: 4px 16px;

@@ -21,16 +21,7 @@ mod commands;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            commands::greet,
-            commands::update_tray_locale,
-            // credential
-            oasis_credential::credential_handlers!(),
-            // toolbox
-            oasis_toolbox::toolbox_handlers!(),
-            // browser
-            oasis_browser::browser_handlers!(),
-        ])
+        .invoke_handler(include!(concat!(env!("OUT_DIR"), "/generated_invoke_handler.rs")))
         .setup(|app| {
             setup_tray(app)?;
             Ok(())

@@ -151,6 +151,11 @@ pub fn get_credential(
     let conn = get_conn(&app)?;
     let cred = db::get_credential(&conn, id).map_err(|e| e.to_string())?;
 
+    eprintln!("DEBUG: Retrieved credential id={}, cipher_len={}, nonce_len={}",
+        id, cred.encrypted_data.len(), cred.nonce.len());
+    eprintln!("DEBUG: Encrypted data (hex): {:02x?}", cred.encrypted_data);
+    eprintln!("DEBUG: Nonce (hex): {:02x?}", cred.nonce);
+
     // Decode DEK
     let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &dek_base64)
         .map_err(|_| "Invalid DEK base64".to_string())?;
@@ -282,8 +287,10 @@ pub fn create_credential(
 
     // Encrypt sensitive_data_json
     let plaintext = credential.sensitive_data_json.as_bytes();
+    eprintln!("DEBUG: Encrypting plaintext (len={}): {}", plaintext.len(), credential.sensitive_data_json);
     let (encrypted, nonce_bytes) =
         crypto::encrypt(&dek, plaintext).map_err(|e| format!("Encryption failed: {:?}", e))?;
+    eprintln!("DEBUG: Encrypted result (len={}, nonce_len={})", encrypted.len(), nonce_bytes.len());
 
     // Create a modified NewCredential with encrypted data
     let cred_with_enc = NewCredential {

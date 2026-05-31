@@ -46,6 +46,8 @@ export interface CreateCredentialRequest {
     username?: string;
     url?: string;
     sensitive_data_json: string;
+    dekBase64: string;
+    nonceBase64: string;
     tags?: string;
     notes?: string;
 }
@@ -57,19 +59,21 @@ export interface UpdateCredentialRequest {
     username?: string;
     url?: string;
     sensitive_data_json?: string;
+    dekBase64?: string;
+    nonceBase64?: string;
     tags?: string;
     notes?: string;
 }
 
-// ── DEK memory-only store ──────────────────────────────────────────────
-// DEK 仅存内存，不持久化（不写入 localStorage / sessionStorage）
-
-const dek = ref<string | null>(null);
-const isLocked = computed(() => dek.value === null);
-
 // ── Composable ─────────────────────────────────────────────────────────
 
 export function useCredential() {
+    // ── DEK memory-only store (instance-level) ─────────────────────────────
+    // DEK 仅存内存，不持久化（不写入 localStorage / sessionStorage）
+
+    const dek = ref<string | null>(null);
+    const isLocked = computed(() => dek.value === null);
+
     // ── Master key management ──
 
     const isMasterKeySet = async (): Promise<boolean> => {
@@ -139,6 +143,16 @@ export function useCredential() {
         return invoke('delete_credential', { id });
     };
 
+    const diagnoseCredential = async (id: number): Promise<string> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<string>('diagnose_credential', { id, dekBase64: dek.value, fix: false });
+    };
+
+    const fixCredential = async (id: number): Promise<string> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<string>('diagnose_credential', { id, dekBase64: dek.value, fix: true });
+    };
+
     const changeMasterKey = async (oldPassword: string, newPassword: string): Promise<void> => {
         const dekBase64 = await invoke<string>('change_master_key', { oldPassword, newPassword });
         dek.value = dekBase64;
@@ -167,5 +181,9 @@ export function useCredential() {
         createCredential,
         updateCredential,
         deleteCredential,
+
+        // diagnostic
+        diagnoseCredential,
+        fixCredential,
     };
 }
