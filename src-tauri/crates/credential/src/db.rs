@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection, Result};
 use std::path::Path;
 
-use crate::credential::models::{
+use crate::models::{
     Category, Credential, CredentialView, NewCredential, UpdateCredential,
 };
 
@@ -274,7 +274,7 @@ pub fn create_credential(conn: &Connection, cred: &NewCredential) -> Result<Cred
         arr.copy_from_slice(&v[..12]);
         arr
     })
-    .unwrap_or_else(|_| crate::credential::crypto::generate_nonce());
+    .unwrap_or_else(|_| crate::crypto::generate_nonce());
 
     conn.execute(
         "INSERT INTO credentials (category_id, title, username, url, encrypted_data, nonce, tags, notes, created_at, updated_at)
@@ -338,9 +338,9 @@ pub fn update_credential(
                     arr.copy_from_slice(&v[..12]);
                     arr
                 })
-                .unwrap_or_else(|_| crate::credential::crypto::generate_nonce())
+                .unwrap_or_else(|_| crate::crypto::generate_nonce())
         } else {
-            crate::credential::crypto::generate_nonce()
+            crate::crypto::generate_nonce()
         };
 
         conn.execute(

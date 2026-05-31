@@ -1,9 +1,9 @@
 use tauri::AppHandle;
 use tauri::Manager;
 
-use crate::credential::crypto;
-use crate::credential::db;
-use crate::credential::models::{
+use crate::crypto;
+use crate::db;
+use crate::models::{
     Category, CredentialDetail, CredentialView, NewCredential, SensitiveData, UpdateCredential,
 };
 use chrono::Utc;
@@ -116,7 +116,7 @@ pub fn delete_category(app: AppHandle, id: i64) -> Result<(), String> {
 // ── Credential Commands ────────────────────────────────────────────────────────────
 
 fn credential_to_view(
-    cred: &crate::credential::models::Credential,
+    cred: &crate::models::Credential,
     category_name: Option<String>,
 ) -> CredentialView {
     CredentialView {

@@ -1,4 +1,13 @@
-mod credential;
+// Use explicit imports where needed. `extern crate` and `#[macro_use]` are
+// unnecessary in Rust 2018+ and trigger unused-import warnings when no
+// macros are brought in unqualified.
+#[macro_use]
+extern crate tube;
+
+#[macro_use]
+extern crate lazy_static;
+
+mod net;
 
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
@@ -6,25 +15,21 @@ use tauri::{
     App, Emitter, Manager,
 };
 
+mod commands;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            greet,
-            update_tray_locale,
-            credential::commands::is_master_key_set,
-            credential::commands::setup_master_key,
-            credential::commands::verify_master_key,
-            credential::commands::list_categories,
-            credential::commands::create_category,
-            credential::commands::delete_category,
-            credential::commands::list_credentials,
-            credential::commands::get_credential,
-            credential::commands::create_credential,
-            credential::commands::update_credential,
-            credential::commands::delete_credential,
-            credential::commands::change_master_key,
+            commands::greet,
+            commands::update_tray_locale,
+            // credential
+            oasis_credential::credential_handlers!(),
+            // toolbox
+            oasis_toolbox::toolbox_handlers!(),
+            // browser
+            oasis_browser::browser_handlers!(),
         ])
         .setup(|app| {
             setup_tray(app)?;
@@ -93,39 +98,5 @@ fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         })
         .build(app)?;
 
-    Ok(())
-}
-
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! Welcome to Oasis 🏜️", name)
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct TrayLocale {
-    show: String,
-    hide: String,
-    about: String,
-    quit: String,
-}
-
-#[tauri::command]
-fn update_tray_locale(app: tauri::AppHandle, locale: TrayLocale) -> Result<(), String> {
-    // 通过 ID 查找菜单项并更新文字
-    let ids_and_texts = [
-        ("show", &locale.show),
-        ("hide", &locale.hide),
-        ("about", &locale.about),
-        ("quit", &locale.quit),
-    ];
-    for (id, text) in &ids_and_texts {
-        if let Some(menu) = app.menu() {
-            if let Some(item) = menu.get(&tauri::menu::MenuId::new(*id)) {
-                if let Some(mi) = item.as_menuitem() {
-                    let _ = mi.set_text(text);
-                }
-            }
-        }
-    }
     Ok(())
 }

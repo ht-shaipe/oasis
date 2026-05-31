@@ -12,13 +12,21 @@
         <MenuBar />
 
         <!-- Mac桌面背景和图标 -->
-        <DesktopIcons :apps="apps" @openApp="openApp" />
+        <DesktopIcons
+            :apps="apps"
+            :viewMode="desktopViewMode"
+            :sortMode="desktopSortMode"
+            @openApp="openApp" />
 
         <!-- 底部Dock栏 -->
         <Dock :apps="apps" @openApp="openApp" />
 
         <!-- 右键菜单 -->
-        <ContextMenu :visible="showContextMenu" :position="contextMenuPosition" @close="showContextMenu = false" />
+        <ContextMenu
+            :visible="showContextMenu"
+            :position="contextMenuPosition"
+            @close="showContextMenu = false"
+            @action="handleContextMenuAction" />
 
         <!-- 动态渲染应用窗口 -->
         <Teleport v-for="app in apps" :key="app.id" to="body">
@@ -126,8 +134,56 @@ const handleContextMenu = (event: MouseEvent) => {
     showContextMenu.value = true;
 };
 
-// 点击桌面时关闭所有菜单
-const closeAllMenus = () => {
+/** 桌面图标视图模式：0-中等图标, 1-大图标, 2-列表 */
+const desktopViewMode = ref<number>(
+    parseInt(localStorage.getItem('desktopViewMode') || '0'),
+);
+
+/** 桌面图标排序：0-默认, 1-按名称 */
+const desktopSortMode = ref<number>(
+    parseInt(localStorage.getItem('desktopSortMode') || '0'),
+);
+
+// 右键菜单动作处理
+const handleContextMenuAction = (action: string) => {
+    switch (action) {
+        case 'view':
+            // 循环切换视图模式：中等图标 → 大图标 → 列表 → 中等图标
+            desktopViewMode.value = (desktopViewMode.value + 1) % 3;
+            localStorage.setItem('desktopViewMode', String(desktopViewMode.value));
+            console.log(`桌面视图模式已切换为: ${desktopViewMode.value}`);
+            break;
+
+        case 'sort':
+            // 切换排序模式：默认 → 按名称
+            desktopSortMode.value = (desktopSortMode.value + 1) % 2;
+            localStorage.setItem('desktopSortMode', String(desktopSortMode.value));
+            console.log(`桌面排序模式已切换为: ${desktopSortMode.value}`);
+            break;
+
+        case 'new-file':
+        case 'new-folder':
+            // 打开 Finder 进行新建
+            windowStates.Finder.show = true;
+            windowStates.Finder.isMinimized = false;
+            break;
+
+        case 'display-settings':
+        case 'personalize':
+            // 打开关于/设置
+            windowStates.about.show = true;
+            windowStates.about.isMinimized = false;
+            break;
+
+        default:
+            break;
+    }
+};
+
+// 点击桌面时关闭所有菜单（排除在右键菜单内部的点击）
+const closeAllMenus = (event: MouseEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.context-menu')) return;
     showContextMenu.value = false;
 };
 

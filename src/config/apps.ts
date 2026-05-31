@@ -8,6 +8,8 @@ import ContinueDialog from '@/apps/ContinueDialog.vue';
 import Notes from '@/apps/Notes.vue';
 import Profile from '@/apps/Profile.vue';
 import CredentialManager from '@/apps/CredentialManager/index.vue';
+import Toolbox from '@/apps/Toolbox/Index.vue';
+import Browser from '@/apps/Browser.vue';
 
 export interface AppConfig {
     id: string;
@@ -91,5 +93,22 @@ export const apps: AppConfig[] = [
         icon: '/assets/icons/Features.svg',
         component: ContinueDialog,
         nameKey: 'dock.features',
+    },
+    {
+        id: 'toolbox',
+        name: 'Toolbox',
+        icon: '/assets/icons/Toolbox.svg',
+        component: Toolbox,
+        showInDock: true,
+        showOnDesktop: true,
+        nameKey: 'toolbox.title',
+    },
+    {
+        id: 'browser',
+        name: 'Browser Controller',
+        icon: '/assets/icons/Browser.svg',
+        component: Browser,
+        showInDock: true,
+        nameKey: 'browser.title',
     },
 ];

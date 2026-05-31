@@ -1,22 +1,30 @@
 [package]
+edition = "2021"
 name = "oasis"
 version = "0.1.0"
-edition = "2021"
 
 [lib]
-name = "oasis_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
+name = "oasis_lib"
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = {version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
-tauri-plugin-opener = "2"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-rusqlite = { version = "0.34", features = ["bundled"] }
-ring = "0.17"
-rand = "0.9"
 base64 = "0.22"
 chrono = "0.4"
+lazy_static = "1.5"
+oasis-browser = {path = "crates/browser"}
+oasis-credential = {path = "crates/credential"}
+oasis-toolbox = {path = "crates/toolbox"}
+rand = "0.9"
+reqwest = {version = "0.12", features = ["json"] }
+ring = "0.17"
+rusqlite = {version = "0.34", features = ["bundled"] }
+serde = {version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = {version = "2", features = ["macos-private-api", "tray-icon"] }
+tauri-plugin-opener = "2"
+tokio = {version = "1", features = ["full"] }
+toml = "0.8"
+tube = {path = "../../../../rust/kit/tube", features = ["net", "sync_net"] }

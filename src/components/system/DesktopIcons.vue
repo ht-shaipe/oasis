@@ -1,31 +1,54 @@
 <template>
-    <div class="desktop-icons">
-        <template v-for="app in apps" :key="app.id">
-            <div v-if="app.showOnDesktop" class="desktop-icon" @click="openApp(app.id)">
-                <div class="icon-container">
+    <div class="desktop-icons" :class="modeClass">
+        <template v-for="app in sortedApps" :key="app.id">
+            <div v-if="app.showOnDesktop" class="desktop-icon" :class="modeClass" @click="openApp(app.id)">
+                <div class="icon-container" :class="modeClass">
                     <img :src="app.icon" :alt="t(app.nameKey || '')" />
                 </div>
-                <div class="icon-text">{{ t(app.nameKey || '') }}</div>
+                <div class="icon-text" :class="modeClass">{{ t(app.nameKey || '') }}</div>
             </div>
         </template>
     </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { AppConfig } from '@/config/apps';
 
 const { t } = useI18n();
 
-// Props 定义
-defineProps<{
+const props = defineProps<{
     apps: AppConfig[];
+    viewMode?: number;
+    sortMode?: number;
 }>();
 
-// 事件发射
-const emit = defineEmits(['openApp']);
+const emit = defineEmits<{
+    openApp: [app: string];
+}>();
 
-// 打开App
+/** 根据 viewMode 计算 CSS class */
+const modeClass = computed(() => {
+    const m = props.viewMode ?? 0;
+    if (m === 1) return 'view-large';
+    if (m === 2) return 'view-list';
+    return 'view-medium';
+});
+
+/** 根据 sortMode 排序桌面图标 */
+const sortedApps = computed(() => {
+    const apps = [...props.apps];
+    if (props.sortMode === 1) {
+        apps.sort((a, b) => {
+            const nameA = t(a.nameKey || '');
+            const nameB = t(b.nameKey || '');
+            return nameA.localeCompare(nameB, 'zh');
+        });
+    }
+    return apps;
+});
+
 const openApp = (app: string) => {
     emit('openApp', app);
 };
@@ -135,5 +158,51 @@ const openApp = (app: string) => {
 /* 滚动条隐藏 */
 ::-webkit-scrollbar {
     display: none;
+}
+
+/* ---- 视图模式 ---- */
+
+/* 大图标模式 */
+.desktop-icons.view-large {
+    gap: 28px;
+    padding: 40px 0 0 20px;
+}
+
+.desktop-icon.view-large {
+    width: 100px;
+}
+.desktop-icon.view-large .icon-container {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 8px;
+}
+.desktop-icon.view-large .icon-text {
+    font-size: 14px;
+}
+
+/* 列表模式 */
+.desktop-icons.view-list {
+    flex-direction: column;
+    gap: 8px;
+    padding: 40px 0 0 16px;
+    align-items: flex-start;
+}
+
+.desktop-icon.view-list {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    gap: 10px;
+}
+.desktop-icon.view-list .icon-container {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 0;
+}
+.desktop-icon.view-list .icon-text {
+    font-size: 13px;
+    text-align: left;
+    white-space: nowrap;
+    overflow: visible;
 }
 </style>

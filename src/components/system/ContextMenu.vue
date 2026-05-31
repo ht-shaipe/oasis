@@ -1,22 +1,22 @@
 <template>
     <div class="context-menu" v-show="visible" :style="{ top: position.y + 'px', left: position.x + 'px' }" @click.stop>
         <div class="menu-group">
-            <div class="menu-item" @click="handleViewAction">
+            <div class="menu-item" @click="handleAction('view')">
                 <span>{{ t('app.view') }}</span>
             </div>
-            <div class="menu-item" @click="handleSortAction">
+            <div class="menu-item" @click="handleAction('sort')">
                 <span>{{ t('finder.sort') }}</span>
             </div>
-            <div class="menu-item" @click="handleRefreshAction">
+            <div class="menu-item" @click="handleAction('refresh')">
                 <span>{{ t('app.refresh') }}</span>
             </div>
         </div>
         <div class="menu-divider"></div>
         <div class="menu-group">
-            <div class="menu-item" @click="handleCreateFileAction">
+            <div class="menu-item" @click="handleAction('new-file')">
                 <span>{{ t('codeEditor.newFile') }}</span>
             </div>
-            <div class="menu-item" @click="handleCreateFolderAction">
+            <div class="menu-item" @click="handleAction('new-folder')">
                 <span>{{ t('codeEditor.newFolder') }}</span>
             </div>
         </div>
@@ -25,13 +25,13 @@
             <div class="menu-item" @click="handleChangeWallpaper">
                 <span>{{ t('contextMenu.changeWallpaper') }}</span>
             </div>
-            <div class="menu-item" @click="handleDisplaySettings">
+            <div class="menu-item" @click="handleAction('display-settings')">
                 <span>{{ t('contextMenu.displaySettings') }}</span>
             </div>
         </div>
         <div class="menu-divider"></div>
         <div class="menu-group">
-            <div class="menu-item" @click="handlePersonalizeAction">
+            <div class="menu-item" @click="handleAction('personalize')">
                 <span>个性化</span>
             </div>
         </div>
@@ -56,26 +56,19 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['close']);
+type MenuAction = 'view' | 'sort' | 'refresh' | 'new-file' | 'new-folder'
+    | 'change-wallpaper' | 'display-settings' | 'personalize';
 
-const handleViewAction = () => {
-    emit('close');
-};
+const emit = defineEmits<{
+    close: [];
+    action: [type: MenuAction];
+}>();
 
-const handleSortAction = () => {
-    emit('close');
-};
-
-const handleRefreshAction = () => {
-    window.location.reload();
-    emit('close');
-};
-
-const handleCreateFileAction = () => {
-    emit('close');
-};
-
-const handleCreateFolderAction = () => {
+const handleAction = (type: MenuAction) => {
+    if (type === 'refresh') {
+        window.location.reload();
+    }
+    emit('action', type);
     emit('close');
 };
 
@@ -115,14 +108,6 @@ const handleChangeWallpaper = () => {
         alert('壁纸加载失败，请检查图片路径是否正确');
     };
 
-    emit('close');
-};
-
-const handleDisplaySettings = () => {
-    emit('close');
-};
-
-const handlePersonalizeAction = () => {
     emit('close');
 };
 
