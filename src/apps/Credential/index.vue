@@ -116,75 +116,28 @@
                             @lock="handleLock" />
 
                         <!-- Credential table -->
-                        <div class="credential-table-wrapper">
-                            <el-empty
-                                v-if="filteredCredentialTotal === 0 && !tableLoading"
-                                :description="t('credential.list.empty')" />
-                            <el-table
-                                v-else
-                                v-loading="tableLoading"
-                                :data="displayCredentials"
-                                style="width: 100%"
-                                @row-dblclick="handleViewCredential">
-                                <el-table-column :label="t('credential.list.title')" min-width="200">
-                                    <template #default="{ row }">
-                                        <div class="cred-title">
-                                            <el-icon><Key /></el-icon>
-                                            <span>{{ row.title }}</span>
-                                        </div>
-                                    </template>
-                                </el-table-column>
-                                <el-table-column :label="t('credential.list.username')" min-width="120">
-                                    <template #default="{ row }">
-                                        <div class="truncate" :title="row.username || '-'">
-                                            {{ row.username || '-' }}
-                                        </div>
-                                    </template>
-                                </el-table-column>
-                                <el-table-column :label="t('credential.list.url')" min-width="180">
-                                    <template #default="{ row }">
-                                        <div class="truncate" :title="row.url || '-'">
-                                            {{ row.url || '-' }}
-                                        </div>
-                                    </template>
-                                </el-table-column>
-                                <el-table-column :label="t('credential.list.category')" width="120">
-                                    <template #default="{ row }">
-                                        {{ row.category_name || '-' }}
-                                    </template>
-                                </el-table-column>
-                                <el-table-column :label="t('credential.list.updatedAt')" width="160">
-                                    <template #default="{ row }">
-                                        {{ formatDate(row.updated_at) }}
-                                    </template>
-                                </el-table-column>
-                                <el-table-column :label="t('credential.list.actions')" width="120" fixed="right">
-                                    <template #default="{ row }">
-                                        <el-button type="primary" link size="small" @click="handleViewCredential(row)">
-                                            <el-icon :size="16"><View /></el-icon>
-                                        </el-button>
-                                        <el-button link size="small" @click="openEditDialog(row)">
-                                            <el-icon :size="16"><Edit /></el-icon>
-                                        </el-button>
-                                        <el-button link size="small" type="danger" @click="handleDeleteCredential(row)">
-                                            <el-icon :size="16"><Delete /></el-icon>
-                                        </el-button>
-                                    </template>
-                                </el-table-column>
-                            </el-table>
-                            <div v-if="filteredCredentialTotal > 0" class="flex justify-end px-2 py-3">
-                                <el-pagination
-                                    v-model:current-page="currentPage"
-                                    v-model:page-size="pageSize"
-                                    :page-sizes="[10, 20, 50, 100]"
-                                    :total="filteredCredentialTotal"
-                                    layout="total, sizes, prev, pager, next, jumper"
-                                    background
-                                    small
-                                    @size-change="handlePageSizeChange"
-                                    @current-change="handleCurrentPageChange" />
-                            </div>
-                        </div>
+                        <CredentialTable
+                            :data="displayCredentials"
+                            :loading="tableLoading"
+                            :total="filteredCredentialTotal"
+                            :current-page="currentPage"
+                            :page-size="pageSize"
+                            :empty-description="t('credential.list.empty')"
+                            :title-label="t('credential.list.title')"
+                            :username-label="t('credential.list.username')"
+                            :url-label="t('credential.list.url')"
+                            :category-label="t('credential.list.category')"
+                            :updated-at-label="t('credential.list.updatedAt')"
+                            :actions-label="t('credential.list.actions')"
+                            @row-dblclick="handleViewCredential"
+                            @view="handleViewCredential"
+                            @edit="openEditDialog"
+                            @delete="handleDeleteCredential"
+                            @open-url="openUrlInBrowser"
+                            @update:current-page="currentPage = $event"
+                            @update:page-size="pageSize = $event"
+                            @page-change="handleCurrentPageChange"
+                            @size-change="handlePageSizeChange" />
                     </div>
                 </el-splitter-panel>
             </el-splitter>
@@ -238,28 +191,44 @@
                 </h4>
                 <el-descriptions :column="1" border size="small">
                     <el-descriptions-item :label="t('credential.list.title')">
-                        <span class="truncate">{{ credentialDetail.title }}</span>
-                        <el-button link size="small" @click="copyToClipboard(credentialDetail.title)">
-                            <el-icon><CopyDocument /></el-icon>
-                        </el-button>
+                        <div class="flex min-w-0 items-center gap-1">
+                            <span class="truncate flex-1">{{ credentialDetail.title }}</span>
+                            <el-button link size="small" @click="copyToClipboard(credentialDetail.title)">
+                                <el-icon><CopyDocument /></el-icon>
+                            </el-button>
+                        </div>
                     </el-descriptions-item>
                     <el-descriptions-item :label="t('credential.list.username')">
-                        <span class="truncate">{{ credentialDetail.username || '-' }}</span>
-                        <el-button link size="small" @click="copyToClipboard(credentialDetail.username ?? undefined)">
-                            <el-icon><CopyDocument /></el-icon>
-                        </el-button>
+                        <div class="flex min-w-0 items-center gap-1">
+                            <span class="truncate flex-1">{{ credentialDetail.username || '-' }}</span>
+                            <el-button link size="small" @click="copyToClipboard(credentialDetail.username ?? undefined)">
+                                <el-icon><CopyDocument /></el-icon>
+                            </el-button>
+                        </div>
                     </el-descriptions-item>
                     <el-descriptions-item :label="t('credential.list.url')">
-                        <span class="truncate">{{ credentialDetail.url || '-' }}</span>
-                        <el-button link size="small" @click="copyToClipboard(credentialDetail.url ?? undefined)">
-                            <el-icon><CopyDocument /></el-icon>
-                        </el-button>
+                        <div class="flex min-w-0 items-center gap-1">
+                            <span class="truncate flex-1" :title="credentialDetail.url || '-'">{{
+                                credentialDetail.url || '-'
+                            }}</span>
+                            <el-button
+                                v-if="credentialDetail.url"
+                                link
+                                size="small"
+                                @click="openUrlInBrowser(credentialDetail.url)">
+                                <el-icon><Link /></el-icon>
+                                {{ t('app.open') }}
+                            </el-button>
+                            <el-button link size="small" @click="copyToClipboard(credentialDetail.url ?? undefined)">
+                                <el-icon><CopyDocument /></el-icon>
+                            </el-button>
+                        </div>
                     </el-descriptions-item>
                     <el-descriptions-item :label="t('credential.list.category')">
-                        <span class="truncate">{{ credentialDetail.category_name || '-' }}</span>
+                        <span class="truncate block">{{ credentialDetail.category_name || '-' }}</span>
                     </el-descriptions-item>
                     <el-descriptions-item :label="t('credential.detail.credentialType')">
-                        <span class="truncate">{{
+                        <span class="truncate block">{{
                             credentialDetail.sensitive_data?.credential_type
                                 ? getCredentialTemplateLabel(
                                       credentialDetail.sensitive_data.credential_type as CredentialTemplateKey,
@@ -268,38 +237,46 @@
                         }}</span>
                     </el-descriptions-item>
                     <el-descriptions-item :label="t('credential.detail.tags')">
-                        <span class="truncate">{{ credentialDetail.tags || '-' }}</span>
-                        <el-button link size="small" @click="copyToClipboard(credentialDetail.tags ?? undefined)">
-                            <el-icon><CopyDocument /></el-icon>
-                        </el-button>
+                        <div class="flex min-w-0 items-center gap-1">
+                            <span class="truncate flex-1">{{ credentialDetail.tags || '-' }}</span>
+                            <el-button link size="small" @click="copyToClipboard(credentialDetail.tags ?? undefined)">
+                                <el-icon><CopyDocument /></el-icon>
+                            </el-button>
+                        </div>
                     </el-descriptions-item>
                     <el-descriptions-item :label="t('credential.detail.notes')">
-                        <span class="truncate">{{ credentialDetail.notes || '-' }}</span>
-                        <el-button link size="small" @click="copyToClipboard(credentialDetail.notes ?? undefined)">
-                            <el-icon><CopyDocument /></el-icon>
-                        </el-button>
+                        <div class="flex min-w-0 items-center gap-1">
+                            <span class="truncate flex-1">{{ credentialDetail.notes || '-' }}</span>
+                            <el-button link size="small" @click="copyToClipboard(credentialDetail.notes ?? undefined)">
+                                <el-icon><CopyDocument /></el-icon>
+                            </el-button>
+                        </div>
                     </el-descriptions-item>
                     <el-descriptions-item
                         v-if="credentialDetail.sensitive_data?.api_url"
                         :label="t('credential.detail.apiUrl')">
-                        <span class="truncate">{{ credentialDetail.sensitive_data?.api_url }}</span>
-                        <el-button
-                            link
-                            size="small"
-                            @click="copyToClipboard(credentialDetail.sensitive_data?.api_url ?? undefined)">
-                            <el-icon><CopyDocument /></el-icon>
-                        </el-button>
+                        <div class="flex min-w-0 items-center gap-1">
+                            <span class="truncate flex-1">{{ credentialDetail.sensitive_data?.api_url }}</span>
+                            <el-button
+                                link
+                                size="small"
+                                @click="copyToClipboard(credentialDetail.sensitive_data?.api_url ?? undefined)">
+                                <el-icon><CopyDocument /></el-icon>
+                            </el-button>
+                        </div>
                     </el-descriptions-item>
                     <el-descriptions-item
                         v-if="credentialDetail.sensitive_data?.doc_url"
                         :label="t('credential.detail.docUrl')">
-                        <span class="truncate">{{ credentialDetail.sensitive_data?.doc_url }}</span>
-                        <el-button
-                            link
-                            size="small"
-                            @click="copyToClipboard(credentialDetail.sensitive_data?.doc_url ?? undefined)">
-                            <el-icon><CopyDocument /></el-icon>
-                        </el-button>
+                        <div class="flex min-w-0 items-center gap-1">
+                            <span class="truncate flex-1">{{ credentialDetail.sensitive_data?.doc_url }}</span>
+                            <el-button
+                                link
+                                size="small"
+                                @click="copyToClipboard(credentialDetail.sensitive_data?.doc_url ?? undefined)">
+                                <el-icon><CopyDocument /></el-icon>
+                            </el-button>
+                        </div>
                     </el-descriptions-item>
                 </el-descriptions>
 
@@ -320,135 +297,151 @@
                             </div>
                             <el-descriptions :column="1" border size="small">
                                 <el-descriptions-item v-if="set.username" :label="t('credential.list.username')">
-                                    <span class="truncate">{{ set.username }}</span>
-                                    <el-button link size="small" @click="copyToClipboard(set.username)">
-                                        <el-icon><CopyDocument /></el-icon>
-                                    </el-button>
+                                    <div class="flex min-w-0 items-center gap-1">
+                                        <span class="truncate flex-1">{{ set.username }}</span>
+                                        <el-button link size="small" @click="copyToClipboard(set.username)">
+                                            <el-icon><CopyDocument /></el-icon>
+                                        </el-button>
+                                    </div>
                                 </el-descriptions-item>
                                 <el-descriptions-item v-if="set.password" :label="t('credential.detail.password')">
-                                    <span v-if="detailAccountVisible[`sensitive-${index}-password`]">{{
-                                        set.password
-                                    }}</span>
-                                    <span v-else class="text-gray-400">••••••••</span>
-                                    <el-button
-                                        link
-                                        size="small"
-                                        @click="
-                                            detailAccountVisible[`sensitive-${index}-password`] =
-                                                !detailAccountVisible[`sensitive-${index}-password`]
-                                        ">
-                                        <el-icon
-                                            ><View v-if="!detailAccountVisible[`sensitive-${index}-password`]" /><Hide
-                                                v-else
-                                        /></el-icon>
-                                    </el-button>
-                                    <el-button link size="small" @click="copyToClipboard(set.password)">
-                                        <el-icon><CopyDocument /></el-icon>
-                                    </el-button>
+                                    <div class="flex min-w-0 items-center gap-1">
+                                        <span v-if="detailAccountVisible[`sensitive-${index}-password`]" class="truncate flex-1">{{
+                                            set.password
+                                        }}</span>
+                                        <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
+                                        <el-button
+                                            link
+                                            size="small"
+                                            @click="
+                                                detailAccountVisible[`sensitive-${index}-password`] =
+                                                    !detailAccountVisible[`sensitive-${index}-password`]
+                                            ">
+                                            <el-icon
+                                                ><View v-if="!detailAccountVisible[`sensitive-${index}-password`]" /><Hide
+                                                    v-else
+                                                /></el-icon>
+                                        </el-button>
+                                        <el-button link size="small" @click="copyToClipboard(set.password)">
+                                            <el-icon><CopyDocument /></el-icon>
+                                        </el-button>
+                                    </div>
                                 </el-descriptions-item>
                                 <el-descriptions-item v-if="set.api_key" :label="t('credential.detail.apiKey')">
-                                    <span v-if="detailAccountVisible[`sensitive-${index}-api_key`]">{{
-                                        set.api_key
-                                    }}</span>
-                                    <span v-else class="text-gray-400">••••••••</span>
-                                    <el-button
-                                        link
-                                        size="small"
-                                        @click="
-                                            detailAccountVisible[`sensitive-${index}-api_key`] =
-                                                !detailAccountVisible[`sensitive-${index}-api_key`]
-                                        ">
-                                        <el-icon
-                                            ><View v-if="!detailAccountVisible[`sensitive-${index}-api_key`]" /><Hide
-                                                v-else
-                                        /></el-icon>
-                                    </el-button>
-                                    <el-button link size="small" @click="copyToClipboard(set.api_key)">
-                                        <el-icon><CopyDocument /></el-icon>
-                                    </el-button>
+                                    <div class="flex min-w-0 items-center gap-1">
+                                        <span v-if="detailAccountVisible[`sensitive-${index}-api_key`]" class="truncate flex-1">{{
+                                            set.api_key
+                                        }}</span>
+                                        <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
+                                        <el-button
+                                            link
+                                            size="small"
+                                            @click="
+                                                detailAccountVisible[`sensitive-${index}-api_key`] =
+                                                    !detailAccountVisible[`sensitive-${index}-api_key`]
+                                            ">
+                                            <el-icon
+                                                ><View v-if="!detailAccountVisible[`sensitive-${index}-api_key`]" /><Hide
+                                                    v-else
+                                                /></el-icon>
+                                        </el-button>
+                                        <el-button link size="small" @click="copyToClipboard(set.api_key)">
+                                            <el-icon><CopyDocument /></el-icon>
+                                        </el-button>
+                                    </div>
                                 </el-descriptions-item>
                                 <el-descriptions-item v-if="set.secret_key" :label="t('credential.detail.secretKey')">
-                                    <span v-if="detailAccountVisible[`sensitive-${index}-secret_key`]">{{
-                                        set.secret_key
-                                    }}</span>
-                                    <span v-else class="text-gray-400">••••••••</span>
-                                    <el-button
-                                        link
-                                        size="small"
-                                        @click="
-                                            detailAccountVisible[`sensitive-${index}-secret_key`] =
-                                                !detailAccountVisible[`sensitive-${index}-secret_key`]
-                                        ">
-                                        <el-icon
-                                            ><View v-if="!detailAccountVisible[`sensitive-${index}-secret_key`]" /><Hide
-                                                v-else
-                                        /></el-icon>
-                                    </el-button>
-                                    <el-button link size="small" @click="copyToClipboard(set.secret_key)">
-                                        <el-icon><CopyDocument /></el-icon>
-                                    </el-button>
+                                    <div class="flex min-w-0 items-center gap-1">
+                                        <span v-if="detailAccountVisible[`sensitive-${index}-secret_key`]" class="truncate flex-1">{{
+                                            set.secret_key
+                                        }}</span>
+                                        <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
+                                        <el-button
+                                            link
+                                            size="small"
+                                            @click="
+                                                detailAccountVisible[`sensitive-${index}-secret_key`] =
+                                                    !detailAccountVisible[`sensitive-${index}-secret_key`]
+                                            ">
+                                            <el-icon
+                                                ><View v-if="!detailAccountVisible[`sensitive-${index}-secret_key`]" /><Hide
+                                                    v-else
+                                                /></el-icon>
+                                        </el-button>
+                                        <el-button link size="small" @click="copyToClipboard(set.secret_key)">
+                                            <el-icon><CopyDocument /></el-icon>
+                                        </el-button>
+                                    </div>
                                 </el-descriptions-item>
                                 <el-descriptions-item
                                     v-if="set.access_token"
                                     :label="t('credential.detail.accessToken')">
-                                    <span v-if="detailAccountVisible[`sensitive-${index}-access_token`]">{{
-                                        set.access_token
-                                    }}</span>
-                                    <span v-else class="text-gray-400">••••••••</span>
-                                    <el-button
-                                        link
-                                        size="small"
-                                        @click="
-                                            detailAccountVisible[`sensitive-${index}-access_token`] =
-                                                !detailAccountVisible[`sensitive-${index}-access_token`]
-                                        ">
-                                        <el-icon
-                                            ><View
-                                                v-if="!detailAccountVisible[`sensitive-${index}-access_token`]" /><Hide
-                                                v-else
-                                        /></el-icon>
-                                    </el-button>
-                                    <el-button link size="small" @click="copyToClipboard(set.access_token)">
-                                        <el-icon><CopyDocument /></el-icon>
-                                    </el-button>
+                                    <div class="flex min-w-0 items-center gap-1">
+                                        <span v-if="detailAccountVisible[`sensitive-${index}-access_token`]" class="truncate flex-1">{{
+                                            set.access_token
+                                        }}</span>
+                                        <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
+                                        <el-button
+                                            link
+                                            size="small"
+                                            @click="
+                                                detailAccountVisible[`sensitive-${index}-access_token`] =
+                                                    !detailAccountVisible[`sensitive-${index}-access_token`]
+                                            ">
+                                            <el-icon
+                                                ><View
+                                                    v-if="!detailAccountVisible[`sensitive-${index}-access_token`]" /><Hide
+                                                    v-else
+                                                /></el-icon>
+                                        </el-button>
+                                        <el-button link size="small" @click="copyToClipboard(set.access_token)">
+                                            <el-icon><CopyDocument /></el-icon>
+                                        </el-button>
+                                    </div>
                                 </el-descriptions-item>
                                 <el-descriptions-item
                                     v-if="set.refresh_token"
                                     :label="t('credential.detail.refreshToken')">
-                                    <span v-if="detailAccountVisible[`sensitive-${index}-refresh_token`]">{{
-                                        set.refresh_token
-                                    }}</span>
-                                    <span v-else class="text-gray-400">••••••••</span>
-                                    <el-button
-                                        link
-                                        size="small"
-                                        @click="
-                                            detailAccountVisible[`sensitive-${index}-refresh_token`] =
-                                                !detailAccountVisible[`sensitive-${index}-refresh_token`]
-                                        ">
-                                        <el-icon
-                                            ><View
-                                                v-if="!detailAccountVisible[`sensitive-${index}-refresh_token`]" /><Hide
-                                                v-else
-                                        /></el-icon>
-                                    </el-button>
-                                    <el-button link size="small" @click="copyToClipboard(set.refresh_token)">
-                                        <el-icon><CopyDocument /></el-icon>
-                                    </el-button>
+                                    <div class="flex min-w-0 items-center gap-1">
+                                        <span v-if="detailAccountVisible[`sensitive-${index}-refresh_token`]" class="truncate flex-1">{{
+                                            set.refresh_token
+                                        }}</span>
+                                        <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
+                                        <el-button
+                                            link
+                                            size="small"
+                                            @click="
+                                                detailAccountVisible[`sensitive-${index}-refresh_token`] =
+                                                    !detailAccountVisible[`sensitive-${index}-refresh_token`]
+                                            ">
+                                            <el-icon
+                                                ><View
+                                                    v-if="!detailAccountVisible[`sensitive-${index}-refresh_token`]" /><Hide
+                                                    v-else
+                                                /></el-icon>
+                                        </el-button>
+                                        <el-button link size="small" @click="copyToClipboard(set.refresh_token)">
+                                            <el-icon><CopyDocument /></el-icon>
+                                        </el-button>
+                                    </div>
                                 </el-descriptions-item>
                                 <el-descriptions-item
                                     v-if="set.expires_at"
                                     :label="t('credential.form.expiresAtLabel')">
-                                    <span class="truncate">{{ set.expires_at }}</span>
-                                    <el-button link size="small" @click="copyToClipboard(set.expires_at)">
-                                        <el-icon><CopyDocument /></el-icon>
-                                    </el-button>
+                                    <div class="flex min-w-0 items-center gap-1">
+                                        <span class="truncate flex-1">{{ set.expires_at }}</span>
+                                        <el-button link size="small" @click="copyToClipboard(set.expires_at)">
+                                            <el-icon><CopyDocument /></el-icon>
+                                        </el-button>
+                                    </div>
                                 </el-descriptions-item>
                                 <el-descriptions-item v-if="set.notes" :label="t('credential.detail.notes')">
-                                    <span class="truncate">{{ set.notes }}</span>
-                                    <el-button link size="small" @click="copyToClipboard(set.notes)">
-                                        <el-icon><CopyDocument /></el-icon>
-                                    </el-button>
+                                    <div class="flex min-w-0 items-center gap-1">
+                                        <span class="truncate flex-1">{{ set.notes }}</span>
+                                        <el-button link size="small" @click="copyToClipboard(set.notes)">
+                                            <el-icon><CopyDocument /></el-icon>
+                                        </el-button>
+                                    </div>
                                 </el-descriptions-item>
                             </el-descriptions>
                         </div>
@@ -688,11 +681,13 @@ import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
-import { View, Hide, Key, Edit, Delete, CopyDocument } from '@element-plus/icons-vue';
+import { View, Hide, Edit, CopyDocument, Link } from '@element-plus/icons-vue';
+import { invoke } from '@tauri-apps/api/core';
 import MacWindow from '@/components/common/MacWindow.vue';
 import CredentialAuthCard from './AuthCard.vue';
 import CredentialSidebar from './Sidebar.vue';
 import CredentialToolbar from './Toolbar.vue';
+import CredentialTable from './CredentialTable.vue';
 import { getCredentialTemplateLabel, type CredentialTemplateKey } from './credentialForm.ts';
 import { useCredential, type Category, type CredentialView, type CredentialDetail } from '@/composables/useCredential';
 import CredentialFormDialog from './CredentialFormDialog.vue';
@@ -1165,13 +1160,53 @@ const copyToClipboard = async (text: string | undefined) => {
     }
 };
 
-// ── Date formatting ──
+const getLoginPair = (): { username?: string; password?: string } => {
+    const sensitiveData = credentialDetail.value?.sensitive_data;
 
-const formatDate = (dateStr: string | null | undefined): string => {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+    if (sensitiveData?.sensitive_sets?.length) {
+        const firstSet = sensitiveData.sensitive_sets[0];
+        return {
+            username: firstSet.username || credentialDetail.value?.username || undefined,
+            password: firstSet.password || undefined,
+        };
+    }
+
+    if (sensitiveData?.account_sets?.length) {
+        const firstAccount = sensitiveData.account_sets[0];
+        return {
+            username: firstAccount.username || credentialDetail.value?.username || undefined,
+            password: firstAccount.password || undefined,
+        };
+    }
+
+    return {
+        username: credentialDetail.value?.username || undefined,
+        password: sensitiveData?.password || undefined,
+    };
 };
+
+const openUrlInBrowser = (url: string | undefined) => {
+    if (!url) return;
+
+    const targetUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    const loginPair = getLoginPair();
+
+    // 显示提示，不等待 CDP 完成
+    ElMessage.success('正在通过 CDP 打开页面...');
+
+    // 立即调用 CDP，不等待结果
+    invoke<string>('open_url_cdp', {
+        url: targetUrl,
+        username: loginPair.username,
+        password: loginPair.password,
+    }).then((message) => {
+        console.log('CDP 成功:', message);
+    }).catch((error) => {
+        console.log('CDP 失败:', error);
+        ElMessage.error('CDP 打开失败，请重试');
+    });
+};
+
 
 // ── Lifecycle ──
 
@@ -1271,16 +1306,6 @@ onUnmounted(() => {
 .credential-table-wrapper :deep(.el-table) {
     flex: 1;
     min-height: 0;
-}
-
-.cred-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.cred-title .el-icon {
-    color: #e6a23c;
 }
 
 /* ── Section heading ── */
