@@ -306,10 +306,9 @@ onMounted(async () => {
     bottom: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     overflow: hidden;
-    z-index: 1000;
+    z-index: var(--z-index-modal);
     will-change: transform;
     transition: transform 0.8s cubic-bezier(0.2, 0.9, 0.4, 1);
-    z-index: 9999;
 }
 
 /* 登录成功上推退出动画 */

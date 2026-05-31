@@ -46,7 +46,7 @@ const closeNotificationCenter = () => {
     width: 300px;
     background-color: rgba(240, 240, 240, 0.9);
     backdrop-filter: blur(10px);
-    z-index: 1900;
+    z-index: var(--z-index-notification);
     box-shadow: -2px 0 15px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
 }

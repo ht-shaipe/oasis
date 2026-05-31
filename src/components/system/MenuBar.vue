@@ -279,7 +279,7 @@ onBeforeUnmount(() => {
     align-items: center;
     padding: 0 10px;
     font-size: 13px;
-    z-index: 2000;
+    z-index: var(--z-index-menu-bar);
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
     box-sizing: border-box;
 }
@@ -418,7 +418,7 @@ onBeforeUnmount(() => {
     border-radius: 5px;
     box-shadow: 0 5px 20px var(--color-shadow);
     min-width: 200px;
-    z-index: 2100; /* 确保高于顶部菜单栏 */
+    z-index: var(--z-index-dropdown);
     padding: 5px 0;
 }
 
@@ -431,7 +431,7 @@ onBeforeUnmount(() => {
     border-radius: 5px;
     box-shadow: 0 5px 20px var(--color-shadow);
     min-width: 180px;
-    z-index: 2100; /* 确保高于顶部菜单栏 */
+    z-index: var(--z-index-dropdown);
     padding: 5px 0;
 }
 

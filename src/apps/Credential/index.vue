@@ -175,8 +175,8 @@
         </div>
 
         <!-- ═══ Add Category Dialog ═══ -->
-        <el-dialog v-model="showAddCategoryDialog" :title="t('credential.category.add')" width="400" append-to-body>
-            <el-form @submit.prevent="handleAddCategory" label-position="top">
+        <el-dialog v-model="showAddCategoryDialog" :title="t('credential.category.add')" width="600" append-to-body>
+            <el-form @submit.prevent="handleAddCategory">
                 <el-form-item :label="t('credential.category.name')">
                     <el-input v-model="newCategoryName" @keyup.enter="handleAddCategory" />
                 </el-form-item>

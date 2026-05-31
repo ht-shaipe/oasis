@@ -67,7 +67,7 @@ const props = defineProps({
     },
     zIndex: {
         type: Number,
-        default: 1000,
+        default: 1000, // 将从CSS变量 --z-index-window 获取
     },
 });
 
@@ -128,7 +128,7 @@ const emit = defineEmits(['close', 'minimize', 'maximize', 'focus']);
 const bringToFront = () => {
     // 获取所有窗口并查找当前最高的z-index
     const allWindows = document.querySelectorAll('.mac-window');
-    let maxZIndex = 1000; // 基础z-index
+    let maxZIndex = 1000; // 基础z-index，对应CSS变量 --z-index-window
 
     allWindows.forEach((window) => {
         const computedStyle = getComputedStyle(window);
@@ -420,7 +420,7 @@ const contentStyle = computed(() => {
     box-shadow: 0 10px 30px var(--color-shadow);
     overflow: hidden;
     backdrop-filter: blur(10px);
-    z-index: 1000;
+    z-index: var(--z-index-window);
     outline: none; /* 移除焦点时的轮廓 */
 }
 

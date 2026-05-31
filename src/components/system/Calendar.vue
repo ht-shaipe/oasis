@@ -53,7 +53,7 @@ onMounted(() => {
     width: 280px;
     background-color: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    z-index: 1900;
+    z-index: var(--z-index-dropdown);
     border-radius: 10px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
     overflow: hidden;

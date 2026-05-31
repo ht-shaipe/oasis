@@ -152,7 +152,7 @@ onUnmounted(() => {
     border-radius: 8px;
     box-shadow: 0 4px 20px var(--color-shadow);
     min-width: 200px;
-    z-index: 1000;
+    z-index: var(--z-index-context-menu);
     user-select: none;
     animation: fade-in 0.15s ease-out;
     transform-origin: top left;
