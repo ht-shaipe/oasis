@@ -12,15 +12,21 @@
                     <div class="template-header">
                         <span class="template-label">{{ template.label }}</span>
                         <el-button-group size="small">
-                            <el-button @click="editTemplate(index)">
+                            <el-button :disabled="isBuiltinTemplate(template.value)" @click="editTemplate(index)">
                                 <el-icon><Edit /></el-icon>
                             </el-button>
-                            <el-button type="danger" @click="deleteTemplate(index)">
+                            <el-button
+                                type="danger"
+                                :disabled="isBuiltinTemplate(template.value)"
+                                @click="deleteTemplate(index)">
                                 <el-icon><Delete /></el-icon>
                             </el-button>
                         </el-button-group>
                     </div>
                     <div class="template-desc">{{ template.description }}</div>
+                    <div v-if="isBuiltinTemplate(template.value)" class="template-builtin-note">
+                        系统内置模板（只读）
+                    </div>
                     <div class="template-fields">
                         <span class="field-label">{{ t('credential.detail.fieldsIncluded') }}</span>
                         <el-tag
@@ -140,6 +146,10 @@ const fieldLabels: Record<string, string> = {
     refresh_token: '刷新令牌',
 };
 
+const builtinTemplateValues = new Set(['account', 'api_key', 'key_secret', 'expiring_key', 'custom']);
+
+const isBuiltinTemplate = (value: string): boolean => builtinTemplateValues.has(value);
+
 // Methods
 const getFieldLabel = (field: string): string => {
     return fieldLabels[field] || field;
@@ -186,6 +196,10 @@ const editTemplate = (index: number) => {
     isEditMode.value = true;
     editIndex.value = index;
     const template = props.templates[index];
+    if (isBuiltinTemplate(template.value)) {
+        ElMessage.warning('内置模板不可编辑');
+        return;
+    }
     Object.assign(editingTemplate, {
         value: template.value,
         label: template.label,
@@ -231,6 +245,11 @@ const saveTemplate = () => {
 
 const deleteTemplate = async (index: number) => {
     const template = props.templates[index];
+
+    if (isBuiltinTemplate(template.value)) {
+        ElMessage.warning('内置模板不可删除');
+        return;
+    }
 
     try {
         await ElMessageBox.confirm(
@@ -314,6 +333,11 @@ watch(visible, (val) => {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.template-builtin-note {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
 }
 
 .field-label {

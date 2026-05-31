@@ -408,6 +408,8 @@ const scrollbarHeight = computed(() => {
         return `${windowSize.value.height - 36}px`;
     }
 });
+
+defineExpose({ bringToFront });
 </script>
 
 <style scoped>

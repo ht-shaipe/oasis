@@ -1,6 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import { ref, computed } from 'vue';
 
+// Shared vault state across all components using this composable.
+const dek = ref<string | null>(null);
+const isLocked = computed(() => dek.value === null);
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 export interface Category {
@@ -27,6 +31,23 @@ export interface CredentialView {
 
 export interface SensitiveData {
     credential_type?: string;
+    api_url?: string;
+    doc_url?: string;
+    sensitive_sets?: Array<{
+        username?: string;
+        notes?: string;
+        password?: string;
+        secret_key?: string;
+        access_token?: string;
+        refresh_token?: string;
+        api_key?: string;
+        expires_at?: string;
+    }>;
+    account_sets?: Array<{
+        username: string;
+        password?: string;
+        notes?: string;
+    }>;
     password?: string;
     secret_key?: string;
     access_token?: string;
@@ -115,9 +136,6 @@ export interface UpdateSiteRequest {
 export function useCredential() {
     // ── DEK memory-only store (instance-level) ─────────────────────────────
     // DEK 仅存内存，不持久化（不写入 localStorage / sessionStorage）
-
-    const dek = ref<string | null>(null);
-    const isLocked = computed(() => dek.value === null);
 
     // ── Master key management ──
 

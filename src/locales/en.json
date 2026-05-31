@@ -489,6 +489,7 @@
             "basicInfo": "Basic Info",
             "credentialType": "Credential Type",
             "sensitiveInfo": "Sensitive Info",
+            "sensitiveSets": "Sensitive Sets",
             "password": "Password",
             "apiKey": "API Key",
             "secretKey": "Secret Key",

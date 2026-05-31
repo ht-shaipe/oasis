@@ -59,6 +59,14 @@ pub struct SensitiveData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sensitive_sets: Option<Vec<CredentialSensitiveSet>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_sets: Option<Vec<CredentialAccountSet>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub secret_key: Option<String>,
@@ -72,6 +80,35 @@ pub struct SensitiveData {
     pub expires_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_fields: Option<std::collections::HashMap<String, String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CredentialAccountSet {
+    pub username: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CredentialSensitiveSet {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secret_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -171,6 +208,7 @@ pub struct UpdateSite {
 }
 
 // Encrypted account data stored in database
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct EncryptedSiteAccount {
     pub username: String,

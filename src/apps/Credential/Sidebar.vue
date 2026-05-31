@@ -3,10 +3,10 @@
         class="flex flex-col overflow-y-auto border-r border-[var(--color-window-titlebar-border)] bg-[var(--color-sidebar-bg)] py-2.5">
         <div class="flex-1">
             <div
-                class="mb-2 flex items-center justify-between px-4 text-[11px] font-600 uppercase tracking-[0.05em] text-[var(--color-text-tertiary)]">
+                class="mb-2 flex items-center justify-between px-4 text-[13px] font-600 uppercase tracking-[0.05em] text-[var(--color-text-tertiary)]">
                 <span>{{ title }}</span>
                 <el-button class="credential-sidebar-add" link @click="emit('add-category')">
-                    <el-icon><Plus /></el-icon>
+                    <el-icon :size="18"><Plus /></el-icon>
                 </el-button>
             </div>
 

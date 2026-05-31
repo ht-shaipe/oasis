@@ -5,7 +5,7 @@
   /* Z-Index 层级管理 */
   --z-index-base: 1000;
   --z-index-window: 1000;
-  --z-index-dock: 5000;
+  --z-index-dock: 500;
   --z-index-notification: 6000;
   --z-index-menu-bar: 2000;
   --z-index-context-menu: 9999;
@@ -99,7 +99,7 @@
   /* Z-Index 层级管理 */
   --z-index-base: 1000;
   --z-index-window: 1000;
-  --z-index-dock: 5000;
+  --z-index-dock: 500;
   --z-index-notification: 6000;
   --z-index-menu-bar: 2000;
   --z-index-context-menu: 9999;
