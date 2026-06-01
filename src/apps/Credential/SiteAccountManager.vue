@@ -1,5 +1,5 @@
 <template>
-    <el-dialog
+    <AppDialog
         v-model="visible"
         :title="dialogTitle"
         width="900"
@@ -50,7 +50,10 @@
                             <el-button @click="editAccount(index)" :disabled="isEditingAccount">
                                 <el-icon><Edit /></el-icon>
                             </el-button>
-                            <el-button type="danger" @click="deleteAccount(index)" :disabled="siteForm.accounts.length <= 1">
+                            <el-button
+                                type="danger"
+                                @click="deleteAccount(index)"
+                                :disabled="siteForm.accounts.length <= 1">
                                 <el-icon><Delete /></el-icon>
                             </el-button>
                         </el-button-group>
@@ -68,11 +71,7 @@
                     </div>
                 </div>
 
-                <el-button
-                    type="primary"
-                    @click="addAccount"
-                    :disabled="isEditingAccount"
-                    class="add-account-btn">
+                <el-button type="primary" @click="addAccount" :disabled="isEditingAccount" class="add-account-btn">
                     <el-icon><Plus /></el-icon>
                     {{ t('siteManager.addAccount') }}
                 </el-button>
@@ -111,7 +110,7 @@
             <el-button @click="visible = false">{{ t('app.cancel') }}</el-button>
             <el-button type="primary" :loading="saving" @click="handleSave">{{ t('app.save') }}</el-button>
         </template>
-    </el-dialog>
+    </AppDialog>
 </template>
 
 <script setup lang="ts">
@@ -119,6 +118,7 @@ import { ref, reactive, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';
 import { Edit, Delete, Plus } from '@element-plus/icons-vue';
+import AppDialog from '@/components/common/AppDialog.vue';
 
 const { t } = useI18n();
 
@@ -167,9 +167,7 @@ const editingAccount = reactive({
 });
 
 // 計算屬性
-const dialogTitle = computed(() =>
-    props.editingSite ? t('siteManager.editSite') : t('siteManager.addSite')
-);
+const dialogTitle = computed(() => (props.editingSite ? t('siteManager.editSite') : t('siteManager.addSite')));
 
 // 方法
 const resetForm = () => {
@@ -315,7 +313,7 @@ watch(
                 resetForm();
             }
         }
-    }
+    },
 );
 
 watch(visible, (val) => {

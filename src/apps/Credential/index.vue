@@ -113,7 +113,8 @@
                             :add-label="t('credential.list.add')"
                             :lock-label="t('credential.lock')"
                             @add="openCreateDialog"
-                            @lock="handleLock" />
+                            @lock="handleLock"
+                            @import-browser="showImportDialog = true" />
 
                         <!-- Credential table -->
                         <CredentialTable
@@ -144,7 +145,7 @@
         </div>
 
         <!-- ═══ Add Category Dialog ═══ -->
-        <el-dialog v-model="showAddCategoryDialog" :title="t('credential.category.add')" width="600" append-to-body>
+        <AppDialog v-model="showAddCategoryDialog" :title="t('credential.category.add')" width="600" append-to-body>
             <el-form @submit.prevent="handleAddCategory">
                 <el-form-item :label="t('credential.category.name')">
                     <el-input v-model="newCategoryName" @keyup.enter="handleAddCategory" />
@@ -167,7 +168,7 @@
                 >
                 <el-button type="primary" @click="handleAddCategory">{{ t('credential.detail.save') }}</el-button>
             </template>
-        </el-dialog>
+        </AppDialog>
 
         <!-- ═══ Credential Form Dialog (standalone component) ═══ -->
         <CredentialFormDialog
@@ -178,7 +179,7 @@
             @saved="loadMainData" />
 
         <!-- ═══ Credential Detail Dialog ═══ -->
-        <el-dialog
+        <AppDialog
             v-model="showDetailDialog"
             :title="t('credential.detail.title')"
             width="600"
@@ -201,7 +202,10 @@
                     <el-descriptions-item :label="t('credential.list.username')">
                         <div class="flex min-w-0 items-center gap-1">
                             <span class="truncate flex-1">{{ credentialDetail.username || '-' }}</span>
-                            <el-button link size="small" @click="copyToClipboard(credentialDetail.username ?? undefined)">
+                            <el-button
+                                link
+                                size="small"
+                                @click="copyToClipboard(credentialDetail.username ?? undefined)">
                                 <el-icon><CopyDocument /></el-icon>
                             </el-button>
                         </div>
@@ -306,21 +310,26 @@
                                 </el-descriptions-item>
                                 <el-descriptions-item v-if="set.password" :label="t('credential.detail.password')">
                                     <div class="flex min-w-0 items-center gap-1">
-                                        <span v-if="detailAccountVisible[`sensitive-${index}-password`]" class="truncate flex-1">{{
-                                            set.password
-                                        }}</span>
+                                        <span
+                                            v-if="detailAccountVisible[`sensitive-${index}-password`] === true"
+                                            class="truncate flex-1"
+                                            >{{ set.password }}</span
+                                        >
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
                                             size="small"
                                             @click="
-                                                detailAccountVisible[`sensitive-${index}-password`] =
-                                                    !detailAccountVisible[`sensitive-${index}-password`]
+                                                detailAccountVisible[`sensitive-${index}-password`] = !(
+                                                    detailAccountVisible[`sensitive-${index}-password`] === true
+                                                )
                                             ">
                                             <el-icon
-                                                ><View v-if="!detailAccountVisible[`sensitive-${index}-password`]" /><Hide
-                                                    v-else
-                                                /></el-icon>
+                                                ><View
+                                                    v-if="
+                                                        detailAccountVisible[`sensitive-${index}-password`] !== true
+                                                    " /><Hide v-else
+                                            /></el-icon>
                                         </el-button>
                                         <el-button link size="small" @click="copyToClipboard(set.password)">
                                             <el-icon><CopyDocument /></el-icon>
@@ -329,21 +338,26 @@
                                 </el-descriptions-item>
                                 <el-descriptions-item v-if="set.api_key" :label="t('credential.detail.apiKey')">
                                     <div class="flex min-w-0 items-center gap-1">
-                                        <span v-if="detailAccountVisible[`sensitive-${index}-api_key`]" class="truncate flex-1">{{
-                                            set.api_key
-                                        }}</span>
+                                        <span
+                                            v-if="detailAccountVisible[`sensitive-${index}-api_key`] === true"
+                                            class="truncate flex-1"
+                                            >{{ set.api_key }}</span
+                                        >
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
                                             size="small"
                                             @click="
-                                                detailAccountVisible[`sensitive-${index}-api_key`] =
-                                                    !detailAccountVisible[`sensitive-${index}-api_key`]
+                                                detailAccountVisible[`sensitive-${index}-api_key`] = !(
+                                                    detailAccountVisible[`sensitive-${index}-api_key`] === true
+                                                )
                                             ">
                                             <el-icon
-                                                ><View v-if="!detailAccountVisible[`sensitive-${index}-api_key`]" /><Hide
-                                                    v-else
-                                                /></el-icon>
+                                                ><View
+                                                    v-if="
+                                                        !(detailAccountVisible[`sensitive-${index}-api_key`] === true)
+                                                    " /><Hide v-else
+                                            /></el-icon>
                                         </el-button>
                                         <el-button link size="small" @click="copyToClipboard(set.api_key)">
                                             <el-icon><CopyDocument /></el-icon>
@@ -352,21 +366,29 @@
                                 </el-descriptions-item>
                                 <el-descriptions-item v-if="set.secret_key" :label="t('credential.detail.secretKey')">
                                     <div class="flex min-w-0 items-center gap-1">
-                                        <span v-if="detailAccountVisible[`sensitive-${index}-secret_key`]" class="truncate flex-1">{{
-                                            set.secret_key
-                                        }}</span>
+                                        <span
+                                            v-if="detailAccountVisible[`sensitive-${index}-secret_key`] === true"
+                                            class="truncate flex-1"
+                                            >{{ set.secret_key }}</span
+                                        >
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
                                             size="small"
                                             @click="
-                                                detailAccountVisible[`sensitive-${index}-secret_key`] =
-                                                    !detailAccountVisible[`sensitive-${index}-secret_key`]
+                                                detailAccountVisible[`sensitive-${index}-secret_key`] = !(
+                                                    detailAccountVisible[`sensitive-${index}-secret_key`] === true
+                                                )
                                             ">
                                             <el-icon
-                                                ><View v-if="!detailAccountVisible[`sensitive-${index}-secret_key`]" /><Hide
-                                                    v-else
-                                                /></el-icon>
+                                                ><View
+                                                    v-if="
+                                                        !(
+                                                            detailAccountVisible[`sensitive-${index}-secret_key`] ===
+                                                            true
+                                                        )
+                                                    " /><Hide v-else
+                                            /></el-icon>
                                         </el-button>
                                         <el-button link size="small" @click="copyToClipboard(set.secret_key)">
                                             <el-icon><CopyDocument /></el-icon>
@@ -377,22 +399,29 @@
                                     v-if="set.access_token"
                                     :label="t('credential.detail.accessToken')">
                                     <div class="flex min-w-0 items-center gap-1">
-                                        <span v-if="detailAccountVisible[`sensitive-${index}-access_token`]" class="truncate flex-1">{{
-                                            set.access_token
-                                        }}</span>
+                                        <span
+                                            v-if="detailAccountVisible[`sensitive-${index}-access_token`] === true"
+                                            class="truncate flex-1"
+                                            >{{ set.access_token }}</span
+                                        >
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
                                             size="small"
                                             @click="
-                                                detailAccountVisible[`sensitive-${index}-access_token`] =
-                                                    !detailAccountVisible[`sensitive-${index}-access_token`]
+                                                detailAccountVisible[`sensitive-${index}-access_token`] = !(
+                                                    detailAccountVisible[`sensitive-${index}-access_token`] === true
+                                                )
                                             ">
                                             <el-icon
                                                 ><View
-                                                    v-if="!detailAccountVisible[`sensitive-${index}-access_token`]" /><Hide
-                                                    v-else
-                                                /></el-icon>
+                                                    v-if="
+                                                        !(
+                                                            detailAccountVisible[`sensitive-${index}-access_token`] ===
+                                                            true
+                                                        )
+                                                    " /><Hide v-else
+                                            /></el-icon>
                                         </el-button>
                                         <el-button link size="small" @click="copyToClipboard(set.access_token)">
                                             <el-icon><CopyDocument /></el-icon>
@@ -403,22 +432,29 @@
                                     v-if="set.refresh_token"
                                     :label="t('credential.detail.refreshToken')">
                                     <div class="flex min-w-0 items-center gap-1">
-                                        <span v-if="detailAccountVisible[`sensitive-${index}-refresh_token`]" class="truncate flex-1">{{
-                                            set.refresh_token
-                                        }}</span>
+                                        <span
+                                            v-if="detailAccountVisible[`sensitive-${index}-refresh_token`] === true"
+                                            class="truncate flex-1"
+                                            >{{ set.refresh_token }}</span
+                                        >
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
                                             size="small"
                                             @click="
-                                                detailAccountVisible[`sensitive-${index}-refresh_token`] =
-                                                    !detailAccountVisible[`sensitive-${index}-refresh_token`]
+                                                detailAccountVisible[`sensitive-${index}-refresh_token`] = !(
+                                                    detailAccountVisible[`sensitive-${index}-refresh_token`] === true
+                                                )
                                             ">
                                             <el-icon
                                                 ><View
-                                                    v-if="!detailAccountVisible[`sensitive-${index}-refresh_token`]" /><Hide
-                                                    v-else
-                                                /></el-icon>
+                                                    v-if="
+                                                        !(
+                                                            detailAccountVisible[`sensitive-${index}-refresh_token`] ===
+                                                            true
+                                                        )
+                                                    " /><Hide v-else
+                                            /></el-icon>
                                         </el-button>
                                         <el-button link size="small" @click="copyToClipboard(set.refresh_token)">
                                             <el-icon><CopyDocument /></el-icon>
@@ -672,7 +708,16 @@
                     {{ t('credential.list.edit') }}
                 </el-button>
             </template>
-        </el-dialog>
+        </AppDialog>
+
+        <!-- ═══ Browser Import Dialog ═══ -->
+        <BrowserImportDialog
+            v-model="showImportDialog"
+            :dek="dek"
+            @imported="
+                showImportDialog = false;
+                loadMainData();
+            " />
     </MacWindow>
 </template>
 
@@ -684,6 +729,7 @@ import type { FormInstance, FormRules } from 'element-plus';
 import { View, Hide, Edit, CopyDocument, Link } from '@element-plus/icons-vue';
 import { invoke } from '@tauri-apps/api/core';
 import MacWindow from '@/components/common/MacWindow.vue';
+import AppDialog from '@/components/common/AppDialog.vue';
 import CredentialAuthCard from './AuthCard.vue';
 import CredentialSidebar from './Sidebar.vue';
 import CredentialToolbar from './Toolbar.vue';
@@ -691,6 +737,7 @@ import CredentialTable from './CredentialTable.vue';
 import { getCredentialTemplateLabel, type CredentialTemplateKey } from './credentialForm.ts';
 import { useCredential, type Category, type CredentialView, type CredentialDetail } from '@/composables/useCredential';
 import CredentialFormDialog from './CredentialFormDialog.vue';
+import BrowserImportDialog from './BrowserImportDialog.vue';
 
 const { t } = useI18n();
 const {
@@ -1063,6 +1110,7 @@ const handleDeleteCategory = async (data: Pick<Category, 'id' | 'name'>) => {
 
 const showCredDialog = ref(false);
 const editingRow = ref<CredentialView | CredentialDetail | null>(null);
+const showImportDialog = ref(false);
 
 const openCreateDialog = () => {
     editingRow.value = null;
@@ -1199,14 +1247,15 @@ const openUrlInBrowser = (url: string | undefined) => {
         url: targetUrl,
         username: loginPair.username,
         password: loginPair.password,
-    }).then((message) => {
-        console.log('CDP 成功:', message);
-    }).catch((error) => {
-        console.log('CDP 失败:', error);
-        ElMessage.error('CDP 打开失败，请重试');
-    });
+    })
+        .then((message) => {
+            console.log('CDP 成功:', message);
+        })
+        .catch((error) => {
+            console.log('CDP 失败:', error);
+            ElMessage.error('CDP 打开失败，请重试');
+        });
 };
-
 
 // ── Lifecycle ──
 

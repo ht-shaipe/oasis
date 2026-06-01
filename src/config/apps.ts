@@ -106,7 +106,7 @@ export const apps: AppConfig[] = [
     {
         id: 'browser',
         name: 'Browser Controller',
-        icon: '/assets/icons/Browser.svg',
+        icon: '/assets/icons/Chrome.svg',
         component: Browser,
         showInDock: true,
         nameKey: 'browser.title',

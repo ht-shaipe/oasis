@@ -803,3 +803,27 @@ pub fn search_sites(app: AppHandle, query: String) -> Result<Vec<Site>, String> 
     let conn = get_conn(&app)?;
     db::search_sites(&conn, &query).map_err(|e| e.to_string())
 }
+
+// ── Browser Import Commands ────────────────────────────────────────────────────────
+
+use crate::browser_import::{self, BrowserCredential};
+
+#[tauri::command]
+pub fn scan_installed_browsers() -> Result<Vec<String>, String> {
+    let browsers = browser_import::scan_installed_browsers();
+    Ok(browsers.into_iter().map(|b| b.display_name().to_string()).collect())
+}
+
+#[tauri::command]
+pub fn import_browser_passwords(
+    _app: AppHandle,
+    browser: String,
+) -> Result<Vec<BrowserCredential>, String> {
+    match browser.to_lowercase().as_str() {
+        "firefox" => browser_import::read_firefox_passwords(),
+        "google chrome" | "chrome" => browser_import::read_chrome_passwords(),
+        "microsoft edge" | "edge" => browser_import::read_edge_passwords(),
+        "brave browser" | "brave" => browser_import::read_brave_passwords(),
+        _ => Err(format!("暂不支持从 {} 导入密码", browser)),
+    }
+}

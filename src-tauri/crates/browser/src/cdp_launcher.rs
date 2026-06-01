@@ -148,7 +148,7 @@ pub fn spawn_cdp_open_chrome(
 }
 
 fn resolve_cdp_ws_url(debug_url: &str, target_url: &str) -> Result<String, String> {
-    if let Some(ws_url) = wait_for_devtools_ws(debug_url) {
+    if let Some(ws_url) = probe_existing_devtools_ws(debug_url) {
         info!(
             "检测到已有 CDP 连接，直接复用现有 Chrome，新开标签: {}",
             target_url
@@ -198,6 +198,23 @@ fn resolve_cdp_ws_url(debug_url: &str, target_url: &str) -> Result<String, Strin
     Ok(ws_url)
 }
 
+fn probe_existing_devtools_ws(debug_url: &str) -> Option<String> {
+    for i in 0..4 {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        if let Ok(resp) = reqwest::blocking::get(debug_url) {
+            if let Ok(body) = resp.text() {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
+                    if let Some(url) = json.get("webSocketDebuggerUrl").and_then(|v| v.as_str()) {
+                        info!("检测到已运行的 Chrome CDP (快速探测 {} 次)", i + 1);
+                        return Some(url.to_string());
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 async fn open_page_via_cdp(
     ws_url: &str,
     target_url: &str,
@@ -226,11 +243,15 @@ async fn open_page_via_cdp(
 
     activate_page(&page).await;
 
+    // 等待页面加载完成
+    let _ = page.wait_for_navigation().await;
+
+    // 等待一小段时间确保表单元素已渲染
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
     inject_stealth_scripts(&page).await;
     fill_login_form(&page, username, password).await;
 
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    save_page_html(&page).await;
     Ok(())
 }
 
@@ -251,9 +272,15 @@ async fn inject_stealth_scripts(page: &chromiumoxide::Page) {
         .evaluate_expression(
             r#"
             (function() {
-                var style = document.createElement('style');
-                style.textContent = 'body>div:last-child{display:none!important}';
-                document.head.appendChild(style);
+                var meta = document.querySelector('meta[name="viewport"]');
+                if (!meta) {
+                    meta = document.createElement('meta');
+                    meta.name = 'viewport';
+                    meta.content = 'width=device-width, initial-scale=1';
+                    if (document.head) {
+                        document.head.appendChild(meta);
+                    }
+                }
             })();
         "#,
         )
@@ -320,7 +347,7 @@ async fn fill_login_form(
                 .filter((element) => !element.disabled && !element.readOnly && element.type !== 'hidden');
             const passwordInput = inputs.find((element) => {{
                 const text = `${{element.type}} ${{element.name || ''}} ${{element.id || ''}} ${{element.placeholder || ''}} ${{element.autocomplete || ''}}`.toLowerCase();
-                return element.type === 'password' || text.includes('password') || text.includes('passwd') || text.includes('pass');
+                return element.type === 'password' || text.includes('password') || text.includes('pass') || text.includes('pwd');
             }});
 
             let usernameInput = inputs.find((element) => {{

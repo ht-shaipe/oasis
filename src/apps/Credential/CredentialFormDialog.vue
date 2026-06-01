@@ -1,5 +1,5 @@
 <template>
-    <el-dialog
+    <AppDialog
         :model-value="modelValue"
         @update:model-value="$emit('update:modelValue', $event)"
         :title="dialogTitle"
@@ -237,7 +237,7 @@
                 {{ t('credential.detail.save') }}
             </el-button>
         </template>
-    </el-dialog>
+    </AppDialog>
 
     <TemplateManager
         v-model="showTemplateManager"
@@ -250,6 +250,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';
 import { Delete, CopyDocument, Plus, Setting } from '@element-plus/icons-vue';
+import AppDialog from '@/components/common/AppDialog.vue';
 import {
     buildSensitiveData,
     createEmptyCredentialAccount,

@@ -1,5 +1,5 @@
 <template>
-    <el-dialog
+    <AppDialog
         v-model="visible"
         :title="t('credential.detail.templateManager')"
         width="800"
@@ -47,7 +47,7 @@
         </el-button>
 
         <!-- Edit/Add Template Dialog -->
-        <el-dialog
+        <AppDialog
             v-model="showEditDialog"
             :title="isEditMode ? t('credential.detail.editTemplate') : t('credential.detail.addTemplate')"
             width="600"
@@ -86,8 +86,8 @@
                 <el-button @click="showEditDialog = false">{{ t('app.cancel') }}</el-button>
                 <el-button type="primary" @click="saveTemplate">{{ t('app.save') }}</el-button>
             </template>
-        </el-dialog>
-    </el-dialog>
+        </AppDialog>
+    </AppDialog>
 </template>
 
 <script setup lang="ts">
@@ -95,6 +95,7 @@ import { ref, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Edit, Delete, Plus } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import AppDialog from '@/components/common/AppDialog.vue';
 
 const { t } = useI18n();
 

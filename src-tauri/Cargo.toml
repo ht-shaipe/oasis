@@ -33,3 +33,9 @@ tube = {path = "../../../../rust/kit/tube", features = ["net", "sync_net"] }
 [workspace.package]
 edition = "2024"
 version = "0.1.0"
+
+[dev-dependencies]
+base64 = "0.22"
+dirs-next = "2"
+libloading = "0.8"
+serde_json = "1"
