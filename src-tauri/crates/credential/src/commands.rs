@@ -804,26 +804,27 @@ pub fn search_sites(app: AppHandle, query: String) -> Result<Vec<Site>, String> 
     db::search_sites(&conn, &query).map_err(|e| e.to_string())
 }
 
-// ── Browser Import Commands ────────────────────────────────────────────────────────
+// ── Browser CSV Import Commands ───────────────────────────────────────────────────
 
 use crate::browser_import::{self, BrowserCredential};
 
 #[tauri::command]
-pub fn scan_installed_browsers() -> Result<Vec<String>, String> {
-    let browsers = browser_import::scan_installed_browsers();
-    Ok(browsers.into_iter().map(|b| b.display_name().to_string()).collect())
-}
-
-#[tauri::command]
-pub fn import_browser_passwords(
-    _app: AppHandle,
-    browser: String,
+pub fn import_csv_passwords(
+    csv_path: String,
 ) -> Result<Vec<BrowserCredential>, String> {
-    match browser.to_lowercase().as_str() {
-        "firefox" => browser_import::read_firefox_passwords(),
-        "google chrome" | "chrome" => browser_import::read_chrome_passwords(),
-        "microsoft edge" | "edge" => browser_import::read_edge_passwords(),
-        "brave browser" | "brave" => browser_import::read_brave_passwords(),
-        _ => Err(format!("暂不支持从 {} 导入密码", browser)),
-    }
+    let mut creds = browser_import::parse_csv_passwords(&csv_path)?;
+
+    // 非空密码排到最前面，方便用户查看
+    creds.sort_by_key(|c| if c.password.is_empty() { 1 } else { 0 });
+
+    let with_pw: Vec<_> = creds.iter().filter(|c| !c.password.is_empty()).collect();
+    let empty: Vec<_> = creds.iter().filter(|c| c.password.is_empty()).collect();
+    eprintln!(
+        "[import_csv_passwords] total={} with_pw={} empty={}",
+        creds.len(),
+        with_pw.len(),
+        empty.len()
+    );
+
+    Ok(creds)
 }

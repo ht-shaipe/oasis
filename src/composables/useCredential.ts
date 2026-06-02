@@ -260,16 +260,12 @@ export function useCredential() {
         return invoke<Site[]>('search_sites', { query });
     };
 
-    // ── Browser Import ──
+    // ── Browser CSV Import ──
 
-    const scanBrowsers = async (): Promise<string[]> => {
-        return invoke<string[]>('scan_installed_browsers');
-    };
-
-    const importFromBrowser = async (browser: string): Promise<
+    const importCsvPasswords = async (csvPath: string): Promise<
         Array<{ id: number; url: string; username: string; password: string; browser: string }>
     > => {
-        return invoke('import_browser_passwords', { browser });
+        return invoke('import_csv_passwords', { csvPath });
     };
 
     return {
@@ -309,7 +305,6 @@ export function useCredential() {
         fixCredential,
 
         // browser import
-        scanBrowsers,
-        importFromBrowser,
+        importCsvPasswords,
     };
 }

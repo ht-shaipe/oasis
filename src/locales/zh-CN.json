@@ -31,6 +31,7 @@
         "view": "视图",
         "help": "帮助",
         "about": "关于本机",
+        "settings": "系统设置",
         "preferences": "系统偏好设置",
         "forceQuit": "强制退出",
         "sleep": "睡眠",
@@ -43,6 +44,7 @@
         "vscode": "VsCode",
         "safari": "Safari",
         "about": "关于",
+        "settings": "系统设置",
         "profile": "个人中心",
         "mail": "邮件",
         "photos": "照片",
@@ -68,6 +70,28 @@
         "version": "版本",
         "description": "一个基于AI的Web开发工具",
         "features": "集成了多种UI框架和JS框架支持"
+    },
+    "settings": {
+        "title": "系统设置",
+        "general": {
+            "title": "通用"
+        },
+        "workspace": {
+            "title": "工作空间",
+            "desc": "设置 Oasis 的数据存储目录，所有文件和配置将保存在此目录下。",
+            "placeholder": "选择工作空间目录",
+            "selectTitle": "选择工作空间目录",
+            "browse": "浏览...",
+            "saved": "工作空间目录已更新"
+        },
+        "appearance": {
+            "title": "外观",
+            "darkMode": "深色模式",
+            "darkModeDesc": "切换应用的深色/浅色外观"
+        },
+        "about": {
+            "title": "关于"
+        }
     },
     "finder": {
         "title": "Finder",
@@ -349,6 +373,7 @@
     },
     "desktop": {
         "about": "关于",
+        "settings": "系统设置",
         "codeGenerator": "代码生成器",
         "codeEditor": "代码编辑器",
         "safari": "浏览器",

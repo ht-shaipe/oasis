@@ -9,7 +9,6 @@
         "refresh": "Refresh",
         "retry": "Retry",
         "confirm": "Confirm",
-        "confirm": "Confirm",
         "delete": "Delete",
         "edit": "Edit",
         "view": "View",
@@ -51,7 +50,6 @@
         "music": "MoeKoeMusic",
         "Credential": "Credential Manager"
     },
-
     "contextMenu": {
         "changeWallpaper": "Change Wallpaper",
         "displaySettings": "Display Settings",
@@ -328,7 +326,15 @@
         "today": "Today",
         "noSchedule": "No schedule for today",
         "addEvent": "Click \"+\" to add new event",
-        "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        "weekdays": [
+            "Sun",
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat"
+        ],
         "monthFormat": "{month}/{year}",
         "dateFormat": "{month}/{day} {weekday}"
     },
@@ -511,7 +517,6 @@
             "templateName": "Template Name",
             "templateDescription": "Template Description",
             "templateFields": "Fields Included",
-            "addField": "Add Field",
             "addTemplate": "Add Template",
             "editTemplate": "Edit Template",
             "deleteTemplate": "Delete Template",
@@ -613,5 +618,27 @@
         "findChrome": "Find Chrome",
         "launchChrome": "Launch Chrome",
         "hint": "Connect via localhost:9222 for automation after launch."
+    },
+    "settings": {
+        "title": "Settings",
+        "general": {
+            "title": "General"
+        },
+        "workspace": {
+            "title": "Workspace",
+            "desc": "Set the Oasis data storage directory. All files and configurations will be saved here.",
+            "placeholder": "Select workspace directory",
+            "selectTitle": "Select Workspace Directory",
+            "browse": "Browse...",
+            "saved": "Workspace directory updated"
+        },
+        "appearance": {
+            "title": "Appearance",
+            "darkMode": "Dark Mode",
+            "darkModeDesc": "Toggle dark/light appearance"
+        },
+        "about": {
+            "title": "About"
+        }
     }
 }

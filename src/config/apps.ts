@@ -3,7 +3,7 @@ import Finder from '@/apps/Finder.vue';
 import Generator from '@/apps/Generator.vue';
 import CodeEditor from '@/apps/CodeEditor.vue';
 import Preview from '@/apps/Safari.vue';
-import About from '@/apps/About.vue';
+import Settings from '@/apps/Settings.vue';
 import ContinueDialog from '@/apps/ContinueDialog.vue';
 import Notes from '@/apps/Notes.vue';
 import Profile from '@/apps/Profile.vue';
@@ -55,13 +55,13 @@ export const apps: AppConfig[] = [
         nameKey: 'dock.safari',
     },
     {
-        id: 'about',
-        name: 'About',
+        id: 'settings',
+        name: 'Settings',
         icon: '/assets/icons/Settings.svg',
-        component: About,
+        component: Settings,
         showInDock: true,
         showOnDesktop: true,
-        nameKey: 'desktop.about',
+        nameKey: 'desktop.settings',
     },
     {
         id: 'credential-manager',

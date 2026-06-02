@@ -1,38 +1,84 @@
 <template>
     <AppDialog
         v-model="visible"
-        title="从浏览器导入网站密码"
+        title="从浏览器导入网站密码（CSV）"
         width="750px"
         append-to-body
         destroy-on-close
         @closed="handleClosed">
-        <!-- ═══ Step 1: Browser Selection ═══ -->
+        <!-- ═══ Step 1: CSV Upload ═══ -->
         <template v-if="!importedItems.length">
-            <div v-if="scanningBrowsers" class="browser-loading">
-                <el-icon class="is-loading" :size="20"><Loading /></el-icon>
-                <span>正在检测已安装的浏览器...</span>
+            <!-- 使用提示 -->
+            <el-collapse v-model="activeNames" class="usage-tips">
+                <el-collapse-item title="使用提示：如何从浏览器导出密码 CSV" name="1">
+                    <ul class="tip-list">
+                        <li>
+                            <strong>Chrome</strong>：打开 <code>chrome://password-manager/settings</code> &rarr; 下载文件 &rarr; 选择导出的 CSV
+                        </li>
+                        <li>
+                            <strong>Edge</strong>：打开 <code>edge://wallet/passwords</code> &rarr; 设置 &rarr; 导出密码 &rarr; 选择导出的 CSV
+                        </li>
+                        <li>
+                            <strong>Firefox</strong>：打开 <code>about:logins</code> &rarr; 三点菜单 &rarr; 导出登录信息 &rarr; 选择导出的 CSV
+                        </li>
+                        <li>
+                            <strong>Brave</strong>：打开 <code>brave://password-manager/settings</code> &rarr; 下载文件 &rarr; 选择导出的 CSV
+                        </li>
+                        <li>
+                            <strong>Safari</strong>：打开 Safari &rarr; 设置 &rarr; 密码 &rarr; 三点菜单 &rarr; 导出所有密码 &rarr; 选择导出的 CSV
+                        </li>
+                    </ul>
+                </el-collapse-item>
+            </el-collapse>
+
+            <!-- 文件上传区域 -->
+            <div class="csv-upload-area" @click="handleClickUpload">
+                <el-icon class="upload-icon" :size="40"><UploadFilled /></el-icon>
+                <div class="upload-text">点击选择 CSV 文件</div>
+                <div class="upload-tip">支持 Chrome / Edge / Firefox / Brave / Safari 导出的 CSV 文件</div>
             </div>
-            <template v-else>
-                <p v-if="browsers.length === 0" class="browser-empty">未检测到已安装的浏览器。</p>
-                <el-radio-group v-else v-model="selectedBrowser" class="browser-list">
-                    <el-radio v-for="b in browsers" :key="b" :value="b" class="browser-radio">
-                        {{ b }}
-                    </el-radio>
-                </el-radio-group>
-            </template>
-            <div class="browser-action">
-                <el-button
-                    type="primary"
-                    :disabled="!selectedBrowser || scanningBrowsers"
-                    :loading="scanningPasswords"
-                    @click="handleScanPasswords">
-                    扫描密码
-                </el-button>
+
+            <div v-if="parsing" class="browser-loading">
+                <el-icon class="is-loading" :size="20"><Loading /></el-icon>
+                <span>正在解析 CSV 文件...</span>
             </div>
         </template>
 
         <!-- ═══ Step 2: Results ═══ -->
         <template v-else>
+            <!-- 导入配置 -->
+            <div class="import-config">
+                <div class="config-row">
+                    <div class="config-item">
+                        <span class="config-label">凭证类型：</span>
+                        <el-select v-model="selectedCredentialType" placeholder="选择凭证类型" size="small" class="type-select">
+                            <el-option
+                                v-for="opt in credentialTemplateOptions"
+                                :key="opt.value"
+                                :label="opt.label"
+                                :value="opt.value"
+                                :title="opt.description">
+                            </el-option>
+                        </el-select>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">分类：</span>
+                        <el-tree-select
+                            v-model="selectedCategoryId"
+                            :data="categoryTree"
+                            placeholder="选择分类（可选）"
+                            size="small"
+                            class="category-select"
+                            clearable
+                            filterable
+                            :props="{ label: 'name', children: 'children' }"
+                            node-key="id"
+                            default-expand-all
+                            check-strictly />
+                    </div>
+                </div>
+            </div>
+
             <el-table :data="importedItems" ref="tableRef" max-height="400" @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="50" />
                 <el-table-column type="index" label="序号" width="60" />
@@ -82,10 +128,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { View, Hide, Loading } from '@element-plus/icons-vue';
+import { View, Hide, Loading, UploadFilled } from '@element-plus/icons-vue';
 import { useCredential, type CreateCredentialRequest } from '@/composables/useCredential';
+import { useFileDialog } from '@/composables/useFileDialog';
+import { credentialTemplateOptions, type CredentialTemplateKey } from './credentialForm';
 import AppDialog from '@/components/common/AppDialog.vue';
 
 const props = defineProps<{
@@ -103,14 +151,57 @@ const visible = computed({
     set: (v) => emit('update:modelValue', v),
 });
 
-const { scanBrowsers, importFromBrowser, createCredential, listCategories, createCategory } = useCredential();
+// ── Preload categories on mount ──
 
-// ── Browser scanning ──
+onMounted(() => {
+    fetchCategories();
+});
 
-const scanningBrowsers = ref(false);
-const browsers = ref<string[]>([]);
-const selectedBrowser = ref('');
-const scanningPasswords = ref(false);
+const { importCsvPasswords, createCredential, listCategories, createCategory } = useCredential();
+const { selectFile } = useFileDialog();
+
+// ── Usage tips collapse ──
+
+const activeNames = ref(['1']);
+
+// ── CSV upload ──
+
+const parsing = ref(false);
+
+// ── Type & category selection ──
+
+const selectedCredentialType = ref<CredentialTemplateKey>('account');
+const selectedCategoryId = ref<number | null>(null);
+
+interface CategoryNode {
+    id: number;
+    name: string;
+    parent_id: number | null;
+    children?: CategoryNode[];
+}
+
+const categoryTree = ref<CategoryNode[]>([]);
+
+const fetchCategories = async () => {
+    try {
+        const categories: CategoryNode[] = await listCategories();
+        const roots = categories.filter((c) => c.parent_id == null);
+        const map = new Map<number, CategoryNode>();
+        categories.forEach((c) => map.set(c.id, { ...c, children: [] }));
+        const tree: CategoryNode[] = [];
+        categories.forEach((c) => {
+            const node = map.get(c.id)!;
+            if (c.parent_id != null) {
+                const parent = map.get(c.parent_id);
+                if (parent) parent.children!.push(node);
+            }
+        });
+        roots.forEach((r) => tree.push(map.get(r.id)!));
+        categoryTree.value = tree;
+    } catch (err) {
+        console.error('获取分类列表失败:', err);
+    }
+};
 
 // ── Imported items ──
 
@@ -161,61 +252,55 @@ const togglePassword = (index: number) => {
     passwordVisible.value[index] = !passwordVisible.value[index];
 };
 
-// ── Dialog open → scan browsers ──
+// ── File selection → parse CSV ──
+
+const handleClickUpload = async () => {
+    const filePath = await selectFile({
+        title: '选择浏览器导出的 CSV 文件',
+        extensions: ['csv'],
+    });
+    if (!filePath) return;
+
+    parsing.value = true;
+    try {
+        const items = await importCsvPasswords(filePath);
+        importedItems.value = items;
+        passwordVisible.value = {};
+    } catch (err: unknown) {
+        ElMessage.error(err instanceof Error ? err.message : '解析 CSV 失败');
+    } finally {
+        parsing.value = false;
+    }
+};
+
+// ── Dialog open → reset ──
 
 watch(
     () => props.modelValue,
     (val) => {
         if (val) {
             resetState();
-            doScanBrowsers();
         }
     },
 );
 
 const resetState = () => {
-    browsers.value = [];
-    selectedBrowser.value = '';
     importedItems.value = [];
     passwordVisible.value = {};
     importedIds.value = new Set();
     selectedRows.value = [];
     selectAll.value = false;
-    scanningBrowsers.value = false;
-    scanningPasswords.value = false;
+    parsing.value = false;
     importing.value = false;
     importProgress.value = 0;
+    activeNames.value = ['1'];
+    selectedCredentialType.value = 'account';
+    selectedCategoryId.value = null;
+    fetchCategories();
 };
 
 const handleClosed = () => {
     resetState();
-};
-
-const doScanBrowsers = async () => {
-    scanningBrowsers.value = true;
-    try {
-        browsers.value = await scanBrowsers();
-    } catch (err: unknown) {
-        ElMessage.error(err instanceof Error ? err.message : '检测浏览器失败');
-    } finally {
-        scanningBrowsers.value = false;
-    }
-};
-
-// ── Scan passwords ──
-
-const handleScanPasswords = async () => {
-    if (!selectedBrowser.value) return;
-    scanningPasswords.value = true;
-    try {
-        const items = await importFromBrowser(selectedBrowser.value);
-        importedItems.value = items;
-        passwordVisible.value = {};
-    } catch (err: unknown) {
-        ElMessage.error(err instanceof Error ? err.message : '扫描密码失败');
-    } finally {
-        scanningPasswords.value = false;
-    }
 };
 
 // ── Import ──
@@ -254,7 +339,11 @@ const handleImportSelected = async () => {
 
     let categoryId: number;
     try {
-        categoryId = await resolveDefaultCategory();
+        if (selectedCategoryId.value !== null) {
+            categoryId = selectedCategoryId.value;
+        } else {
+            categoryId = await resolveDefaultCategory();
+        }
     } catch (err: unknown) {
         ElMessage.error(err instanceof Error ? err.message : '获取分类失败');
         importing.value = false;
@@ -269,7 +358,7 @@ const handleImportSelected = async () => {
         try {
             const nonceBase64 = generateNonce();
             const sensitiveDataJson = JSON.stringify({
-                credential_type: 'password',
+                credential_type: selectedCredentialType.value,
                 password: item.password,
             });
 
@@ -325,6 +414,93 @@ watch(
 </script>
 
 <style scoped>
+.usage-tips {
+    margin-bottom: 16px;
+}
+
+.tip-list {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13px;
+    line-height: 2;
+    color: #4b5563;
+}
+
+.tip-list code {
+    background: #f3f4f6;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #1f2937;
+}
+
+.csv-upload-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 160px;
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    margin-bottom: 8px;
+}
+
+.csv-upload-area:hover {
+    border-color: var(--el-color-primary, #409eff);
+    background-color: rgba(64, 158, 255, 0.04);
+}
+
+.upload-icon {
+    color: #9ca3af;
+    margin-bottom: 8px;
+}
+
+.upload-text {
+    font-size: 15px;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.upload-tip {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.import-config {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-window-titlebar-border, #e5e7eb);
+}
+
+.config-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.config-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.type-select {
+    width: 140px;
+}
+
+.category-select {
+    width: 220px;
+}
+
+.config-label {
+    font-size: 13px;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
 .browser-loading {
     display: flex;
     align-items: center;
@@ -332,33 +508,6 @@ watch(
     padding: 24px 0;
     color: #6b7280;
     font-size: 14px;
-}
-
-.browser-empty {
-    padding: 24px 0;
-    color: #9ca3af;
-    font-size: 14px;
-    text-align: center;
-}
-
-.browser-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px 0;
-}
-
-.browser-radio {
-    margin-right: 0;
-    height: 36px;
-    display: flex;
-    align-items: center;
-}
-
-.browser-action {
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 1px solid var(--color-window-titlebar-border, #e5e7eb);
 }
 
 .password-cell {
