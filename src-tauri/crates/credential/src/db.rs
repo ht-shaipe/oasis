@@ -434,6 +434,32 @@ pub fn delete_credential(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
+/// List all credentials as raw Credential structs (with encrypted_data)
+pub fn list_raw_credentials(conn: &Connection) -> Result<Vec<Credential>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, category_id, title, username, url, encrypted_data, nonce,
+                tags, notes, created_at, updated_at
+         FROM credentials
+         ORDER BY updated_at DESC"
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok(Credential {
+            id: row.get(0)?,
+            category_id: row.get(1)?,
+            title: row.get(2)?,
+            username: row.get(3)?,
+            url: row.get(4)?,
+            encrypted_data: row.get(5)?,
+            nonce: row.get(6)?,
+            tags: row.get(7)?,
+            notes: row.get(8)?,
+            created_at: row.get(9)?,
+            updated_at: row.get(10)?,
+        })
+    })?;
+    rows.collect()
+}
+
 // ── Sites ─────────────────────────────────────────────────────────────────────────────
 
 fn to_site(row: &rusqlite::Row) -> rusqlite::Result<Site> {

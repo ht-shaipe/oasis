@@ -51,7 +51,9 @@
         "blog": "Blog",
         "github": "Github",
         "music": "MoeKoeMusic",
-        "Credential": "凭证管理"
+        "Credential": "凭证管理",
+        "knowledge": "知识库",
+        "llm": "LLM模型"
     },
     "contextMenu": {
         "changeWallpaper": "切换壁纸",
@@ -505,7 +507,11 @@
             "view": "查看",
             "edit": "编辑",
             "delete": "删除",
-            "deleteConfirm": "确定删除此凭证吗？此操作不可恢复。"
+            "deleteConfirm": "确定删除此凭证吗？此操作不可恢复。",
+            "merge": "整理",
+            "mergeConfirm": "将自动整理相同网址的凭证：相同网址不同账号密码的合并为一个网站，用户名密码完全相同的去重只保留一条。原凭证将被转换为网站账号形式。确认整理？",
+            "mergeNoDuplicates": "没有需要整理的重复凭证",
+            "mergeResult": "整理完成：发现 {groups} 组相同网址，合并 {merged} 条凭证，去重 {duplicates} 条，新建 {sites} 个网站"
         },
         "detail": {
             "title": "凭证详情",
@@ -642,5 +648,44 @@
         "findChrome": "查找 Chrome",
         "launchChrome": "启动 Chrome",
         "hint": "启动后可通过 localhost:9222 连接 CDP 进行自动化操作。"
+    },
+    "knowledge": {
+        "title": "知识库",
+        "appDescription": "知识管理系统"
+    },
+    "llm": {
+        "title": "LLM模型",
+        "appDescription": "LLM模型配置管理",
+        "modelConfig": "模型配置",
+        "addModel": "添加模型",
+        "editModel": "编辑模型",
+        "deleteModel": "删除模型",
+        "modelName": "模型名称",
+        "modelNamePlaceholder": "请输入模型名称",
+        "modelNameRequired": "请输入模型名称",
+        "provider": "提供商",
+        "selectProvider": "选择提供商",
+        "providerRequired": "请选择提供商",
+        "modelId": "模型ID",
+        "modelIdPlaceholder": "如: gpt-4, claude-3-opus-20240229",
+        "modelIdRequired": "请输入模型ID",
+        "baseUrl": "基础URL",
+        "baseUrlPlaceholder": "如: https://api.openai.com/v1",
+        "baseUrlRequired": "请输入基础URL",
+        "apiKey": "API密钥",
+        "apiKeyPlaceholder": "请输入API密钥",
+        "apiKeyRequired": "请输入API密钥",
+        "temperature": "温度",
+        "maxTokens": "最大令牌数",
+        "description": "描述",
+        "descriptionPlaceholder": "请输入模型描述",
+        "status": "状态",
+        "actions": "操作",
+        "enabledSuccess": "模型已启用",
+        "disabledSuccess": "模型已禁用",
+        "addSuccess": "模型添加成功",
+        "updateSuccess": "模型更新成功",
+        "deleteSuccess": "模型删除成功",
+        "deleteConfirm": "确定要删除此模型吗？"
     }
 }

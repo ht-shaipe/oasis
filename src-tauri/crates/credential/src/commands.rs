@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::Manager;
 
@@ -802,6 +803,200 @@ pub fn delete_site(app: AppHandle, id: i64) -> Result<(), String> {
 pub fn search_sites(app: AppHandle, query: String) -> Result<Vec<Site>, String> {
     let conn = get_conn(&app)?;
     db::search_sites(&conn, &query).map_err(|e| e.to_string())
+}
+
+// ── Merge / Tidy Credentials ──────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MergeResult {
+    pub groups_found: i64,      // URL相同的组数
+    pub credentials_merged: i64, // 被合并的credential数
+    pub duplicates_removed: i64, // 用户名+密码完全相同被去重数
+    pub sites_created: i64,     // 新建的site数
+    pub accounts_created: i64,  // 新建的account数
+}
+
+/// 整理凭证：将URL相同的credential合并为Site+SiteAccount
+/// - URL相同、用户名/密码不同 → 合并到同一个Site下多条Account
+/// - URL相同、用户名密码完全相同 → 去重只保留一条
+/// - 无URL的credential不动
+#[tauri::command]
+pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<MergeResult, String> {
+    let conn = get_conn(&app)?;
+
+    // Decode DEK
+    let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &dek_base64)
+        .map_err(|_| "Invalid DEK base64".to_string())?;
+    let dek: [u8; 32] = dek_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+    // 1. Fetch all credentials with non-empty URL
+    let all_creds = db::list_raw_credentials(&conn).map_err(|e| e.to_string())?;
+    let creds_with_url: Vec<_> = all_creds
+        .iter()
+        .filter(|c| c.url.is_some() && !c.url.as_ref().unwrap().is_empty())
+        .collect();
+
+    // 2. Normalize URL: extract hostname for grouping
+    let normalize_url = |url: &str| -> String {
+        // Strip common prefixes and trailing slashes, keep hostname
+        let url = url.trim();
+        let stripped = url
+            .strip_prefix("https://")
+            .or_else(|| url.strip_prefix("http://"))
+            .or_else(|| url.strip_prefix("www."))
+            .unwrap_or(url);
+        // Remove trailing path/query for grouping — just keep host
+        if let Some(slash_pos) = stripped.find('/') {
+            stripped[..slash_pos].to_lowercase()
+        } else {
+            stripped.to_lowercase()
+        }
+    };
+
+    // 3. Group by normalized URL
+    let mut url_groups: std::collections::HashMap<String, Vec<&crate::models::Credential>> =
+        std::collections::HashMap::new();
+    for cred in &creds_with_url {
+        let key = normalize_url(cred.url.as_deref().unwrap());
+        url_groups.entry(key).or_default().push(cred);
+    }
+
+    // 4. Only process groups with 2+ credentials
+    let multi_groups: Vec<_> = url_groups
+        .into_iter()
+        .filter(|(_, creds)| creds.len() >= 2)
+        .collect();
+
+    let mut result = MergeResult {
+        groups_found: multi_groups.len() as i64,
+        credentials_merged: 0,
+        duplicates_removed: 0,
+        sites_created: 0,
+        accounts_created: 0,
+    };
+
+    // Helper: decrypt credential and extract username + password
+    let decrypt_cred = |cred: &crate::models::Credential| -> Option<(String, String)> {
+        let nonce_arr: [u8; 12] = cred.nonce.as_slice().try_into().ok()?;
+        let plaintext = crypto::decrypt(&dek, &cred.encrypted_data, &nonce_arr).ok()?;
+        let sensitive: SensitiveData = serde_json::from_slice(&plaintext).ok()?;
+        // Try sensitive_sets first, then account_sets, then flat fields
+        if let Some(sets) = &sensitive.sensitive_sets {
+            if let Some(first) = sets.first() {
+                let username = first.username.clone()
+                    .or_else(|| cred.username.clone())
+                    .unwrap_or_default();
+                let password = first.password.clone().unwrap_or_default();
+                return Some((username, password));
+            }
+        }
+        if let Some(sets) = &sensitive.account_sets {
+            if let Some(first) = sets.first() {
+                return Some((first.username.clone(), first.password.clone().unwrap_or_default()));
+            }
+        }
+        let username = cred.username.clone().unwrap_or_default();
+        let password = sensitive.password.unwrap_or_default();
+        Some((username, password))
+    };
+
+    // 5. For each multi-group, merge into Site + SiteAccounts
+    for (normalized_url, creds) in &multi_groups {
+        // Decrypt all and collect (username, password) pairs, deduplicating identical pairs
+        let mut seen_pairs: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
+        let mut unique_accounts: Vec<(String, String)> = Vec::new(); // (username, password)
+        let mut cred_ids_to_delete: Vec<i64> = Vec::new();
+
+        for cred in creds {
+            cred_ids_to_delete.push(cred.id);
+            if let Some((username, password)) = decrypt_cred(cred) {
+                if username.is_empty() && password.is_empty() {
+                    continue;
+                }
+                let pair = (username.clone(), password.clone());
+                if seen_pairs.contains(&pair) {
+                    result.duplicates_removed += 1;
+                    continue;
+                }
+                seen_pairs.insert(pair);
+                unique_accounts.push((username, password));
+            }
+        }
+
+        if unique_accounts.is_empty() {
+            continue;
+        }
+
+        // Use the original URL from the first credential
+        let site_url = creds
+            .first()
+            .and_then(|c| c.url.clone())
+            .unwrap_or_default();
+
+        // Use normalized_url as site name, or title of first credential
+        let site_name = if normalized_url.len() < creds.first().map(|c| c.title.len()).unwrap_or(0) {
+            creds.first().map(|c| c.title.clone()).unwrap_or_else(|| normalized_url.clone())
+        } else {
+            normalized_url.clone()
+        };
+
+        // Use the category of the first credential
+        let category_id = creds.first().map(|c| c.category_id).unwrap_or(1);
+
+        // Collect tags
+        let all_tags: Vec<String> = creds
+            .iter()
+            .filter_map(|c| c.tags.clone())
+            .flat_map(|t: String| t.split(',').map(|s| s.trim().to_string()).collect::<Vec<_>>())
+            .filter(|t| !t.is_empty())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        let tags = if all_tags.is_empty() { None } else { Some(all_tags.join(",")) };
+
+        // Create site
+        let site_id = db::create_site(
+            &conn,
+            &site_name,
+            Some(&site_url),
+            category_id,
+            tags.as_deref(),
+            None, // notes
+            "",   // accounts_json placeholder
+        )
+        .map_err(|e| e.to_string())?;
+
+        // Create encrypted accounts
+        for (username, password) in &unique_accounts {
+            let (pwd_enc, pwd_nonce) = crypto::encrypt(&dek, password.as_bytes())
+                .map_err(|e| format!("Failed to encrypt password: {:?}", e))?;
+
+            db::create_site_account(
+                &conn,
+                site_id,
+                username,
+                &pwd_enc,
+                &pwd_nonce,
+                None, None, None, None, // no api_key, secret_key
+            )
+            .map_err(|e| e.to_string())?;
+
+            result.accounts_created += 1;
+        }
+
+        result.sites_created += 1;
+        result.credentials_merged += cred_ids_to_delete.len() as i64;
+
+        // Delete original credentials
+        for id in &cred_ids_to_delete {
+            db::delete_credential(&conn, *id).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(result)
 }
 
 // ── Browser CSV Import Commands ───────────────────────────────────────────────────

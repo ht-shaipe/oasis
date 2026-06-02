@@ -7,9 +7,11 @@ import Settings from '@/apps/Settings.vue';
 import ContinueDialog from '@/apps/ContinueDialog.vue';
 import Notes from '@/apps/Notes.vue';
 import Profile from '@/apps/Profile.vue';
-import Credential from '@/apps/Credential/index.vue';
+import Credential from '@/apps/Credential/Index.vue';
 import Toolbox from '@/apps/Toolbox/Index.vue';
 import Browser from '@/apps/Browser.vue';
+import Knowledge from '@/apps/Knowledge/Index.vue';
+import Llm from '@/apps/Llm/Index.vue';
 
 export interface AppConfig {
     id: string;
@@ -110,5 +112,23 @@ export const apps: AppConfig[] = [
         component: Browser,
         showInDock: true,
         nameKey: 'browser.title',
+    },
+    {
+        id: 'knowledge',
+        name: 'Knowledge',
+        icon: '/assets/icons/Books.svg',
+        component: Knowledge,
+        showInDock: true,
+        showOnDesktop: true,
+        nameKey: 'knowledge.title',
+    },
+    {
+        id: 'llm',
+        name: 'LLM Models',
+        icon: '/assets/icons/Books.svg',
+        component: Llm,
+        showInDock: true,
+        showOnDesktop: true,
+        nameKey: 'llm.title',
     },
 ];

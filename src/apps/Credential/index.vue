@@ -112,9 +112,11 @@
                             :search-placeholder="t('credential.list.search')"
                             :add-label="t('credential.list.add')"
                             :lock-label="t('credential.lock')"
+                            :merge-label="t('credential.list.merge')"
                             @add="openCreateDialog"
                             @lock="handleLock"
-                            @import-browser="showImportDialog = true" />
+                            @import-browser="showImportDialog = true"
+                            @merge="handleMergeCredentials" />
 
                         <!-- Credential table -->
                         <CredentialTable
@@ -751,6 +753,7 @@ const {
     listCredentials,
     getCredential,
     deleteCredential,
+    mergeCredentialsByUrl,
     dek,
 } = useCredential();
 
@@ -1133,6 +1136,36 @@ const handleDeleteCredential = async (row: CredentialView) => {
         await loadMainData();
     } catch {
         // User cancelled or deletion failed silently
+    }
+};
+
+// ── Merge / Tidy credentials ──
+
+const handleMergeCredentials = async () => {
+    try {
+        await ElMessageBox.confirm(t('credential.list.mergeConfirm'), t('credential.list.merge'), {
+            confirmButtonText: t('credential.detail.save'),
+            cancelButtonText: t('credential.detail.cancel'),
+            type: 'info',
+        });
+        const result = await mergeCredentialsByUrl();
+        if (result.groups_found === 0) {
+            ElMessage.info(t('credential.list.mergeNoDuplicates'));
+        } else {
+            ElMessage.success(
+                t('credential.list.mergeResult', {
+                    groups: result.groups_found,
+                    merged: result.credentials_merged,
+                    duplicates: result.duplicates_removed,
+                    sites: result.sites_created,
+                }),
+            );
+            await loadMainData();
+        }
+    } catch (err: unknown) {
+        if (err !== 'cancel') {
+            ElMessage.error(err instanceof Error ? err.message : String(err));
+        }
     }
 };
 

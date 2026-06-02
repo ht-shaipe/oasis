@@ -10,6 +10,22 @@
                 clearable
                 size="small" />
         </div>
+        <el-button class="credential-toolbar-merge" size="small" @click="emit('merge')">
+            <svg
+                class="credential-toolbar-merge-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M16 16l4-4-4-4" />
+                <path d="M20 12H9" />
+                <path d="M4 20V4" />
+            </svg>
+            {{ mergeLabel }}
+        </el-button>
         <el-button class="credential-toolbar-import" size="small" @click="emit('import-browser')">
             <svg
                 class="credential-toolbar-import-icon"
@@ -46,12 +62,14 @@ defineProps<{
     searchPlaceholder: string;
     addLabel: string;
     lockLabel: string;
+    mergeLabel: string;
 }>();
 
 const emit = defineEmits<{
     (e: 'add'): void;
     (e: 'lock'): void;
     (e: 'import-browser'): void;
+    (e: 'merge'): void;
 }>();
 </script>
 
@@ -107,6 +125,29 @@ const emit = defineEmits<{
     color: #5f6368;
     background-color: rgba(0, 0, 0, 0.03);
     border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.credential-toolbar-merge {
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 10px;
+    color: #374151;
+    background-color: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    font-weight: 500;
+}
+
+.credential-toolbar-merge:hover {
+    color: #16a34a;
+    background-color: rgba(22, 163, 74, 0.06);
+    border-color: rgba(22, 163, 74, 0.2);
+}
+
+.credential-toolbar-merge-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    vertical-align: -3px;
 }
 
 .credential-toolbar-import {

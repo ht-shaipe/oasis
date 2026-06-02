@@ -268,6 +268,21 @@ export function useCredential() {
         return invoke('import_csv_passwords', { csvPath });
     };
 
+    // ── Merge / Tidy ──
+
+    interface MergeResult {
+        groups_found: number;
+        credentials_merged: number;
+        duplicates_removed: number;
+        sites_created: number;
+        accounts_created: number;
+    }
+
+    const mergeCredentialsByUrl = async (): Promise<MergeResult> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<MergeResult>('merge_credentials_by_url', { dekBase64: dek.value });
+    };
+
     return {
         // state
         dek,
@@ -306,5 +321,8 @@ export function useCredential() {
 
         // browser import
         importCsvPasswords,
+
+        // merge / tidy
+        mergeCredentialsByUrl,
     };
 }
