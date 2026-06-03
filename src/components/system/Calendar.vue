@@ -53,7 +53,7 @@ onMounted(() => {
     width: 280px;
     background-color: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    z-index: 1900;
+    z-index: var(--z-index-dropdown);
     border-radius: 10px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
     overflow: hidden;
@@ -69,7 +69,7 @@ onMounted(() => {
 
 .calendar-header h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: var(--color-text-primary);
 }
 
@@ -94,7 +94,7 @@ onMounted(() => {
     padding: 8px 0;
     border-bottom: 1px solid #eee;
     color: var(--color-text-secondary);
-    font-size: 13px;
+    font-size: var(--app-font-13);
 }
 
 .calendar-item:last-child {

@@ -5,13 +5,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import en from 'element-plus/es/locale/lang/en';
 import { useLocaleStore } from '@/store/locale';
+import { useFontSizeStore } from '@/store/fontSize';
 
 const localeStore = useLocaleStore();
 const elLocale = computed(() => (localeStore.locale === 'zh-CN' ? zhCn : en));
+
+// 全局字体大小
+const fontSizeStore = useFontSizeStore();
+watch(() => fontSizeStore.currentSize, (val) => {
+    document.documentElement.style.setProperty('--el-font-size-base', `${val}px`);
+    document.documentElement.style.fontSize = `${val}px`;
+}, { immediate: true });
 </script>
 
 <style>

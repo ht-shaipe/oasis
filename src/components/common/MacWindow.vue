@@ -25,9 +25,9 @@
             </div>
             <div class="window-title">{{ title }}</div>
         </div>
-        <div class="window-content" :style="contentStyle">
+        <el-scrollbar class="window-content" :height="scrollbarHeight">
             <slot></slot>
-        </div>
+        </el-scrollbar>
         <!-- 调整大小的手柄 -->
         <div class="resize-handle resize-handle-se" @mousedown="startResize($event, 'se')"></div>
         <div class="resize-handle resize-handle-sw" @mousedown="startResize($event, 'sw')"></div>
@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
+import { ElScrollbar } from 'element-plus';
 
 // 属性定义
 const props = defineProps({
@@ -67,7 +68,7 @@ const props = defineProps({
     },
     zIndex: {
         type: Number,
-        default: 1000,
+        default: 1000, // 将从CSS变量 --z-index-window 获取
     },
 });
 
@@ -128,7 +129,7 @@ const emit = defineEmits(['close', 'minimize', 'maximize', 'focus']);
 const bringToFront = () => {
     // 获取所有窗口并查找当前最高的z-index
     const allWindows = document.querySelectorAll('.mac-window');
-    let maxZIndex = 1000; // 基础z-index
+    let maxZIndex = 1000; // 基础z-index，对应CSS变量 --z-index-window
 
     allWindows.forEach((window) => {
         const computedStyle = getComputedStyle(window);
@@ -399,28 +400,30 @@ const windowStyle = computed(() => {
     return baseStyle;
 });
 
-// 内容区样式
-const contentStyle = computed(() => {
-    const style: Record<string, string> = {};
+// 滚动条高度
+const scrollbarHeight = computed(() => {
     if (isMaximized.value) {
-        style.height = `calc(100vh - ${menuBarHeight.value + 36}px)`;
-    } else if (windowSize.value.height) {
-        style.height = `${windowSize.value.height - 36}px`;
+        return `calc(100vh - ${menuBarHeight.value + 36}px)`;
+    } else {
+        return `${windowSize.value.height - 36}px`;
     }
-    return style;
 });
+
+defineExpose({ bringToFront });
 </script>
 
 <style scoped>
 /* Mac风格窗口 */
 .mac-window {
     position: fixed;
+    display: flex;
+    flex-direction: column;
     background-color: var(--color-bg-glass);
     border-radius: 18px;
     box-shadow: 0 10px 30px var(--color-shadow);
     overflow: hidden;
     backdrop-filter: blur(10px);
-    z-index: 1000;
+    z-index: var(--z-index-window);
     outline: none; /* 移除焦点时的轮廓 */
 }
 
@@ -477,14 +480,42 @@ const contentStyle = computed(() => {
     border-bottom: 1px solid var(--color-window-titlebar-border);
     padding: 0 12px;
     position: relative;
-    cursor: grab;
+    /* cursor: grab; */
     user-select: none;
     -webkit-user-select: none;
     -webkit-app-region: no-drag;
 }
 
+.window-content {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+.window-content :deep(.el-scrollbar) {
+    height: 100%;
+}
+
+.window-content :deep(.el-scrollbar__wrap) {
+    height: 100%;
+    overflow-x: hidden;
+}
+
+.window-content :deep(.el-scrollbar__view) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+}
+
+.window-content :deep(.el-scrollbar__bar) {
+    z-index: 10;
+}
+
 .window-titlebar.dragging {
-    cursor: grabbing;
+    /* cursor: grabbing; */
+    user-select: none;
 }
 
 .window-buttons {
@@ -521,7 +552,7 @@ const contentStyle = computed(() => {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-window-title);
     font-weight: 500;
     pointer-events: none;

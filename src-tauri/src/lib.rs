@@ -12,7 +12,7 @@ mod net;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, Emitter, Manager,
+    App, Emitter, Listener, Manager,
 };
 
 mod commands;
@@ -21,18 +21,11 @@ mod commands;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            commands::greet,
-            commands::update_tray_locale,
-            // credential
-            oasis_credential::credential_handlers!(),
-            // toolbox
-            oasis_toolbox::toolbox_handlers!(),
-            // browser
-            oasis_browser::browser_handlers!(),
-        ])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(include!(concat!(env!("OUT_DIR"), "/generated_invoke_handler.rs")))
         .setup(|app| {
             setup_tray(app)?;
+            setup_window_focus_handler(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -87,8 +80,9 @@ fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
             {
                 let app = tray.app_handle();
                 if let Some(w) = app.get_webview_window("main") {
+                    // 如果窗口可见，置前；如果不可见，显示并置前
                     if w.is_visible().unwrap_or(false) {
-                        let _ = w.hide();
+                        let _ = w.set_focus();
                     } else {
                         let _ = w.show();
                         let _ = w.set_focus();
@@ -99,4 +93,20 @@ fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .build(app)?;
 
     Ok(())
+}
+
+fn setup_window_focus_handler(app: &tauri::AppHandle) {
+    let app_handle = app.clone();
+
+    // 监听应用重新激活事件（点击dock图标等）
+    app.listen("tauri://app-reactivate", move |_| {
+        if let Some(window) = app_handle.get_webview_window("main") {
+            if window.is_visible().unwrap_or(false) {
+                let _ = window.set_focus();
+            } else {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }
+    });
 }

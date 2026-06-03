@@ -1,6 +1,6 @@
 # 凭据存储方案 (Credential Storage)
 
-本文档详细说明 Oasis 凭据管理插件（Credential Manager）的后端存储逻辑和加密流程。
+本文档详细说明 Oasis 凭据管理器（Credential Manager）的后端存储逻辑和加密流程。对应的 Rust crate 为 `oasis-credential`，注册 12 个 Tauri 命令。
 
 ## 🔐 加密架构
 

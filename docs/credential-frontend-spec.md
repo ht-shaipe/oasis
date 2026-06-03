@@ -12,7 +12,7 @@ Oasis Tauri 2 应用，项目根目录: /Users/shaipe/workspace/rust/tools/oasis
 ```
 src/
 ├── apps/
-│   └── CredentialManager/
+│   └── Credential/
 │       ├── index.vue             # 主组件（MacWindow 包裹，三视图状态机）
 │       ├── AuthCard.vue          # 认证卡片
 │       ├── Sidebar.vue           # 分类导航
@@ -23,7 +23,7 @@ src/
 │   ├── en.json                   # 追加 credential.* i18n 键
 │   └── zh-CN.json                # 追加 credential.* i18n 键
 ├── views/
-│   └── HomeView.vue              # 修改：注册 CredentialManager 组件
+│   └── HomeView.vue              # 修改：注册 Credential 组件
 └── components/system/
     └── Dock.vue                  # 修改：添加凭证管理 Dock 图标
 ```
@@ -172,7 +172,7 @@ export interface UpdateCredentialRequest {
 }
 ```
 
-## 3. CredentialManager/index.vue - 主组件
+## 3. Credential/index.vue - 主组件
 
 ### 三视图状态机
 ```
@@ -263,27 +263,27 @@ viewState: 'setup' | 'unlock' | 'main'
 
 添加:
 ```typescript
-import CredentialManager from '@/apps/CredentialManager/index.vue'
+import Credential from '@/apps/Credential/index.vue'
 
 // 新增状态
-const showCredentialManager = ref(false)
-const isCredentialManagerMinimized = ref(false)
+const showCredential = ref(false)
+const isCredentialMinimized = ref(false)
 
 // openApp 的 switch 中新增:
 case 'credential-manager':
-    showCredentialManager.value = true
-    isCredentialManagerMinimized.value = false
+    showCredential.value = true
+    isCredentialMinimized.value = false
     break
 ```
 
 Template 中新增（其他 Teleport 块旁边）:
 ```html
 <Teleport to="body">
-    <CredentialManager
-        v-if="showCredentialManager"
-        :isMinimized="isCredentialManagerMinimized"
-        @close="showCredentialManager = false"
-        @minimize="isCredentialManagerMinimized = !isCredentialManagerMinimized"
+    <Credential
+        v-if="showCredential"
+        :isMinimized="isCredentialMinimized"
+        @close="showCredential = false"
+        @minimize="isCredentialMinimized = !isCredentialMinimized"
     />
 </Teleport>
 ```
@@ -293,7 +293,7 @@ Template 中新增（其他 Teleport 块旁边）:
 在 Dock 中添加一个凭证管理图标，放在 Settings 图标之前：
 ```html
 <div class="dock-item" @click="openApp('credential-manager')">
-    <img src="/assets/icons/Notes.png" :alt="t('dock.credentialManager')" :title="t('dock.credentialManager')">
+    <img src="/assets/icons/Notes.png" :alt="t('dock.Credential')" :title="t('dock.Credential')">
 </div>
 ```
 （暂时用 Notes.png 图标，后续可替换为专用图标）

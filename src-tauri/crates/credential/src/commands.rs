@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::Manager;
 
@@ -5,6 +6,7 @@ use crate::crypto;
 use crate::db;
 use crate::models::{
     Category, CredentialDetail, CredentialView, NewCredential, SensitiveData, UpdateCredential,
+    Site, SiteDetail, NewSite, UpdateSite, SiteAccount,
 };
 use chrono::Utc;
 
@@ -151,6 +153,11 @@ pub fn get_credential(
     let conn = get_conn(&app)?;
     let cred = db::get_credential(&conn, id).map_err(|e| e.to_string())?;
 
+    eprintln!("DEBUG: Retrieved credential id={}, cipher_len={}, nonce_len={}",
+        id, cred.encrypted_data.len(), cred.nonce.len());
+    eprintln!("DEBUG: Encrypted data (hex): {:02x?}", cred.encrypted_data);
+    eprintln!("DEBUG: Nonce (hex): {:02x?}", cred.nonce);
+
     // Decode DEK
     let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &dek_base64)
         .map_err(|_| "Invalid DEK base64".to_string())?;
@@ -282,8 +289,10 @@ pub fn create_credential(
 
     // Encrypt sensitive_data_json
     let plaintext = credential.sensitive_data_json.as_bytes();
+    eprintln!("DEBUG: Encrypting plaintext (len={}): {}", plaintext.len(), credential.sensitive_data_json);
     let (encrypted, nonce_bytes) =
         crypto::encrypt(&dek, plaintext).map_err(|e| format!("Encryption failed: {:?}", e))?;
+    eprintln!("DEBUG: Encrypted result (len={}, nonce_len={})", encrypted.len(), nonce_bytes.len());
 
     // Create a modified NewCredential with encrypted data
     let cred_with_enc = NewCredential {
@@ -506,4 +515,511 @@ pub fn diagnose_credential(
     }
 
     Ok(report)
+}
+
+// ── Site Commands ─────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn list_sites(
+    app: AppHandle,
+    category_id: Option<i64>,
+) -> Result<Vec<Site>, String> {
+    let conn = get_conn(&app)?;
+    db::list_sites(&conn, category_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_site(app: AppHandle, id: i64, dek_base64: String) -> Result<SiteDetail, String> {
+    let conn = get_conn(&app)?;
+
+    // Decode DEK
+    let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &dek_base64)
+        .map_err(|_| "Invalid DEK base64".to_string())?;
+    let dek: [u8; 32] = dek_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+    // Get site info
+    let site = db::get_site(&conn, id).map_err(|e| e.to_string())?;
+
+    // Get encrypted accounts
+    let encrypted_accounts = db::get_encrypted_site_accounts(&conn, id).map_err(|e| e.to_string())?;
+
+    // Decrypt each account
+    let mut accounts = Vec::new();
+    for (username, pwd_enc, pwd_nonce, api_key_enc, api_key_nonce, secret_enc, secret_nonce) in encrypted_accounts {
+        // Decrypt password
+        let pwd_nonce_arr: [u8; 12] = pwd_nonce.as_slice()
+            .try_into()
+            .map_err(|_| "Invalid password nonce".to_string())?;
+        let pwd_plain = crypto::decrypt(&dek, &pwd_enc, &pwd_nonce_arr)
+            .map_err(|e| format!("Failed to decrypt password: {:?}", e))?;
+        let password = String::from_utf8(pwd_plain)
+            .map_err(|e| format!("Invalid password UTF-8: {}", e))?;
+
+        // Build account
+        let mut account = SiteAccount {
+            username,
+            password,
+            api_key: None,
+            secret_key: None,
+        };
+
+        // Decrypt api_key if present
+        if let (Some(akey_enc), Some(akey_nonce)) = (api_key_enc, api_key_nonce) {
+            let akey_nonce_arr: [u8; 12] = akey_nonce.as_slice()
+                .try_into()
+                .map_err(|_| "Invalid API key nonce".to_string())?;
+            let akey_plain = crypto::decrypt(&dek, &akey_enc, &akey_nonce_arr)
+                .map_err(|e| format!("Failed to decrypt API key: {:?}", e))?;
+            account.api_key = Some(String::from_utf8(akey_plain)
+                .map_err(|e| format!("Invalid API key UTF-8: {}", e))?);
+        }
+
+        // Decrypt secret_key if present
+        if let (Some(skey_enc), Some(skey_nonce)) = (secret_enc, secret_nonce) {
+            let skey_nonce_arr: [u8; 12] = skey_nonce.as_slice()
+                .try_into()
+                .map_err(|_| "Invalid secret key nonce".to_string())?;
+            let skey_plain = crypto::decrypt(&dek, &skey_enc, &skey_nonce_arr)
+                .map_err(|e| format!("Failed to decrypt secret key: {:?}", e))?;
+            account.secret_key = Some(String::from_utf8(skey_plain)
+                .map_err(|e| format!("Invalid secret key UTF-8: {}", e))?);
+        }
+
+        accounts.push(account);
+    }
+
+    Ok(SiteDetail {
+        id: site.id,
+        name: site.name,
+        url: site.url,
+        category_id: site.category_id,
+        tags: site.tags,
+        notes: site.notes,
+        created_at: site.created_at,
+        updated_at: site.updated_at,
+        category_name: site.category_name,
+        accounts,
+    })
+}
+
+#[tauri::command]
+pub fn create_site(app: AppHandle, site: NewSite) -> Result<Site, String> {
+    let conn = get_conn(&app)?;
+
+    // Decode DEK
+    let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &site.dek_base64)
+        .map_err(|_| "Invalid DEK base64".to_string())?;
+    let dek: [u8; 32] = dek_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+    // Create site record
+    let site_id = db::create_site(
+        &conn,
+        &site.name,
+        site.url.as_deref(),
+        site.category_id,
+        site.tags.as_deref(),
+        site.notes.as_deref(),
+        "", // placeholder for accounts_json
+    ).map_err(|e| e.to_string())?;
+
+    // Encrypt and create each account
+    for account in &site.accounts {
+        // Encrypt password
+        let (pwd_enc, pwd_nonce) = crypto::encrypt(&dek, account.password.as_bytes())
+            .map_err(|e| format!("Failed to encrypt password: {:?}", e))?;
+
+        // Encrypt api_key if present
+        let (api_key_enc, api_key_nonce) = if let Some(ref key) = account.api_key {
+            let (enc, nonce) = crypto::encrypt(&dek, key.as_bytes())
+                .map_err(|e| format!("Failed to encrypt API key: {:?}", e))?;
+            (Some(enc), Some(nonce))
+        } else {
+            (None, None)
+        };
+
+        // Encrypt secret_key if present
+        let (secret_key_enc, secret_key_nonce) = if let Some(ref key) = account.secret_key {
+            let (enc, nonce) = crypto::encrypt(&dek, key.as_bytes())
+                .map_err(|e| format!("Failed to encrypt secret key: {:?}", e))?;
+            (Some(enc), Some(nonce))
+        } else {
+            (None, None)
+        };
+
+        // Create account record
+        db::create_site_account(
+            &conn,
+            site_id,
+            &account.username,
+            &pwd_enc,
+            &pwd_nonce,
+            api_key_enc.as_deref(),
+            api_key_nonce.as_ref().map(|v| v.as_slice()),
+            secret_key_enc.as_deref(),
+            secret_key_nonce.as_ref().map(|v| v.as_slice()),
+        ).map_err(|e| e.to_string())?;
+    }
+
+    // Get category name
+    let cat_name: Option<String> = conn
+        .query_row(
+            "SELECT name FROM categories WHERE id = ?1",
+            rusqlite::params![site.category_id],
+            |row| row.get(0),
+        )
+        .ok();
+
+    // Get site with timestamp
+    let site_data: Site = conn.query_row(
+        "SELECT id, name, url, category_id, tags, notes, created_at, updated_at, NULL, 0
+         FROM sites WHERE id = ?1",
+        rusqlite::params![site_id],
+        |row| {
+            Ok(Site {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                url: row.get(2)?,
+                category_id: row.get(3)?,
+                tags: row.get(4)?,
+                notes: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                category_name: row.get(8)?,
+                accounts_count: row.get(9)?,
+            })
+        },
+    ).map_err(|e| e.to_string())?;
+
+    // Get accounts count
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM site_accounts WHERE site_id = ?1",
+            rusqlite::params![site_id],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    Ok(Site {
+        id: site_id,
+        name: site_data.name,
+        url: site_data.url,
+        category_id: site_data.category_id,
+        tags: site_data.tags,
+        notes: site_data.notes,
+        created_at: site_data.created_at,
+        updated_at: site_data.updated_at,
+        category_name: cat_name,
+        accounts_count: Some(count),
+    })
+}
+
+#[tauri::command]
+pub fn update_site(app: AppHandle, site: UpdateSite) -> Result<Site, String> {
+    let conn = get_conn(&app)?;
+
+    // Update site fields
+    db::update_site(
+        &conn,
+        site.id,
+        site.name.as_deref(),
+        site.url.as_deref(),
+        site.category_id,
+        site.tags.as_deref(),
+        site.notes.as_deref(),
+    ).map_err(|e| e.to_string())?;
+
+    // Update accounts if provided
+    if let (Some(accounts), Some(dek_base64)) = (site.accounts, &site.dek_base64) {
+        // Decode DEK
+        let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, dek_base64)
+            .map_err(|_| "Invalid DEK base64".to_string())?;
+        let dek: [u8; 32] = dek_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+        // Delete existing accounts
+        db::delete_site_accounts(&conn, site.id).map_err(|e| e.to_string())?;
+
+        // Create new accounts
+        for account in &accounts {
+            // Encrypt password
+            let (pwd_enc, pwd_nonce) = crypto::encrypt(&dek, account.password.as_bytes())
+                .map_err(|e| format!("Failed to encrypt password: {:?}", e))?;
+
+            // Encrypt api_key if present
+            let (api_key_enc, api_key_nonce) = if let Some(ref key) = account.api_key {
+                let (enc, nonce) = crypto::encrypt(&dek, key.as_bytes())
+                    .map_err(|e| format!("Failed to encrypt API key: {:?}", e))?;
+                (Some(enc), Some(nonce))
+            } else {
+                (None, None)
+            };
+
+            // Encrypt secret_key if present
+            let (secret_key_enc, secret_key_nonce) = if let Some(ref key) = account.secret_key {
+                let (enc, nonce) = crypto::encrypt(&dek, key.as_bytes())
+                    .map_err(|e| format!("Failed to encrypt secret key: {:?}", e))?;
+                (Some(enc), Some(nonce))
+            } else {
+                (None, None)
+            };
+
+            // Create account record
+            db::create_site_account(
+                &conn,
+                site.id,
+                &account.username,
+                &pwd_enc,
+                &pwd_nonce,
+                api_key_enc.as_deref(),
+                api_key_nonce.as_ref().map(|v| v.as_slice()),
+                secret_key_enc.as_deref(),
+                secret_key_nonce.as_ref().map(|v| v.as_slice()),
+            ).map_err(|e| e.to_string())?;
+        }
+    }
+
+    // Get updated site
+    let sites = db::list_sites(&conn, None).map_err(|e| e.to_string())?;
+    sites.into_iter()
+        .find(|s| s.id == site.id)
+        .ok_or_else(|| "Site not found after update".to_string())
+}
+
+#[tauri::command]
+pub fn delete_site(app: AppHandle, id: i64) -> Result<(), String> {
+    let conn = get_conn(&app)?;
+    db::delete_site(&conn, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn search_sites(app: AppHandle, query: String) -> Result<Vec<Site>, String> {
+    let conn = get_conn(&app)?;
+    db::search_sites(&conn, &query).map_err(|e| e.to_string())
+}
+
+// ── Merge / Tidy Credentials ──────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MergeResult {
+    pub groups_found: i64,      // URL相同的组数
+    pub credentials_merged: i64, // 被合并的credential数
+    pub duplicates_removed: i64, // 用户名+密码完全相同被去重数
+    pub sites_created: i64,     // 新建的site数
+    pub accounts_created: i64,  // 新建的account数
+}
+
+/// 整理凭证：将URL相同的credential合并为Site+SiteAccount
+/// - URL相同、用户名/密码不同 → 合并到同一个Site下多条Account
+/// - URL相同、用户名密码完全相同 → 去重只保留一条
+/// - 无URL的credential不动
+#[tauri::command]
+pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<MergeResult, String> {
+    let conn = get_conn(&app)?;
+
+    // Decode DEK
+    let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &dek_base64)
+        .map_err(|_| "Invalid DEK base64".to_string())?;
+    let dek: [u8; 32] = dek_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+    // 1. Fetch all credentials with non-empty URL
+    let all_creds = db::list_raw_credentials(&conn).map_err(|e| e.to_string())?;
+    let creds_with_url: Vec<_> = all_creds
+        .iter()
+        .filter(|c| c.url.is_some() && !c.url.as_ref().unwrap().is_empty())
+        .collect();
+
+    // 2. Normalize URL: extract hostname for grouping
+    let normalize_url = |url: &str| -> String {
+        // Strip common prefixes and trailing slashes, keep hostname
+        let url = url.trim();
+        let stripped = url
+            .strip_prefix("https://")
+            .or_else(|| url.strip_prefix("http://"))
+            .or_else(|| url.strip_prefix("www."))
+            .unwrap_or(url);
+        // Remove trailing path/query for grouping — just keep host
+        if let Some(slash_pos) = stripped.find('/') {
+            stripped[..slash_pos].to_lowercase()
+        } else {
+            stripped.to_lowercase()
+        }
+    };
+
+    // 3. Group by normalized URL
+    let mut url_groups: std::collections::HashMap<String, Vec<&crate::models::Credential>> =
+        std::collections::HashMap::new();
+    for cred in &creds_with_url {
+        let key = normalize_url(cred.url.as_deref().unwrap());
+        url_groups.entry(key).or_default().push(cred);
+    }
+
+    // 4. Only process groups with 2+ credentials
+    let multi_groups: Vec<_> = url_groups
+        .into_iter()
+        .filter(|(_, creds)| creds.len() >= 2)
+        .collect();
+
+    let mut result = MergeResult {
+        groups_found: multi_groups.len() as i64,
+        credentials_merged: 0,
+        duplicates_removed: 0,
+        sites_created: 0,
+        accounts_created: 0,
+    };
+
+    // Helper: decrypt credential and extract username + password
+    let decrypt_cred = |cred: &crate::models::Credential| -> Option<(String, String)> {
+        let nonce_arr: [u8; 12] = cred.nonce.as_slice().try_into().ok()?;
+        let plaintext = crypto::decrypt(&dek, &cred.encrypted_data, &nonce_arr).ok()?;
+        let sensitive: SensitiveData = serde_json::from_slice(&plaintext).ok()?;
+        // Try sensitive_sets first, then account_sets, then flat fields
+        if let Some(sets) = &sensitive.sensitive_sets {
+            if let Some(first) = sets.first() {
+                let username = first.username.clone()
+                    .or_else(|| cred.username.clone())
+                    .unwrap_or_default();
+                let password = first.password.clone().unwrap_or_default();
+                return Some((username, password));
+            }
+        }
+        if let Some(sets) = &sensitive.account_sets {
+            if let Some(first) = sets.first() {
+                return Some((first.username.clone(), first.password.clone().unwrap_or_default()));
+            }
+        }
+        let username = cred.username.clone().unwrap_or_default();
+        let password = sensitive.password.unwrap_or_default();
+        Some((username, password))
+    };
+
+    // 5. For each multi-group, merge into Site + SiteAccounts
+    for (normalized_url, creds) in &multi_groups {
+        // Decrypt all and collect (username, password) pairs, deduplicating identical pairs
+        let mut seen_pairs: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
+        let mut unique_accounts: Vec<(String, String)> = Vec::new(); // (username, password)
+        let mut cred_ids_to_delete: Vec<i64> = Vec::new();
+
+        for cred in creds {
+            cred_ids_to_delete.push(cred.id);
+            if let Some((username, password)) = decrypt_cred(cred) {
+                if username.is_empty() && password.is_empty() {
+                    continue;
+                }
+                let pair = (username.clone(), password.clone());
+                if seen_pairs.contains(&pair) {
+                    result.duplicates_removed += 1;
+                    continue;
+                }
+                seen_pairs.insert(pair);
+                unique_accounts.push((username, password));
+            }
+        }
+
+        if unique_accounts.is_empty() {
+            continue;
+        }
+
+        // Use the original URL from the first credential
+        let site_url = creds
+            .first()
+            .and_then(|c| c.url.clone())
+            .unwrap_or_default();
+
+        // Use normalized_url as site name, or title of first credential
+        let site_name = if normalized_url.len() < creds.first().map(|c| c.title.len()).unwrap_or(0) {
+            creds.first().map(|c| c.title.clone()).unwrap_or_else(|| normalized_url.clone())
+        } else {
+            normalized_url.clone()
+        };
+
+        // Use the category of the first credential
+        let category_id = creds.first().map(|c| c.category_id).unwrap_or(1);
+
+        // Collect tags
+        let all_tags: Vec<String> = creds
+            .iter()
+            .filter_map(|c| c.tags.clone())
+            .flat_map(|t: String| t.split(',').map(|s| s.trim().to_string()).collect::<Vec<_>>())
+            .filter(|t| !t.is_empty())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        let tags = if all_tags.is_empty() { None } else { Some(all_tags.join(",")) };
+
+        // Create site
+        let site_id = db::create_site(
+            &conn,
+            &site_name,
+            Some(&site_url),
+            category_id,
+            tags.as_deref(),
+            None, // notes
+            "",   // accounts_json placeholder
+        )
+        .map_err(|e| e.to_string())?;
+
+        // Create encrypted accounts
+        for (username, password) in &unique_accounts {
+            let (pwd_enc, pwd_nonce) = crypto::encrypt(&dek, password.as_bytes())
+                .map_err(|e| format!("Failed to encrypt password: {:?}", e))?;
+
+            db::create_site_account(
+                &conn,
+                site_id,
+                username,
+                &pwd_enc,
+                &pwd_nonce,
+                None, None, None, None, // no api_key, secret_key
+            )
+            .map_err(|e| e.to_string())?;
+
+            result.accounts_created += 1;
+        }
+
+        result.sites_created += 1;
+        result.credentials_merged += cred_ids_to_delete.len() as i64;
+
+        // Delete original credentials
+        for id in &cred_ids_to_delete {
+            db::delete_credential(&conn, *id).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(result)
+}
+
+// ── Browser CSV Import Commands ───────────────────────────────────────────────────
+
+use crate::browser_import::{self, BrowserCredential};
+
+#[tauri::command]
+pub fn import_csv_passwords(
+    csv_path: String,
+) -> Result<Vec<BrowserCredential>, String> {
+    let mut creds = browser_import::parse_csv_passwords(&csv_path)?;
+
+    // 非空密码排到最前面，方便用户查看
+    creds.sort_by_key(|c| if c.password.is_empty() { 1 } else { 0 });
+
+    let with_pw: Vec<_> = creds.iter().filter(|c| !c.password.is_empty()).collect();
+    let empty: Vec<_> = creds.iter().filter(|c| c.password.is_empty()).collect();
+    eprintln!(
+        "[import_csv_passwords] total={} with_pw={} empty={}",
+        creds.len(),
+        with_pw.len(),
+        empty.len()
+    );
+
+    Ok(creds)
 }

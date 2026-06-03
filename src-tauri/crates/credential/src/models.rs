@@ -59,6 +59,14 @@ pub struct SensitiveData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sensitive_sets: Option<Vec<CredentialSensitiveSet>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_sets: Option<Vec<CredentialAccountSet>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub secret_key: Option<String>,
@@ -74,6 +82,35 @@ pub struct SensitiveData {
     pub custom_fields: Option<std::collections::HashMap<String, String>>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CredentialAccountSet {
+    pub username: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CredentialSensitiveSet {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secret_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct NewCredential {
     pub category_id: i64,
@@ -81,7 +118,9 @@ pub struct NewCredential {
     pub username: Option<String>,
     pub url: Option<String>,
     pub sensitive_data_json: String,
+    #[serde(alias = "dekBase64")]
     pub dek_base64: String,
+    #[serde(alias = "nonceBase64")]
     pub nonce_base64: String,
     pub tags: Option<String>,
     pub notes: Option<String>,
@@ -95,8 +134,92 @@ pub struct UpdateCredential {
     pub username: Option<String>,
     pub url: Option<String>,
     pub sensitive_data_json: Option<String>,
+    #[serde(alias = "dekBase64")]
     pub dek_base64: Option<String>,
+    #[serde(alias = "nonceBase64")]
     pub nonce_base64: Option<String>,
     pub tags: Option<String>,
     pub notes: Option<String>,
+}
+
+// ── Site & Account Models ───────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SiteAccount {
+    pub username: String,
+    pub password: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secret_key: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Site {
+    pub id: i64,
+    pub name: String,
+    pub url: Option<String>,
+    pub category_id: i64,
+    pub tags: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub category_name: Option<String>,
+    pub accounts_count: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SiteDetail {
+    pub id: i64,
+    pub name: String,
+    pub url: Option<String>,
+    pub category_id: i64,
+    pub tags: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub category_name: Option<String>,
+    pub accounts: Vec<SiteAccount>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewSite {
+    pub name: String,
+    pub url: Option<String>,
+    pub category_id: i64,
+    pub tags: Option<String>,
+    pub notes: Option<String>,
+    pub accounts: Vec<SiteAccount>,
+    #[serde(alias = "dekBase64")]
+    pub dek_base64: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct UpdateSite {
+    pub id: i64,
+    pub name: Option<String>,
+    pub url: Option<String>,
+    pub category_id: Option<i64>,
+    pub tags: Option<String>,
+    pub notes: Option<String>,
+    pub accounts: Option<Vec<SiteAccount>>,
+    #[serde(alias = "dekBase64")]
+    pub dek_base64: Option<String>,
+}
+
+// Encrypted account data stored in database
+#[allow(dead_code)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct EncryptedSiteAccount {
+    pub username: String,
+    pub encrypted_data: Vec<u8>,
+    pub nonce: Vec<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key_encrypted: Option<Vec<u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key_nonce: Option<Vec<u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secret_key_encrypted: Option<Vec<u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secret_key_nonce: Option<Vec<u8>>,
 }

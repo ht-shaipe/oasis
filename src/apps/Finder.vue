@@ -1,8 +1,9 @@
 <template>
-    <MacWindow 
-        title="Finder" 
-        :isMinimized="isMinimized" 
-        @close="closeApp" 
+    <MacWindow
+        ref="macWindowRef"
+        title="Finder"
+        :isMinimized="isMinimized"
+        @close="closeApp"
         @minimize="toggleMinimize"
         width="800"
         height="600"
@@ -405,6 +406,14 @@ const loadProjectVersions = async (projectId: string) => {
 onMounted(() => {
     loadProjects();
 });
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 </script>
 
 <style scoped>
@@ -429,7 +438,7 @@ onMounted(() => {
 
 .section-title {
     padding: 0 16px;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     font-weight: 500;
     color: var(--color-text-tertiary);
     margin-bottom: 5px;
@@ -447,7 +456,7 @@ onMounted(() => {
 
 .sidebar-item .el-icon {
     margin-right: 8px;
-    font-size: 16px;
+    font-size: var(--app-font-16);
     color: var(--color-text-secondary);
 }
 
@@ -540,7 +549,7 @@ onMounted(() => {
 
 .project-icon,
 .version-icon {
-    font-size: 40px;
+    font-size: var(--app-font-40);
     margin-bottom: 8px;
     color: #007bff;
 }
@@ -551,7 +560,7 @@ onMounted(() => {
 
 .project-name,
 .version-name {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     margin-bottom: 4px;
     word-break: break-word;
     max-width: 100%;
@@ -564,7 +573,7 @@ onMounted(() => {
 
 .project-meta,
 .version-meta {
-    font-size: 11px;
+    font-size: var(--app-font-11);
     color: var(--color-text-tertiary);
 }
 
@@ -575,7 +584,7 @@ onMounted(() => {
 
 .list-item-name .el-icon {
     margin-right: 8px;
-    font-size: 18px;
+    font-size: var(--app-font-18);
     color: #007bff;
 }
 
@@ -587,7 +596,7 @@ onMounted(() => {
     height: 24px;
     background-color: var(--color-sidebar-bg);
     border-top: 1px solid var(--color-window-titlebar-border);
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-tertiary);
     padding: 0 16px;
     display: flex;
@@ -620,7 +629,7 @@ onMounted(() => {
 }
 
 .loading-icon {
-    font-size: 32px;
+    font-size: var(--app-font-32);
     color: #409eff;
     animation: spin 2s linear infinite;
 }
@@ -649,7 +658,7 @@ onMounted(() => {
 
 .prompt-preview {
     color: var(--color-text-secondary);
-    font-size: 12px;
+    font-size: var(--app-font-12);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -661,6 +670,6 @@ onMounted(() => {
 }
 
 .version-prompt .el-icon {
-    font-size: 16px;
+    font-size: var(--app-font-16);
 }
 </style>

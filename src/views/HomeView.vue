@@ -33,6 +33,7 @@
             <component
                 :is="app.component"
                 v-if="windowStates[app.id].show"
+                :ref="(el: any) => { if (el) windowRefs[app.id] = el; else delete windowRefs[app.id]; }"
                 :isMinimized="windowStates[app.id].isMinimized"
                 v-bind="getAppProps(app.id)"
                 @close="closeApp(app.id)"
@@ -49,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, nextTick } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { apps } from '@/config/apps';
 
@@ -71,6 +72,9 @@ const windowStates = reactive<Record<string, { show: boolean; isMinimized: boole
         return acc;
     }, {} as any),
 );
+
+// 窗口组件引用，用于 bringToFront
+const windowRefs: Record<string, any> = {};
 
 const appWindow = getCurrentWindow();
 
@@ -202,17 +206,25 @@ const openApp = (appName: string | { type: string; url: string; target: string }
         if (appName.target === '_blank') {
             window.open(appName.url, '_blank');
         } else {
+            const alreadyOpen = windowStates.safari.show;
             windowStates.safari.show = true;
             windowStates.safari.isMinimized = false;
             localStorage.setItem('safariUrl', appName.url || '');
+            if (alreadyOpen) {
+                nextTick(() => windowRefs.safari?.bringToFront?.());
+            }
         }
     } else {
         const appId = appName as string;
         if (windowStates[appId]) {
+            const alreadyOpen = windowStates[appId].show;
             windowStates[appId].show = true;
             windowStates[appId].isMinimized = false;
             if (appId === 'safari') {
                 localStorage.removeItem('safariUrl');
+            }
+            if (alreadyOpen) {
+                nextTick(() => windowRefs[appId]?.bringToFront?.());
             }
         }
     }

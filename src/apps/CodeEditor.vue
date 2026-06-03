@@ -1,68 +1,150 @@
 <template>
-    <MacWindow 
-        title="VS Code" 
-        :isMinimized="isMinimized" 
-        @close="closeWindow" 
+    <MacWindow
+        ref="macWindowRef"
+        title="VS Code"
+        :isMinimized="isMinimized"
+        @close="closeWindow"
         @minimize="minimizeWindow"
         width="1100"
         height="700"
-        :startMaximized="true"
-    >
+        :startMaximized="false">
         <div class="vscode-container">
             <!-- 活动栏 (最左侧图标栏) -->
             <div class="activity-bar">
-                <div class="activity-bar-item" :class="{ active: activeActivityBarItem === 'explorer' }" 
-                     title="资源管理器" @click="setActiveActivityBarItem('explorer')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 6h18"></path><path d="M3 12h18"></path><path d="M3 18h18"></path>
+                <div
+                    class="activity-bar-item"
+                    :class="{ active: activeActivityBarItem === 'explorer' }"
+                    title="资源管理器"
+                    @click="setActiveActivityBarItem('explorer')">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
                     </svg>
                 </div>
-                <div class="activity-bar-item" :class="{ active: activeActivityBarItem === 'search' }" 
-                     title="搜索" @click="setActiveActivityBarItem('search')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <div
+                    class="activity-bar-item"
+                    :class="{ active: activeActivityBarItem === 'search' }"
+                    title="搜索"
+                    @click="setActiveActivityBarItem('search')">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </div>
-                <div class="activity-bar-item" :class="{ active: activeActivityBarItem === 'git' }" 
-                     title="Git" @click="setActiveActivityBarItem('git')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="18" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle>
+                <div
+                    class="activity-bar-item"
+                    :class="{ active: activeActivityBarItem === 'git' }"
+                    title="Git"
+                    @click="setActiveActivityBarItem('git')">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="18" cy="18" r="3"></circle>
+                        <circle cx="6" cy="6" r="3"></circle>
                         <path d="M6 21V9a9 9 0 0 0 9 9"></path>
                     </svg>
                 </div>
-                <div class="activity-bar-item" :class="{ active: activeActivityBarItem === 'debug' }" 
-                     title="调试" @click="setActiveActivityBarItem('debug')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div
+                    class="activity-bar-item"
+                    :class="{ active: activeActivityBarItem === 'debug' }"
+                    title="调试"
+                    @click="setActiveActivityBarItem('debug')">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round">
                         <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
-                        <path d="M12 18v-2"></path><path d="M12 8V6"></path>
+                        <path d="M12 18v-2"></path>
+                        <path d="M12 8V6"></path>
                     </svg>
                 </div>
-                <div class="activity-bar-item" :class="{ active: activeActivityBarItem === 'extensions' }" 
-                     title="扩展" @click="setActiveActivityBarItem('extensions')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div
+                    class="activity-bar-item"
+                    :class="{ active: activeActivityBarItem === 'extensions' }"
+                    title="扩展"
+                    @click="setActiveActivityBarItem('extensions')">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <rect x="7" y="7" width="3" height="9"></rect><rect x="14" y="7" width="3" height="5"></rect>
+                        <rect x="7" y="7" width="3" height="9"></rect>
+                        <rect x="14" y="7" width="3" height="5"></rect>
                     </svg>
                 </div>
             </div>
-            
+
             <!-- 侧边栏 (根据活动栏选择显示不同内容) -->
             <div class="sidebar" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
                 <div class="sidebar-header">
-                    <div class="sidebar-title">{{ sidebarContent === 'explorer' ? '资源管理器' : 
-                                                  sidebarContent === 'search' ? '搜索' : 
-                                                  sidebarContent === 'git' ? 'GIT' : 
-                                                  sidebarContent === 'debug' ? '调试' : '扩展' }}</div>
+                    <div class="sidebar-title">
+                        {{
+                            sidebarContent === 'explorer'
+                                ? '资源管理器'
+                                : sidebarContent === 'search'
+                                  ? '搜索'
+                                  : sidebarContent === 'git'
+                                    ? 'GIT'
+                                    : sidebarContent === 'debug'
+                                      ? '调试'
+                                      : '扩展'
+                        }}
+                    </div>
                     <div class="sidebar-actions">
                         <button class="sidebar-action" title="更多操作">...</button>
                         <button class="sidebar-action sidebar-collapse-btn" title="折叠侧边栏" @click="toggleSidebar">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M15 18l-6-6 6-6" />
                             </svg>
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- 资源管理器 -->
                 <div v-if="sidebarContent === 'explorer'" class="sidebar-content">
                     <div class="sidebar-section">
@@ -70,77 +152,93 @@
                             <span class="sidebar-section-title">打开的编辑器</span>
                             <button class="sidebar-section-action">...</button>
                         </div>
-                        <div v-for="(tab, index) in editorTabs" :key="'tab-' + index" 
-                             class="sidebar-item" :class="{ active: index === activeEditorTab }"
-                             @click="setActiveTab(index)">
+                        <div
+                            v-for="(tab, index) in editorTabs"
+                            :key="'tab-' + index"
+                            class="sidebar-item"
+                            :class="{ active: index === activeEditorTab }"
+                            @click="setActiveTab(index)">
                             <span class="file-icon">{{ tab.icon }}</span>
                             <span class="file-name">{{ tab.name }}</span>
                             <span v-if="tab.modified">•</span>
                         </div>
-                        <div v-if="editorTabs.length === 0" class="sidebar-message">
-                            没有打开的编辑器
-                        </div>
+                        <div v-if="editorTabs.length === 0" class="sidebar-message">没有打开的编辑器</div>
                     </div>
-                    
+
                     <div class="sidebar-section">
                         <div class="sidebar-section-header">
                             <span class="sidebar-section-title">项目文件</span>
                             <button class="sidebar-section-action">...</button>
                         </div>
-                        <div class="sidebar-message" v-if="folderStructure.length === 0">
-                            没有打开的文件夹
-                        </div>
+                        <div class="sidebar-message" v-if="folderStructure.length === 0">没有打开的文件夹</div>
                         <div class="file-tree" v-else>
                             <template v-for="(item, itemIndex) in folderStructure" :key="'item-' + itemIndex">
-                                <div v-if="item.type === 'folder'" class="file-tree-item folder" 
-                                     :class="{ expanded: item.expanded }" @click="toggleFolder(item)">
+                                <div
+                                    v-if="item.type === 'folder'"
+                                    class="file-tree-item folder"
+                                    :class="{ expanded: item.expanded }"
+                                    @click="toggleFolder(item)">
                                     <span class="folder-icon">{{ item.expanded ? '📂' : '📁' }}</span>
                                     <span class="folder-name">{{ item.name }}</span>
                                 </div>
-                                <div v-if="item.type === 'file'" class="file-tree-item file" 
-                                     @click="openFile(item)">
+                                <div v-if="item.type === 'file'" class="file-tree-item file" @click="openFile(item)">
                                     <span class="file-icon">{{ item.icon }}</span>
                                     <span class="file-name">{{ item.name }}</span>
                                 </div>
-                                
+
                                 <!-- 子文件/文件夹，如果父文件夹已展开 -->
                                 <template v-if="item.type === 'folder' && item.expanded && item.children">
-                                    <div v-for="(child, childIndex) in item.children" :key="'child-' + itemIndex + '-' + childIndex" 
-                                         class="file-tree-item" :class="{ folder: child.type === 'folder', file: child.type === 'file' }"
-                                         style="padding-left: 24px;" 
-                                         @click="child.type === 'folder' ? toggleFolder(child) : openFile(child)">
-                                        <span class="file-icon">{{ child.type === 'folder' ? (child.expanded ? '📂' : '📁') : child.icon }}</span>
-                                        <span :class="child.type === 'folder' ? 'folder-name' : 'file-name'">{{ child.name }}</span>
+                                    <div
+                                        v-for="(child, childIndex) in item.children"
+                                        :key="'child-' + itemIndex + '-' + childIndex"
+                                        class="file-tree-item"
+                                        :class="{ folder: child.type === 'folder', file: child.type === 'file' }"
+                                        style="padding-left: 24px"
+                                        @click="child.type === 'folder' ? toggleFolder(child) : openFile(child)">
+                                        <span class="file-icon">{{
+                                            child.type === 'folder' ? (child.expanded ? '📂' : '📁') : child.icon
+                                        }}</span>
+                                        <span :class="child.type === 'folder' ? 'folder-name' : 'file-name'">{{
+                                            child.name
+                                        }}</span>
                                     </div>
                                 </template>
                             </template>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 搜索面板 -->
                 <div v-if="sidebarContent === 'search'" class="sidebar-content">
                     <div class="search-box">
-                        <input type="text" placeholder="搜索" class="search-input" v-model="searchQuery" @keyup.enter="search">
+                        <input
+                            type="text"
+                            placeholder="搜索"
+                            class="search-input"
+                            v-model="searchQuery"
+                            @keyup.enter="search" />
                         <div class="search-box-buttons">
                             <button class="search-box-button" title="区分大小写">Aa</button>
                             <button class="search-box-button" title="使用正则表达式">.*</button>
                             <button class="search-box-button" title="整词匹配">Ab</button>
                         </div>
                     </div>
-                    
+
                     <div v-if="searchResults.length === 0" class="sidebar-message">
                         在工作区中搜索（输入搜索词后按回车键）
                     </div>
-                    
+
                     <div v-else class="search-results">
-                        <div v-for="(result, index) in searchResults" :key="'result-' + index" class="search-result-item">
+                        <div
+                            v-for="(result, index) in searchResults"
+                            :key="'result-' + index"
+                            class="search-result-item">
                             <div class="search-result-path">{{ result.path }}:{{ result.line }}</div>
                             <div class="search-result-text">{{ result.text }}</div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Git面板 -->
                 <div v-if="sidebarContent === 'git'" class="sidebar-content">
                     <div class="sidebar-section">
@@ -153,7 +251,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 调试面板 -->
                 <div v-if="sidebarContent === 'debug'" class="sidebar-content">
                     <div class="sidebar-section">
@@ -163,30 +261,31 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 扩展面板 -->
                 <div v-if="sidebarContent === 'extensions'" class="sidebar-content">
                     <div class="search-box">
-                        <input type="text" placeholder="搜索扩展" class="search-input">
+                        <input type="text" placeholder="搜索扩展" class="search-input" />
                     </div>
                     <div class="sidebar-section">
                         <div class="sidebar-section-header">
                             <span class="sidebar-section-title">已安装</span>
                         </div>
-                        <div class="sidebar-message">
-                            没有已安装的扩展
-                        </div>
+                        <div class="sidebar-message">没有已安装的扩展</div>
                     </div>
                 </div>
             </div>
-            
+
             <!-- 主编辑区域 -->
             <div class="editor-wrapper">
                 <div class="editor-area">
                     <!-- 编辑器标签栏 -->
                     <div class="editor-tabs">
-                        <div v-for="(tab, index) in editorTabs" :key="'editortab-' + index" 
-                            class="editor-tab" :class="{ active: index === activeEditorTab }"
+                        <div
+                            v-for="(tab, index) in editorTabs"
+                            :key="'editortab-' + index"
+                            class="editor-tab"
+                            :class="{ active: index === activeEditorTab }"
                             @click="setActiveTab(index)">
                             <span class="file-icon">{{ tab.icon }}</span>
                             <span class="tab-filename">{{ tab.name }}</span>
@@ -194,7 +293,7 @@
                             <button class="tab-close" @click.stop="closeTab(index, $event)">×</button>
                         </div>
                     </div>
-                    
+
                     <!-- 编辑器主体 -->
                     <div class="editor-main">
                         <div class="editor-container" ref="editorContainer">
@@ -215,27 +314,43 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- 面板区域 (终端、问题、输出等) -->
                     <div class="panel-area" v-if="showPanel" :style="{ height: panelHeight + 'px' }">
                         <div class="panel-resize-handle" @mousedown="resizePanel"></div>
                         <div class="panel-header">
                             <div class="panel-tabs">
-                                <div class="panel-tab" :class="{ active: activePanelTab === 'terminal' }" 
-                                    @click="setPanelTab('terminal')">终端</div>
-                                <div class="panel-tab" :class="{ active: activePanelTab === 'problems' }" 
-                                    @click="setPanelTab('problems')">问题 <span v-if="problemsCount > 0">({{ problemsCount }})</span></div>
-                                <div class="panel-tab" :class="{ active: activePanelTab === 'output' }" 
-                                    @click="setPanelTab('output')">输出</div>
-                                <div class="panel-tab" :class="{ active: activePanelTab === 'debugConsole' }" 
-                                    @click="setPanelTab('debugConsole')">调试控制台</div>
+                                <div
+                                    class="panel-tab"
+                                    :class="{ active: activePanelTab === 'terminal' }"
+                                    @click="setPanelTab('terminal')">
+                                    终端
+                                </div>
+                                <div
+                                    class="panel-tab"
+                                    :class="{ active: activePanelTab === 'problems' }"
+                                    @click="setPanelTab('problems')">
+                                    问题 <span v-if="problemsCount > 0">({{ problemsCount }})</span>
+                                </div>
+                                <div
+                                    class="panel-tab"
+                                    :class="{ active: activePanelTab === 'output' }"
+                                    @click="setPanelTab('output')">
+                                    输出
+                                </div>
+                                <div
+                                    class="panel-tab"
+                                    :class="{ active: activePanelTab === 'debugConsole' }"
+                                    @click="setPanelTab('debugConsole')">
+                                    调试控制台
+                                </div>
                             </div>
                             <div class="panel-actions">
                                 <button class="panel-action" title="最大化面板">□</button>
                                 <button class="panel-action" title="关闭面板" @click="togglePanel">×</button>
                             </div>
                         </div>
-                        
+
                         <!-- 面板内容 -->
                         <div class="panel-content">
                             <!-- 终端 -->
@@ -245,42 +360,44 @@
                                     <span class="terminal-cursor"></span>
                                 </div>
                             </div>
-                            
+
                             <!-- 问题面板 -->
                             <div v-if="activePanelTab === 'problems'" class="problems-panel">
-                                <div v-if="problemsCount === 0" class="panel-message">
-                                    目前没有发现问题。
-                                </div>
-                                <div v-else class="panel-message">
-                                    发现 {{ problemsCount }} 个问题。
-                                </div>
+                                <div v-if="problemsCount === 0" class="panel-message">目前没有发现问题。</div>
+                                <div v-else class="panel-message">发现 {{ problemsCount }} 个问题。</div>
                             </div>
-                            
+
                             <!-- 输出面板 -->
                             <div v-if="activePanelTab === 'output'" class="output-panel">
-                                <div class="panel-message">
-                                    没有活动的任务输出。
-                                </div>
+                                <div class="panel-message">没有活动的任务输出。</div>
                             </div>
-                            
+
                             <!-- 调试控制台 -->
                             <div v-if="activePanelTab === 'debugConsole'" class="debug-console">
-                                <div class="panel-message">
-                                    调试会话尚未开始。
-                                </div>
+                                <div class="panel-message">调试会话尚未开始。</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <!-- 状态栏 -->
             <div class="status-bar">
                 <div class="status-bar-left">
                     <div class="status-item">
                         <span class="status-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="18" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="15"
+                                height="15"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <circle cx="18" cy="18" r="3"></circle>
+                                <circle cx="6" cy="6" r="3"></circle>
                                 <path d="M6 21V9a9 9 0 0 0 9 9"></path>
                             </svg>
                         </span>
@@ -294,7 +411,14 @@
                     </div>
                     <div class="status-item">
                         <button class="copy-btn" @click="copyCode" title="复制代码">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
@@ -303,16 +427,31 @@
                     </div>
                     <div class="status-item">
                         <button class="copy-btn" @click="openPreview" title="打开预览">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M14 3v4a1 1 0 0 0 1 1h4"></path>
-                                <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"></path>
+                                <path
+                                    d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"></path>
                             </svg>
                             预览
                         </button>
                     </div>
                     <div class="status-item">
                         <button class="copy-btn" @click="openContinueDialog" title="继续编辑">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M12 2L2 12h3v8h8v-3h3L12 2z"></path>
                             </svg>
                             继续编辑
@@ -339,6 +478,7 @@ import { ref, onMounted, watch, nextTick, onBeforeUnmount, computed } from 'vue'
 import { ElMessage } from 'element-plus';
 import loader from '@monaco-editor/loader';
 import MacWindow from '@/components/common/MacWindow.vue';
+import { useThemeStore } from '@/store/theme';
 
 // 定义类型接口
 interface EditorTab {
@@ -374,7 +514,13 @@ interface MonacoEditor {
     layout(): void;
     onDidChangeModelContent(callback: () => void): void;
     onDidChangeCursorPosition(callback: () => void): void;
-    getModel(): { getValue(): string; getLineCount(): number; setValue(value: string): void; getLineMaxColumn(line: number): number; getLineContent(line: number): string };
+    getModel(): {
+        getValue(): string;
+        getLineCount(): number;
+        setValue(value: string): void;
+        getLineMaxColumn(line: number): number;
+        getLineContent(line: number): string;
+    };
     revealLine(line: number, scrollType?: number): void;
     revealPosition(position: any, scrollType?: number): void;
     updateOptions(options: any): void;
@@ -385,20 +531,22 @@ interface MonacoEditor {
 const props = defineProps({
     isMinimized: {
         type: Boolean,
-        default: false
+        default: false,
     },
     code: {
         type: String,
-        default: ''
+        default: '',
     },
     filename: {
         type: String,
-        default: ''
-    }
+        default: '',
+    },
 });
 
 // 事件发射
 const emit = defineEmits(['close', 'minimize', 'codeUpdated', 'openApp']);
+
+const themeStore = useThemeStore();
 
 // 状态变量
 const editorContainer = ref<HTMLElement | null>(null);
@@ -431,7 +579,7 @@ const currentBranch = ref('main');
 const encoding = ref('UTF-8');
 const lineColumn = ref('第 1 行，第 1 列');
 const indentation = ref('空格：2');
-const cursorPosition = ref({line: 1, column: 1});
+const cursorPosition = ref({ line: 1, column: 1 });
 
 // 计算属性
 const sidebarContent = computed(() => activeActivityBarItem.value);
@@ -467,25 +615,25 @@ function openFile(_file: FileItem) {
 function getLanguageFromFileName(fileName: string): string {
     const extension = fileName.split('.').pop()?.toLowerCase() || '';
     const languageMap: Record<string, string> = {
-        'js': 'javascript',
-        'html': 'html',
-        'css': 'css',
-        'vue': 'html',
-        'json': 'json',
-        'md': 'markdown',
-        'ts': 'typescript',
-        'jsx': 'javascript',
-        'tsx': 'typescript',
-        'py': 'python',
-        'java': 'java',
-        'c': 'c',
-        'cpp': 'cpp',
-        'cs': 'csharp',
-        'go': 'go',
-        'php': 'php',
-        'rb': 'ruby',
-        'rs': 'rust',
-        'sql': 'sql'
+        js: 'javascript',
+        html: 'html',
+        css: 'css',
+        vue: 'html',
+        json: 'json',
+        md: 'markdown',
+        ts: 'typescript',
+        jsx: 'javascript',
+        tsx: 'typescript',
+        py: 'python',
+        java: 'java',
+        c: 'c',
+        cpp: 'cpp',
+        cs: 'csharp',
+        go: 'go',
+        php: 'php',
+        rb: 'ruby',
+        rs: 'rust',
+        sql: 'sql',
     };
     return languageMap[extension] || '普通文本';
 }
@@ -572,12 +720,12 @@ function minimizeWindow() {
     emit('minimize');
 }
 
-
 // 复制代码
 const copyCode = () => {
     if (monacoEditor) {
         const code = monacoEditor.getValue();
-        navigator.clipboard.writeText(code)
+        navigator.clipboard
+            .writeText(code)
             .then(() => {
                 ElMessage.success('代码已复制到剪贴板');
             })
@@ -618,7 +766,7 @@ const updateCursorPosition = () => {
         if (position) {
             cursorPosition.value = {
                 line: position.lineNumber,
-                column: position.column
+                column: position.column,
             };
             lineColumn.value = `第 ${position.lineNumber} 行，第 ${position.column} 列`;
         }
@@ -635,10 +783,10 @@ const initMonacoEditor = async () => {
             monacoEditor = monaco.editor.create(editorContainer.value, {
                 value: props.code,
                 language: detectLanguage(props.code),
-                theme: 'vs-dark',
+                theme: themeStore.isDark ? 'vs-dark' : 'vs',
                 automaticLayout: true,
                 minimap: {
-                    enabled: true
+                    enabled: true,
                 },
                 scrollBeyondLastLine: false,
                 fontSize: 14,
@@ -650,14 +798,14 @@ const initMonacoEditor = async () => {
                     verticalScrollbarSize: 10,
                     horizontalScrollbarSize: 10,
                     alwaysConsumeMouseWheel: false,
-                    scrollByPage: false
+                    scrollByPage: false,
                 },
                 wordWrap: 'on', // 启用自动换行
                 renderLineHighlight: 'all', // 高亮当前行
                 glyphMargin: false,
                 smoothScrolling: true, // 平滑滚动
                 cursorBlinking: 'smooth',
-                cursorSmoothCaretAnimation: true
+                cursorSmoothCaretAnimation: true,
             }) as MonacoEditor;
 
             // 更新检测到的语言
@@ -679,7 +827,7 @@ const initMonacoEditor = async () => {
 
             // 如果代码正在生成中，初始滚动到底部
             nextTick(() => {
-                if (props.code && props.code.includes('// 代码正在生成中') || isGenerating.value) {
+                if ((props.code && props.code.includes('// 代码正在生成中')) || isGenerating.value) {
                     // 获取总行数
                     const lineCount = monacoEditor!.getModel().getLineCount();
                     // 滚动到底部
@@ -691,7 +839,6 @@ const initMonacoEditor = async () => {
                     updateCursorPosition();
                 }
             });
-
         } catch (error) {
             console.error('初始化Monaco编辑器失败:', error);
         }
@@ -720,7 +867,7 @@ const initMonacoEditor = async () => {
         preserveEditorState = false; // 恢复更新
 
         // 如果代码正在生成中，滚动到底部
-        if (props.code && props.code.includes('// 代码正在生成中') || isGenerating.value) {
+        if ((props.code && props.code.includes('// 代码正在生成中')) || isGenerating.value) {
             nextTick(() => {
                 const lastLine = monacoEditor!.getModel().getLineCount();
                 monacoEditor!.revealLine(lastLine);
@@ -735,7 +882,7 @@ const handleResize = () => {
     if (monacoEditor) {
         monacoEditor.layout();
     }
-    
+
     // 重新检查面板高度，确保不超过限制
     if (showPanel.value) {
         const editorAreaHeight = document.querySelector('.editor-area')?.clientHeight || 500;
@@ -750,17 +897,19 @@ const handleResize = () => {
 onMounted(() => {
     // 添加窗口大小变化监听
     window.addEventListener('resize', handleResize);
-    
+
     // 初始化编辑器标签
     if (props.filename) {
-        editorTabs.value = [{
-            name: props.filename,
-            icon: '📄',
-            language: getLanguageFromFileName(props.filename),
-            modified: false
-        }];
+        editorTabs.value = [
+            {
+                name: props.filename,
+                icon: '📄',
+                language: getLanguageFromFileName(props.filename),
+                modified: false,
+            },
+        ];
     }
-    
+
     // 初始化编辑器
     nextTick(() => {
         if (!props.isMinimized) {
@@ -773,12 +922,22 @@ onMounted(() => {
 onBeforeUnmount(() => {
     // 移除窗口大小变化监听
     window.removeEventListener('resize', handleResize);
-    
+
     // 销毁编辑器
     if (monacoEditor) {
         monacoEditor.dispose();
     }
 });
+
+// 监听主题变化，同步Monaco编辑器主题
+watch(
+    () => themeStore.isDark,
+    (dark) => {
+        if (monacoEditor) {
+            monacoEditor.updateOptions({ theme: dark ? 'vs-dark' : 'vs' });
+        }
+    },
+);
 
 // 监听代码属性变化
 watch(
@@ -789,7 +948,7 @@ watch(
             const now = Date.now();
             const elapsed = now - lastUpdateTime.value;
             lastUpdateTime.value = now;
-            
+
             // 如果间隔小于2秒，认为是在生成过程中
             if (elapsed < 2000 && newCode !== oldCode && newCode.length > oldCode?.length) {
                 isGenerating.value = true;
@@ -799,23 +958,23 @@ watch(
                 // 如果间隔较长，可能不是连续生成
                 isGenerating.value = false;
             }
-            
+
             // 保存当前编辑器状态
             preserveEditorState = true;
             const currentPosition = monacoEditor.getPosition();
             const selections = monacoEditor.getSelections();
             const scrollTop = monacoEditor.getScrollTop();
-            
+
             // 更新编辑器内容
             monacoEditor.getModel().setValue(newCode);
             const language = detectLanguage(newCode);
             detectedLanguage.value = language;
             monacoEditor.updateOptions({ language });
-            
+
             // 如果是在生成过程中（代码变长），则滚动到最新内容
             const newLines = newCode.split('\n').length;
             const oldLines = oldCode ? oldCode.split('\n').length : 0;
-            
+
             if (newCode.length > oldCode?.length && newLines > oldLines) {
                 // 滚动到最后一行
                 nextTick(() => {
@@ -825,13 +984,13 @@ watch(
                         // 生成中，滚动到底部
                         const lastLineNumber = monacoEditor.getModel()!.getLineCount();
                         monacoEditor.revealLine(lastLineNumber, 1); // 1表示顶部对齐
-                        
+
                         // 如果代码包含"生成中"的提示，则等待提示消失后再滚动
                         if (newCode.includes('// 代码正在生成中')) {
                             preserveEditorState = false;
                             return;
                         }
-                        
+
                         // 光标定位到末尾，提升用户体验
                         const lastLineLength = monacoEditor.getModel()!.getLineContent(lastLineNumber).length;
                         monacoEditor.setPosition({ lineNumber: lastLineNumber, column: lastLineLength + 1 });
@@ -860,7 +1019,7 @@ watch(
                 preserveEditorState = false;
             }
         }
-    }
+    },
 );
 
 // 监听文件名变化并更新标签
@@ -869,13 +1028,15 @@ watch(
     (newFilename) => {
         if (newFilename) {
             // 更新编辑器标签
-            editorTabs.value = [{
-                name: newFilename,
-                icon: '📄',
-                language: getLanguageFromFileName(newFilename),
-                modified: false
-            }];
-            
+            editorTabs.value = [
+                {
+                    name: newFilename,
+                    icon: '📄',
+                    language: getLanguageFromFileName(newFilename),
+                    modified: false,
+                },
+            ];
+
             // 更新编辑器语言
             if (monacoEditor) {
                 const language = getLanguageFromFileName(newFilename);
@@ -883,7 +1044,7 @@ watch(
                 monacoEditor.updateOptions({ language });
             }
         }
-    }
+    },
 );
 
 // 监听最小化状态变化以正确初始化编辑器
@@ -895,7 +1056,7 @@ watch(
                 initMonacoEditor();
             });
         }
-    }
+    },
 );
 
 // 监听侧边栏折叠状态，重新布局编辑器
@@ -907,8 +1068,16 @@ watch(
                 monacoEditor.layout();
             }
         });
-    }
+    },
 );
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront(),
+});
 </script>
 
 <style scoped>
@@ -916,12 +1085,12 @@ watch(
     display: grid;
     grid-template-columns: auto auto 1fr;
     grid-template-rows: 1fr auto;
-    grid-template-areas: 
-        "activity-bar sidebar editor"
-        "status-bar status-bar status-bar";
+    grid-template-areas:
+        'activity-bar sidebar editor'
+        'status-bar status-bar status-bar';
     height: 100%;
-    color: #CCCCCC;
-    background-color: #1E1E1E;
+    color: var(--code-text-primary);
+    background-color: var(--code-bg);
     overflow: hidden;
 }
 
@@ -935,6 +1104,7 @@ watch(
     padding-top: 10px;
     flex-shrink: 0;
     z-index: 10;
+    background-color: var(--code-activity-bar-bg);
 }
 
 .activity-bar-item {
@@ -943,34 +1113,34 @@ watch(
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #858585;
+    color: var(--code-activity-bar-text);
     position: relative;
     cursor: pointer;
 }
 
 .activity-bar-item:hover {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .activity-bar-item.active {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-active);
 }
 
 .activity-bar-item.active::before {
-    content: "";
+    content: '';
     position: absolute;
     left: 0;
     height: 100%;
     width: 2px;
-    background-color: #007acc;
+    background-color: var(--code-accent);
 }
 
 .sidebar {
     grid-area: sidebar;
     width: 200px;
     height: 100%;
-    background-color: #252526;
-    border-right: 1px solid #3c3c3c;
+    background-color: var(--code-bg-secondary);
+    border-right: 1px solid var(--code-border);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
@@ -992,8 +1162,8 @@ watch(
     padding: 0 8px;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 11px;
-    color: #cccccc;
+    font-size: var(--app-font-11);
+    color: var(--code-text-primary);
 }
 
 .sidebar-title {
@@ -1012,8 +1182,8 @@ watch(
     align-items: center;
     background: none;
     border: none;
-    color: #cccccc;
-    font-size: 16px;
+    color: var(--code-text-primary);
+    font-size: var(--app-font-16);
     cursor: pointer;
 }
 
@@ -1027,7 +1197,7 @@ watch(
 }
 
 .sidebar-action:hover {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .sidebar-content {
@@ -1046,9 +1216,9 @@ watch(
     align-items: center;
     padding: 0 8px;
     font-weight: 600;
-    font-size: 11px;
+    font-size: var(--app-font-11);
     text-transform: uppercase;
-    color: #bbbbbb;
+    color: var(--code-text-secondary);
 }
 
 .sidebar-section-title {
@@ -1058,12 +1228,13 @@ watch(
 .sidebar-section-action {
     background: none;
     border: none;
-    color: #bbbbbb;
+    color: var(--code-text-secondary);
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--app-font-14);
 }
 
-.sidebar-item, .file-tree-item {
+.sidebar-item,
+.file-tree-item {
     height: 22px;
     display: flex;
     align-items: center;
@@ -1071,15 +1242,17 @@ watch(
     cursor: pointer;
 }
 
-.sidebar-item:hover, .file-tree-item:hover {
-    background-color: #2a2d2e;
+.sidebar-item:hover,
+.file-tree-item:hover {
+    background-color: var(--code-bg-hover);
 }
 
 .sidebar-item.active {
-    background-color: #37373d;
+    background-color: var(--code-bg-active);
 }
 
-.file-icon, .folder-icon {
+.file-icon,
+.folder-icon {
     margin-right: 5px;
 }
 
@@ -1089,15 +1262,15 @@ watch(
 
 .search-input {
     height: 24px;
-    background-color: #3c3c3c;
-    border: 1px solid #3c3c3c;
-    color: #cccccc;
+    background-color: var(--code-bg-input);
+    border: 1px solid var(--code-border);
+    color: var(--code-text-primary);
     padding: 0 6px;
     outline: none;
 }
 
 .search-input:focus {
-    border-color: #007acc;
+    border-color: var(--code-accent);
 }
 
 .search-box-buttons {
@@ -1108,11 +1281,11 @@ watch(
 .search-box-button {
     background: none;
     border: none;
-    color: #cccccc;
+    color: var(--code-text-primary);
     margin-right: 4px;
     cursor: pointer;
-    font-size: 12px;
-    border: 1px solid #3c3c3c;
+    font-size: var(--app-font-12);
+    border: 1px solid var(--code-border);
 }
 
 .sidebar-message {
@@ -1120,7 +1293,7 @@ watch(
     color: var(--color-text-tertiary);
     text-align: center;
     font-style: italic;
-    font-size: 13px;
+    font-size: var(--app-font-13);
 }
 
 .editor-wrapper {
@@ -1144,14 +1317,14 @@ watch(
 
 .editor-tabs {
     height: 35px;
-    background-color: #252526;
+    background-color: var(--code-bg-secondary);
     display: flex;
     align-items: center;
-    border-bottom: 1px solid #3c3c3c;
+    border-bottom: 1px solid var(--code-border);
     overflow-x: auto;
     flex-shrink: 0;
     scrollbar-width: none;
-    -ms-overflow-style: none; 
+    -ms-overflow-style: none;
 }
 
 .editor-tab {
@@ -1161,18 +1334,18 @@ watch(
     display: flex;
     align-items: center;
     padding: 0 8px;
-    background-color: #2d2d2d;
-    border-right: 1px solid #3c3c3c;
-    font-size: 13px;
-    color: #cccccc;
+    background-color: var(--code-bg-tertiary);
+    border-right: 1px solid var(--code-border);
+    font-size: var(--app-font-13);
+    color: var(--code-text-primary);
     cursor: pointer;
     flex-shrink: 0;
 }
 
 .editor-tab.active {
-    background-color: #1e1e1e;
-    color: #ffffff;
-    border-top: 1px solid #007acc;
+    background-color: var(--code-bg);
+    color: var(--code-activity-bar-text-hover);
+    border-top: 1px solid var(--code-accent);
 }
 
 .tab-filename {
@@ -1186,8 +1359,8 @@ watch(
 .tab-close {
     background: none;
     border: none;
-    color: #cccccc;
-    font-size: 16px;
+    color: var(--code-text-primary);
+    font-size: var(--app-font-16);
     cursor: pointer;
     opacity: 0.7;
 }
@@ -1216,20 +1389,20 @@ watch(
     align-items: center;
     text-align: center;
     padding: 20px;
-    color: #cccccc;
+    color: var(--code-text-primary);
 }
 
 .welcome-title {
-    font-size: 32px;
+    font-size: var(--app-font-32);
     font-weight: 300;
     margin-bottom: 10px;
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .welcome-subtitle {
-    font-size: 18px;
+    font-size: var(--app-font-18);
     margin-bottom: 40px;
-    color: #cccccc;
+    color: var(--code-text-primary);
 }
 
 .welcome-actions {
@@ -1245,15 +1418,15 @@ watch(
 }
 
 .welcome-action-title {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     font-weight: 600;
     margin-bottom: 10px;
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .welcome-action-item {
     margin: 8px 0;
-    color: #007acc;
+    color: var(--code-accent);
     cursor: pointer;
 }
 
@@ -1264,7 +1437,7 @@ watch(
 .panel-area {
     height: 200px;
     max-height: 40%;
-    border-top: 1px solid #3c3c3c;
+    border-top: 1px solid var(--code-border);
     display: flex;
     flex-direction: column;
     position: relative;
@@ -1285,7 +1458,7 @@ watch(
 
 .panel-header {
     height: 35px;
-    background-color: #252526;
+    background-color: var(--code-bg-secondary);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1298,7 +1471,7 @@ watch(
     height: 100%;
     overflow-x: auto;
     scrollbar-width: none;
-    -ms-overflow-style: none; 
+    -ms-overflow-style: none;
 }
 
 .panel-tab {
@@ -1306,15 +1479,15 @@ watch(
     display: flex;
     align-items: center;
     height: 100%;
-    color: #cccccc;
+    color: var(--code-text-primary);
     cursor: pointer;
     white-space: nowrap;
 }
 
 .panel-tab.active {
-    color: #ffffff;
-    border-top: 1px solid #007acc;
-    background-color: #1e1e1e;
+    color: var(--code-activity-bar-text-hover);
+    border-top: 1px solid var(--code-accent);
+    background-color: var(--code-bg);
 }
 
 .panel-actions {
@@ -1329,19 +1502,19 @@ watch(
     align-items: center;
     background: none;
     border: none;
-    color: #cccccc;
-    font-size: 16px;
+    color: var(--code-text-primary);
+    font-size: var(--app-font-16);
     cursor: pointer;
 }
 
 .panel-action:hover {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .panel-content {
     flex: 1;
     overflow: auto;
-    background-color: #1e1e1e;
+    background-color: var(--code-bg);
     min-height: 0;
 }
 
@@ -1355,50 +1528,57 @@ watch(
 .terminal {
     padding: 10px;
     font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-    font-size: 12px;
+    font-size: var(--app-font-12);
 }
 
 .terminal-prompt {
-    color: #22da6e;
+    color: var(--code-terminal-green);
     margin-right: 8px;
-    font-size: 15px;
+    font-size: var(--app-font-15);
 }
 
 .terminal-command {
-    color: #ffffff;
+    color: var(--code-activity-bar-text-hover);
 }
 
 .terminal-output {
-    color: #cccccc;
+    color: var(--code-text-primary);
 }
 
 .terminal-cursor {
     display: inline-block;
     width: 8px;
     height: 1em;
-    background-color: #cccccc;
+    background-color: var(--code-text-primary);
     animation: blink 1s infinite;
 }
 
 @keyframes blink {
-    0%, 49% { opacity: 1; }
-    50%, 100% { opacity: 0; }
+    0%,
+    49% {
+        opacity: 1;
+    }
+    50%,
+    100% {
+        opacity: 0;
+    }
 }
 
 .status-bar {
     grid-area: status-bar;
     display: flex;
     justify-content: space-between;
-    background-color: #007acc;
-    color: white;
+    background-color: var(--code-status-bar-bg);
+    color: var(--code-status-bar-text);
     height: 22px;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     width: 100%;
     overflow: hidden;
     z-index: 10;
 }
 
-.status-bar-left, .status-bar-right {
+.status-bar-left,
+.status-bar-right {
     display: flex;
     align-items: center;
     overflow: hidden;
@@ -1420,7 +1600,7 @@ watch(
     padding: 0 8px;
     display: flex;
     align-items: center;
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    border-right: 1px solid var(--code-status-bar-divider);
     height: 100%;
     white-space: nowrap;
     overflow: hidden;
@@ -1441,7 +1621,7 @@ watch(
 .copy-btn {
     background: none;
     border: none;
-    color: white;
+    color: var(--code-status-bar-text);
     display: flex;
     align-items: center;
     gap: 4px;
@@ -1462,20 +1642,21 @@ watch(
     white-space: nowrap;
 }
 
-.folder-name, .file-name {
+.folder-name,
+.file-name {
     margin-left: 5px;
 }
 
 .text-button {
     background: none;
     border: none;
-    background-color: #007acc;
-    color: #ffffff;
+    background-color: var(--code-accent);
+    color: var(--code-status-bar-text);
     cursor: pointer;
     margin-top: 20px;
     padding: 4px 16px;
     border-radius: 4px;
-    font-size: 15px;
+    font-size: var(--app-font-15);
     text-align: center;
 }
 
@@ -1492,14 +1673,14 @@ watch(
         height: 100%;
         z-index: 5;
     }
-    
+
     .welcome-actions {
         flex-direction: column;
         gap: 20px;
     }
-    
+
     .status-item {
         padding: 0 4px;
     }
 }
-</style> 
+</style>

@@ -1,14 +1,11 @@
 <template>
-    <el-dialog
+    <AppDialog
         v-model="dialogVisible"
         :title="t('signIn.title')"
         width="400px"
         custom-class="sign-in-dialog"
         :show-close="true"
-        :close-on-click-modal="false"
-        :close-on-press-escape="true"
-        @close="closeDialog"
-    >
+        @close="closeDialog">
         <div class="sign-in-container">
             <div class="sign-in-header">
                 <div class="consecutive-days">
@@ -34,12 +31,11 @@
                         :key="idx"
                         class="calendar-day"
                         :class="{
-                            'empty': !day.date,
-                            'signed': day.signed,
-                            'today': day.isToday,
-                            'future': day.isFuture
-                        }"
-                    >
+                            empty: !day.date,
+                            signed: day.signed,
+                            today: day.isToday,
+                            future: day.isFuture,
+                        }">
                         <span v-if="day.date">{{ day.date }}</span>
                         <el-icon v-if="day.signed" class="signed-icon"><Check /></el-icon>
                     </div>
@@ -52,8 +48,7 @@
                     class="sign-in-button"
                     :disabled="signInData.hasSigned"
                     @click="handleSignIn"
-                    :loading="loading"
-                >
+                    :loading="loading">
                     {{ signInData.hasSigned ? t('signIn.signedToday') : t('signIn.signInNow') }}
                 </el-button>
             </div>
@@ -74,7 +69,7 @@
                 </div>
             </div>
         </div>
-    </el-dialog>
+    </AppDialog>
 </template>
 
 <script setup lang="ts">
@@ -83,18 +78,19 @@ import { Check } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { getSignInStatus, signIn, type SignInStatus } from '../../utils/apiService';
+import AppDialog from '@/components/common/AppDialog.vue';
 
 const { t } = useI18n();
 
 const props = defineProps({
-    visible: Boolean
+    visible: Boolean,
 });
 
 const emit = defineEmits(['update:visible']);
 
 const dialogVisible = computed({
     get: () => props.visible,
-    set: (val) => emit('update:visible', val)
+    set: (val) => emit('update:visible', val),
 });
 
 const closeDialog = () => {
@@ -106,7 +102,7 @@ const signInData = ref<SignInStatus>({
     hasSigned: false,
     consecutiveDays: 0,
     signedDates: [],
-    nextReward: 100
+    nextReward: 100,
 });
 
 // 当前日期信息
@@ -139,15 +135,15 @@ const calendarDays = computed(() => {
     for (let day = 1; day <= daysInMonth; day++) {
         const isToday = day === currentDay;
         const isFuture = day > currentDay;
-        
+
         // 检查此日期是否有签到记录
-        const signed = signInData.value.signedDates.some(d => d.date === day);
-        
+        const signed = signInData.value.signedDates.some((d) => d.date === day);
+
         days.push({
             date: day,
             signed,
             isToday,
-            isFuture
+            isFuture,
         });
     }
 
@@ -159,17 +155,17 @@ const fetchSignInStatus = async () => {
     try {
         loading.value = true;
         const token = localStorage.getItem('auth_token');
-        
+
         if (!token) {
             ElMessage.warning(t('login.pleaseLogin'));
             closeDialog();
             return;
         }
-        
+
         const response = await getSignInStatus();
-        
+
         if (response.success && response.data) {
-            signInData.value = response.data.data || response.data as any;
+            signInData.value = response.data.data || (response.data as any);
         }
     } catch (error) {
         console.error('获取签到状态失败:', error);
@@ -184,15 +180,15 @@ const handleSignIn = async () => {
     try {
         loading.value = true;
         const token = localStorage.getItem('auth_token');
-        
+
         if (!token) {
             ElMessage.warning(t('login.pleaseLogin'));
             closeDialog();
             return;
         }
-        
+
         const response = await signIn();
-        
+
         if (response.success && response.data) {
             const result = response.data;
             // 刷新签到状态
@@ -244,13 +240,13 @@ watchEffect(() => {
 }
 
 .days-count {
-    font-size: 32px;
+    font-size: var(--app-font-32);
     font-weight: bold;
-    color: #409EFF;
+    color: #409eff;
 }
 
 .days-text {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: var(--color-text-secondary);
 }
 
@@ -259,14 +255,14 @@ watchEffect(() => {
 }
 
 .reward-text {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: var(--color-text-secondary);
 }
 
 .reward-amount {
-    font-size: 20px;
+    font-size: var(--app-font-20);
     font-weight: bold;
-    color: #FF9500;
+    color: #ff9500;
 }
 
 .calendar-container {
@@ -279,7 +275,7 @@ watchEffect(() => {
 .calendar-header {
     text-align: center;
     margin-bottom: 10px;
-    font-size: 16px;
+    font-size: var(--app-font-16);
     font-weight: bold;
 }
 
@@ -291,7 +287,7 @@ watchEffect(() => {
 }
 
 .weekday {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: var(--color-text-secondary);
     padding: 5px 0;
 }
@@ -308,7 +304,7 @@ watchEffect(() => {
     justify-content: center;
     align-items: center;
     position: relative;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     border-radius: 4px;
 }
 
@@ -317,7 +313,7 @@ watchEffect(() => {
 }
 
 .calendar-day.signed {
-    background-color: #409EFF;
+    background-color: #409eff;
     color: white;
 }
 
@@ -333,7 +329,7 @@ watchEffect(() => {
     position: absolute;
     right: 2px;
     bottom: 2px;
-    font-size: 10px;
+    font-size: var(--app-font-10);
 }
 
 .sign-in-button-container {
@@ -344,7 +340,7 @@ watchEffect(() => {
 .sign-in-button {
     width: 200px;
     height: 44px;
-    font-size: 16px;
+    font-size: var(--app-font-16);
 }
 
 .credit-rules {
@@ -354,7 +350,7 @@ watchEffect(() => {
 }
 
 .rule-title {
-    font-size: 16px;
+    font-size: var(--app-font-16);
     font-weight: bold;
     margin-bottom: 10px;
     color: var(--color-text-primary);
@@ -364,7 +360,7 @@ watchEffect(() => {
     display: flex;
     justify-content: space-between;
     margin-bottom: 8px;
-    font-size: 14px;
+    font-size: var(--app-font-14);
 }
 
 .rule-days {
@@ -372,7 +368,7 @@ watchEffect(() => {
 }
 
 .rule-credits {
-    color: #FF9500;
+    color: #ff9500;
     font-weight: bold;
 }
-</style> 
+</style>

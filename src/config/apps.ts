@@ -3,13 +3,15 @@ import Finder from '@/apps/Finder.vue';
 import Generator from '@/apps/Generator.vue';
 import CodeEditor from '@/apps/CodeEditor.vue';
 import Preview from '@/apps/Safari.vue';
-import About from '@/apps/About.vue';
+import Settings from '@/apps/Settings.vue';
 import ContinueDialog from '@/apps/ContinueDialog.vue';
 import Notes from '@/apps/Notes.vue';
 import Profile from '@/apps/Profile.vue';
-import CredentialManager from '@/apps/CredentialManager/index.vue';
+import Credential from '@/apps/Credential/Index.vue';
 import Toolbox from '@/apps/Toolbox/Index.vue';
 import Browser from '@/apps/Browser.vue';
+import Knowledge from '@/apps/Knowledge/Index.vue';
+import Llm from '@/apps/Llm/Index.vue';
 
 export interface AppConfig {
     id: string;
@@ -55,22 +57,22 @@ export const apps: AppConfig[] = [
         nameKey: 'dock.safari',
     },
     {
-        id: 'about',
-        name: 'About',
+        id: 'settings',
+        name: 'Settings',
         icon: '/assets/icons/Settings.svg',
-        component: About,
+        component: Settings,
         showInDock: true,
         showOnDesktop: true,
-        nameKey: 'desktop.about',
+        nameKey: 'desktop.settings',
     },
     {
         id: 'credential-manager',
         name: 'Credential Manager',
         icon: '/assets/icons/Privacy.svg',
-        component: CredentialManager,
+        component: Credential,
         showInDock: true,
         showOnDesktop: true,
-        nameKey: 'dock.credentialManager',
+        nameKey: 'dock.Credential',
     },
     {
         id: 'notes',
@@ -106,9 +108,27 @@ export const apps: AppConfig[] = [
     {
         id: 'browser',
         name: 'Browser Controller',
-        icon: '/assets/icons/Browser.svg',
+        icon: '/assets/icons/Chrome.svg',
         component: Browser,
         showInDock: true,
         nameKey: 'browser.title',
+    },
+    {
+        id: 'knowledge',
+        name: 'Knowledge',
+        icon: '/assets/icons/Books.svg',
+        component: Knowledge,
+        showInDock: true,
+        showOnDesktop: true,
+        nameKey: 'knowledge.title',
+    },
+    {
+        id: 'llm',
+        name: 'LLM Models',
+        icon: '/assets/icons/Books.svg',
+        component: Llm,
+        showInDock: true,
+        showOnDesktop: true,
+        nameKey: 'llm.title',
     },
 ];

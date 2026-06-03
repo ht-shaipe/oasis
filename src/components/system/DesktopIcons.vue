@@ -121,7 +121,7 @@ const openApp = (app: string) => {
 /* 图标文字 */
 .icon-text {
     color: white;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     font-weight: 400;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     text-align: center;
@@ -177,7 +177,7 @@ const openApp = (app: string) => {
     margin-bottom: 8px;
 }
 .desktop-icon.view-large .icon-text {
-    font-size: 14px;
+    font-size: var(--app-font-14);
 }
 
 /* 列表模式 */
@@ -200,7 +200,7 @@ const openApp = (app: string) => {
     margin-bottom: 0;
 }
 .desktop-icon.view-list .icon-text {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     text-align: left;
     white-space: nowrap;
     overflow: visible;

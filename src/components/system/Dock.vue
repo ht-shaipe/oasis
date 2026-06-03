@@ -43,7 +43,7 @@ const openApp = (app: string) => {
     border-radius: 16px;
     backdrop-filter: blur(10px);
     box-shadow: 0 8px 16px var(--color-dock-shadow);
-    z-index: 1000;
+    z-index: var(--z-index-dock);
 }
 
 .dock-item {

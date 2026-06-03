@@ -2,6 +2,38 @@
 
 :root,
 [data-theme="light"] {
+  /* 字体大小 - 默认中等 */
+  --font-size-base: 14px;
+  --font-size-small: 13px;
+  --font-size-medium: 14px;
+  --font-size-large: 16px;
+
+  /* 应用字体大小变量（rem 基准，可随根字体缩放） */
+  --app-font-10: 0.7143rem;
+  --app-font-11: 0.7857rem;
+  --app-font-12: 0.8571rem;
+  --app-font-13: 0.9286rem;
+  --app-font-14: 1rem;
+  --app-font-15: 1.0714rem;
+  --app-font-16: 1.1429rem;
+  --app-font-18: 1.2857rem;
+  --app-font-20: 1.4286rem;
+  --app-font-22: 1.5714rem;
+  --app-font-24: 1.7143rem;
+  --app-font-32: 2.2857rem;
+  --app-font-40: 2.8571rem;
+
+  /* Z-Index 层级管理 */
+  --z-index-base: 1000;
+  --z-index-window: 1000;
+  --z-index-dock: 500;
+  --z-index-notification: 6000;
+  --z-index-menu-bar: 2000;
+  --z-index-context-menu: 9999;
+  --z-index-dropdown: 8000;
+  --z-index-modal: 7000;
+  --z-index-tooltip: 10000;
+
   /* 桌面 / 全局 */
   --color-bg: #f5f5f7;
   --color-bg-glass: rgba(250, 250, 250, 0.95);
@@ -61,9 +93,51 @@
   /* 阴影 */
   --color-shadow: rgba(0, 0, 0, 0.2);
   --color-shadow-light: rgba(0, 0, 0, 0.1);
+
+  /* 认证卡片 */
+  --color-auth-bg-start: #f5f7fa;
+  --color-auth-bg-end: #c3cfe2;
+  --color-auth-card-bg: rgba(255, 255, 255, 0.72);
+  --color-auth-card-border: rgba(255, 255, 255, 0.3);
+  --color-auth-card-shadow: rgba(0, 0, 0, 0.08);
+
+  /* 语义色 */
+  --color-danger: #f56c6c;
+
+  /* 代码编辑器 */
+  --code-bg: #ffffff;
+  --code-bg-secondary: #f3f3f3;
+  --code-bg-tertiary: #ececec;
+  --code-bg-hover: #e8e8e8;
+  --code-bg-active: #d6ebff;
+  --code-bg-input: #ffffff;
+  --code-border: #e7e7e7;
+  --code-text-primary: #333333;
+  --code-text-secondary: #616161;
+  --code-text-tertiary: #999999;
+  --code-accent: #007acc;
+  --code-status-bar-bg: #007acc;
+  --code-status-bar-text: #ffffff;
+  --code-terminal-green: #22da6e;
+  --code-activity-bar-bg: #f3f3f3;
+  --code-activity-bar-text: #616161;
+  --code-activity-bar-text-hover: #333333;
+  --code-activity-bar-text-active: #333333;
+  --code-status-bar-divider: rgba(255, 255, 255, 0.2);
 }
 
 [data-theme="dark"] {
+  /* Z-Index 层级管理 */
+  --z-index-base: 1000;
+  --z-index-window: 1000;
+  --z-index-dock: 500;
+  --z-index-notification: 6000;
+  --z-index-menu-bar: 2000;
+  --z-index-context-menu: 9999;
+  --z-index-dropdown: 8000;
+  --z-index-modal: 7000;
+  --z-index-tooltip: 10000;
+
   /* 过渡动画 */
   *, *::before, *::after {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
@@ -127,4 +201,35 @@
   /* 阴影 */
   --color-shadow: rgba(0, 0, 0, 0.5);
   --color-shadow-light: rgba(0, 0, 0, 0.3);
+
+  /* 认证卡片 */
+  --color-auth-bg-start: #1a1a2e;
+  --color-auth-bg-end: #16213e;
+  --color-auth-card-bg: rgba(40, 40, 44, 0.72);
+  --color-auth-card-border: rgba(255, 255, 255, 0.1);
+  --color-auth-card-shadow: rgba(0, 0, 0, 0.3);
+
+  /* 语义色 */
+  --color-danger: #f87171;
+
+  /* 代码编辑器 */
+  --code-bg: #1e1e1e;
+  --code-bg-secondary: #252526;
+  --code-bg-tertiary: #2d2d2d;
+  --code-bg-hover: #2a2d2e;
+  --code-bg-active: #37373d;
+  --code-bg-input: #3c3c3c;
+  --code-border: #3c3c3c;
+  --code-text-primary: #cccccc;
+  --code-text-secondary: #bbbbbb;
+  --code-text-tertiary: #858585;
+  --code-accent: #007acc;
+  --code-status-bar-bg: #007acc;
+  --code-status-bar-text: #ffffff;
+  --code-terminal-green: #22da6e;
+  --code-activity-bar-bg: #333333;
+  --code-activity-bar-text: #858585;
+  --code-activity-bar-text-hover: #ffffff;
+  --code-activity-bar-text-active: #ffffff;
+  --code-status-bar-divider: rgba(255, 255, 255, 0.2);
 }

@@ -1,8 +1,9 @@
 <template>
-    <MacWindow 
-        :title="t('notes.helpTitle')" 
-        :isMinimized="isMinimized" 
-        @close="closeApp" 
+    <MacWindow
+        ref="macWindowRef"
+        :title="t('notes.helpTitle')"
+        :isMinimized="isMinimized"
+        @close="closeApp"
         @minimize="toggleMinimize"
         width="800"
         height="600"
@@ -88,6 +89,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import MacWindow from '@/components/common/MacWindow.vue';
 
@@ -113,6 +115,14 @@ const closeApp = () => {
 const toggleMinimize = () => {
     emit('minimize');
 };
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 </script>
 
 <style scoped>
@@ -147,7 +157,7 @@ const toggleMinimize = () => {
 .add-note-btn {
     background: none;
     border: none;
-    font-size: 18px;
+    font-size: var(--app-font-18);
     color: #007aff;
     cursor: pointer;
 }
@@ -179,7 +189,7 @@ const toggleMinimize = () => {
 
 .note-preview {
     color: var(--color-text-secondary);
-    font-size: 12px;
+    font-size: var(--app-font-12);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -202,14 +212,14 @@ const toggleMinimize = () => {
 
 .note-editor h1 {
     color: var(--color-text-primary);
-    font-size: 24px;
+    font-size: var(--app-font-24);
     margin-top: 0;
     margin-bottom: 20px;
 }
 
 .note-editor h2 {
     color: #444;
-    font-size: 20px;
+    font-size: var(--app-font-20);
     margin-top: 25px;
     margin-bottom: 15px;
     border-bottom: 1px solid #eee;
@@ -218,7 +228,7 @@ const toggleMinimize = () => {
 
 .note-editor h3 {
     color: #555;
-    font-size: 16px;
+    font-size: var(--app-font-16);
     margin-top: 20px;
     margin-bottom: 10px;
 }

@@ -1,12 +1,12 @@
 <template>
     <aside
-        class="flex w-[200px] flex-col overflow-y-auto border-r border-[var(--color-window-titlebar-border)] bg-[var(--color-sidebar-bg)] py-2.5">
+        class="flex flex-col overflow-y-auto border-r border-[var(--color-window-titlebar-border)] bg-[var(--color-sidebar-bg)] py-2.5">
         <div class="flex-1">
             <div
-                class="mb-2 flex items-center justify-between px-4 text-[11px] font-600 uppercase tracking-[0.05em] text-[var(--color-text-tertiary)]">
+                class="mb-2 flex items-center justify-between px-4 text-[var(--app-font-13)] font-600 uppercase tracking-[0.05em] text-[var(--color-text-tertiary)]">
                 <span>{{ title }}</span>
                 <el-button class="credential-sidebar-add" link @click="emit('add-category')">
-                    <el-icon><Plus /></el-icon>
+                    <el-icon :size="18"><Plus /></el-icon>
                 </el-button>
             </div>
 
@@ -30,7 +30,7 @@
                 @node-click="handleNodeClick">
                 <template #default="{ node, data }">
                     <div class="credential-tree-node group" :class="{ active: selectedCategoryId === data.id }">
-                        <el-icon class="mr-1.5 text-[16px] text-[#007aff]">
+                        <el-icon class="mr-1.5 text-[var(--app-font-16)] text-[#007aff]">
                             <component :is="node.expanded ? FolderOpened : Folder" />
                         </el-icon>
                         <span class="min-w-0 flex-1 truncate">{{ node.label }}</span>
@@ -92,7 +92,7 @@ const handleNodeClick = (data: CategoryTreeNode) => {
     border-radius: 6px;
     margin: 0 8px 2px;
     transition: all 0.2s ease;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-primary);
     overflow: hidden;
     white-space: nowrap;
@@ -101,7 +101,7 @@ const handleNodeClick = (data: CategoryTreeNode) => {
 
 .credential-sidebar-item .el-icon {
     margin-right: 6px;
-    font-size: 16px;
+    font-size: var(--app-font-16);
     color: #007aff;
 }
 
@@ -146,7 +146,7 @@ const handleNodeClick = (data: CategoryTreeNode) => {
     height: 100%;
     padding: 0 8px;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     position: relative;
 }
 

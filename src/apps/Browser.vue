@@ -1,5 +1,5 @@
 <template>
-    <MacWindow :title="t('browser.title')" @close="emit('close')" @minimize="emit('minimize')">
+    <MacWindow ref="macWindowRef" :title="t('browser.title')" @close="emit('close')" @minimize="emit('minimize')">
         <div class="browser-container">
             <h3>{{ t('browser.cdpLauncher') }}</h3>
             <p class="desc">{{ t('browser.desc') }}</p>
@@ -66,6 +66,14 @@ async function launchChrome() {
     }
 }
 
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
+
 defineOptions({ name: 'BrowserApp' });
 </script>
 
@@ -77,11 +85,11 @@ defineOptions({ name: 'BrowserApp' });
 
 h3 {
     margin: 0 0 8px;
-    font-size: 16px;
+    font-size: var(--app-font-16);
 }
 
 .desc {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-muted, #999);
     margin-bottom: 20px;
 }
@@ -94,18 +102,18 @@ h3 {
 }
 
 .chrome-path {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     font-family: monospace;
     color: var(--color-success, #67c23a);
 }
 
 .launch-msg {
     margin-top: 16px;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-success, #67c23a);
 }
 .hint {
     color: var(--color-text-muted, #888);
-    font-size: 12px;
+    font-size: var(--app-font-12);
 }
 </style>

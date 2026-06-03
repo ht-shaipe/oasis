@@ -152,7 +152,7 @@ onUnmounted(() => {
     border-radius: 8px;
     box-shadow: 0 4px 20px var(--color-shadow);
     min-width: 200px;
-    z-index: 1000;
+    z-index: var(--z-index-context-menu);
     user-select: none;
     animation: fade-in 0.15s ease-out;
     transform-origin: top left;
@@ -165,7 +165,7 @@ onUnmounted(() => {
 .menu-item {
     padding: 8px 15px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     display: flex;
     align-items: center;
     transition: all 0.1s;

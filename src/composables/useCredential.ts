@@ -1,6 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import { ref, computed } from 'vue';
 
+// Shared vault state across all components using this composable.
+const dek = ref<string | null>(null);
+const isLocked = computed(() => dek.value === null);
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 export interface Category {
@@ -10,6 +14,7 @@ export interface Category {
     sort_order: number;
     created_at: string;
     parent_id?: number | null;
+    children?: Category[];
 }
 
 export interface CredentialView {
@@ -27,6 +32,23 @@ export interface CredentialView {
 
 export interface SensitiveData {
     credential_type?: string;
+    api_url?: string;
+    doc_url?: string;
+    sensitive_sets?: Array<{
+        username?: string;
+        notes?: string;
+        password?: string;
+        secret_key?: string;
+        access_token?: string;
+        refresh_token?: string;
+        api_key?: string;
+        expires_at?: string;
+    }>;
+    account_sets?: Array<{
+        username: string;
+        password?: string;
+        notes?: string;
+    }>;
     password?: string;
     secret_key?: string;
     access_token?: string;
@@ -46,6 +68,8 @@ export interface CreateCredentialRequest {
     username?: string;
     url?: string;
     sensitive_data_json: string;
+    dekBase64: string;
+    nonceBase64: string;
     tags?: string;
     notes?: string;
 }
@@ -57,19 +81,63 @@ export interface UpdateCredentialRequest {
     username?: string;
     url?: string;
     sensitive_data_json?: string;
+    dekBase64?: string;
+    nonceBase64?: string;
     tags?: string;
     notes?: string;
 }
 
-// ── DEK memory-only store ──────────────────────────────────────────────
-// DEK 仅存内存，不持久化（不写入 localStorage / sessionStorage）
+// ── Site & Account Types ───────────────────────────────────────────────
 
-const dek = ref<string | null>(null);
-const isLocked = computed(() => dek.value === null);
+export interface SiteAccount {
+    username: string;
+    password: string;
+    api_key?: string;
+    secret_key?: string;
+}
+
+export interface Site {
+    id: number;
+    name: string;
+    url: string;
+    category_id: number;
+    tags: string;
+    notes: string;
+    created_at: string;
+    updated_at: string;
+    category_name?: string;
+    accounts_count?: number;
+}
+
+export interface SiteDetail extends Site {
+    accounts: SiteAccount[];
+}
+
+export interface CreateSiteRequest {
+    name: string;
+    url?: string;
+    category_id: number;
+    tags?: string;
+    notes?: string;
+    accounts: SiteAccount[];
+}
+
+export interface UpdateSiteRequest {
+    id: number;
+    name?: string;
+    url?: string;
+    category_id?: number;
+    tags?: string;
+    notes?: string;
+    accounts?: SiteAccount[];
+}
 
 // ── Composable ─────────────────────────────────────────────────────────
 
 export function useCredential() {
+    // ── DEK memory-only store (instance-level) ─────────────────────────────
+    // DEK 仅存内存，不持久化（不写入 localStorage / sessionStorage）
+
     // ── Master key management ──
 
     const isMasterKeySet = async (): Promise<boolean> => {
@@ -139,9 +207,81 @@ export function useCredential() {
         return invoke('delete_credential', { id });
     };
 
+    const diagnoseCredential = async (id: number): Promise<string> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<string>('diagnose_credential', { id, dekBase64: dek.value, fix: false });
+    };
+
+    const fixCredential = async (id: number): Promise<string> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<string>('diagnose_credential', { id, dekBase64: dek.value, fix: true });
+    };
+
     const changeMasterKey = async (oldPassword: string, newPassword: string): Promise<void> => {
         const dekBase64 = await invoke<string>('change_master_key', { oldPassword, newPassword });
         dek.value = dekBase64;
+    };
+
+    // ── Site & Account Management ──
+
+    const listSites = async (categoryId?: number): Promise<Site[]> => {
+        return invoke<Site[]>('list_sites', { categoryId: categoryId ?? null });
+    };
+
+    const getSite = async (id: number): Promise<SiteDetail> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<SiteDetail>('get_site', { id, dekBase64: dek.value });
+    };
+
+    const createSite = async (data: CreateSiteRequest): Promise<Site> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<Site>('create_site', {
+            site: {
+                ...data,
+                dekBase64: dek.value,
+            },
+        });
+    };
+
+    const updateSite = async (data: UpdateSiteRequest): Promise<Site> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<Site>('update_site', {
+            site: {
+                ...data,
+                dekBase64: dek.value,
+            },
+        });
+    };
+
+    const deleteSite = async (id: number): Promise<void> => {
+        return invoke('delete_site', { id });
+    };
+
+    const searchSites = async (query: string): Promise<Site[]> => {
+        return invoke<Site[]>('search_sites', { query });
+    };
+
+    // ── Browser CSV Import ──
+
+    const importCsvPasswords = async (
+        csvPath: string,
+    ): Promise<Array<{ id: number; url: string; username: string; password: string; browser: string }>> => {
+        return invoke('import_csv_passwords', { csvPath });
+    };
+
+    // ── Merge / Tidy ──
+
+    interface MergeResult {
+        groups_found: number;
+        credentials_merged: number;
+        duplicates_removed: number;
+        sites_created: number;
+        accounts_created: number;
+    }
+
+    const mergeCredentialsByUrl = async (): Promise<MergeResult> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<MergeResult>('merge_credentials_by_url', { dekBase64: dek.value });
     };
 
     return {
@@ -167,5 +307,23 @@ export function useCredential() {
         createCredential,
         updateCredential,
         deleteCredential,
+
+        // site & account
+        listSites,
+        getSite,
+        createSite,
+        updateSite,
+        deleteSite,
+        searchSites,
+
+        // diagnostic
+        diagnoseCredential,
+        fixCredential,
+
+        // browser import
+        importCsvPasswords,
+
+        // merge / tidy
+        mergeCredentialsByUrl,
     };
 }

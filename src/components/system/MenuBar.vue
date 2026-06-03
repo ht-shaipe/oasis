@@ -278,8 +278,8 @@ onBeforeUnmount(() => {
     justify-content: space-between;
     align-items: center;
     padding: 0 10px;
-    font-size: 13px;
-    z-index: 2000;
+    font-size: var(--app-font-13);
+    z-index: var(--z-index-menu-bar);
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
     box-sizing: border-box;
 }
@@ -353,19 +353,19 @@ onBeforeUnmount(() => {
 }
 
 .menubar-icon .el-icon {
-    font-size: 14px;
+    font-size: var(--app-font-14);
 }
 
 .menubar-date-time {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    font-size: 15px;
+    font-size: var(--app-font-15);
 }
 
 .menubar-date {
     opacity: 0.7;
-    font-size: 10px;
+    font-size: var(--app-font-10);
 }
 
 .menubar-time {
@@ -375,7 +375,7 @@ onBeforeUnmount(() => {
 .menubar-battery {
     display: flex;
     align-items: center;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     gap: 4px;
 }
 
@@ -418,7 +418,7 @@ onBeforeUnmount(() => {
     border-radius: 5px;
     box-shadow: 0 5px 20px var(--color-shadow);
     min-width: 200px;
-    z-index: 2100; /* 确保高于顶部菜单栏 */
+    z-index: var(--z-index-dropdown);
     padding: 5px 0;
 }
 
@@ -431,14 +431,14 @@ onBeforeUnmount(() => {
     border-radius: 5px;
     box-shadow: 0 5px 20px var(--color-shadow);
     min-width: 180px;
-    z-index: 2100; /* 确保高于顶部菜单栏 */
+    z-index: var(--z-index-dropdown);
     padding: 5px 0;
 }
 
 .menu-item {
     padding: 5px 15px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-menu-text);
 }
 

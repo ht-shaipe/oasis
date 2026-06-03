@@ -1,5 +1,6 @@
 <template>
     <MacWindow
+        ref="macWindowRef"
         :title="t('profile.title')"
         :isMinimized="isMinimized"
         width="480"
@@ -212,6 +213,14 @@ const minimizeWindow = () => {
     emit('minimize');
 };
 
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
+
 // 组件加载完成后获取用户信息
 onMounted(() => {
     fetchUserInfo();
@@ -289,14 +298,14 @@ onMounted(() => {
 
 .user-info h2 {
     margin: 0;
-    font-size: 20px;
+    font-size: var(--app-font-20);
     color: var(--color-text-primary);
 }
 
 .member-badge {
     padding: 4px 10px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     font-weight: 500;
     display: inline-block;
 }
@@ -332,7 +341,7 @@ onMounted(() => {
 .info-section h3, .credits-section h3, .daily-check-section h3 {
     margin-top: 0;
     margin-bottom: 15px;
-    font-size: 16px;
+    font-size: var(--app-font-16);
     color: var(--color-text-primary);
     border-bottom: 1px solid #eee;
     padding-bottom: 8px;
@@ -347,7 +356,7 @@ onMounted(() => {
     color: white;
     border: none;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
@@ -359,11 +368,11 @@ onMounted(() => {
 }
 
 .sign-in-icon {
-    font-size: 16px;
+    font-size: var(--app-font-16);
 }
 
 .sign-in-tip {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-secondary);
     margin-top: 10px;
 }
@@ -399,19 +408,19 @@ onMounted(() => {
 }
 
 .credit-icon {
-    font-size: 24px;
+    font-size: var(--app-font-24);
     margin-bottom: 10px;
 }
 
 .credit-amount {
-    font-size: 22px;
+    font-size: var(--app-font-22);
     font-weight: bold;
     color: #007aff;
     margin-bottom: 5px;
 }
 
 .credit-label {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-secondary);
 }
 
@@ -426,7 +435,7 @@ onMounted(() => {
     padding: 8px 16px;
     border-radius: 6px;
     border: none;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     cursor: pointer;
     background-color: var(--color-window-titlebar);
     color: var(--color-text-primary);
@@ -449,7 +458,7 @@ onMounted(() => {
 /* 错误信息 */
 .error-message {
     color: #ff3b30;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     text-align: center;
     margin-top: 10px;
 }
