@@ -1,5 +1,6 @@
 <template>
     <MacWindow
+        ref="macWindowRef"
         :title="t('profile.title')"
         :isMinimized="isMinimized"
         width="480"
@@ -211,6 +212,14 @@ const closeWindow = () => {
 const minimizeWindow = () => {
     emit('minimize');
 };
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 
 // 组件加载完成后获取用户信息
 onMounted(() => {

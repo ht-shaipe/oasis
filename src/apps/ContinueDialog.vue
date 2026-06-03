@@ -1,5 +1,5 @@
 <template>
-    <MacWindow :title="t('continueDialog.title')" :isMinimized="isMinimized" @close="closeApp" @minimize="toggleMinimize" width="700"
+    <MacWindow ref="macWindowRef" :title="t('continueDialog.title')" :isMinimized="isMinimized" @close="closeApp" @minimize="toggleMinimize" width="700"
         height="500">
         <div class="continue-dialog">
             <div class="dialog-content">
@@ -174,6 +174,14 @@ onMounted(async () => {
         const errorMessage = error instanceof Error ? error.message : t('app.unknownError');
         ElMessage.error(`${t('continueDialog.modelCostFailed')}: ${errorMessage}`);
     }
+});
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
 });
 </script>
 

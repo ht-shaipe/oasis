@@ -1,5 +1,6 @@
 <template>
     <MacWindow
+        ref="macWindowRef"
         :title="t('settings.title')"
         :isMinimized="isMinimized"
         @close="closeApp"
@@ -203,6 +204,14 @@ const closeApp = () => {
 const toggleMinimize = () => {
     emit('minimize');
 };
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 </script>
 
 <style scoped>

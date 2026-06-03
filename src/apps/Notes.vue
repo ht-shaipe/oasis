@@ -1,8 +1,9 @@
 <template>
-    <MacWindow 
-        :title="t('notes.helpTitle')" 
-        :isMinimized="isMinimized" 
-        @close="closeApp" 
+    <MacWindow
+        ref="macWindowRef"
+        :title="t('notes.helpTitle')"
+        :isMinimized="isMinimized"
+        @close="closeApp"
         @minimize="toggleMinimize"
         width="800"
         height="600"
@@ -88,6 +89,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import MacWindow from '@/components/common/MacWindow.vue';
 
@@ -113,6 +115,14 @@ const closeApp = () => {
 const toggleMinimize = () => {
     emit('minimize');
 };
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 </script>
 
 <style scoped>

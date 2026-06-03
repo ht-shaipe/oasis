@@ -119,10 +119,10 @@
   --code-status-bar-bg: #007acc;
   --code-status-bar-text: #ffffff;
   --code-terminal-green: #22da6e;
-  --code-activity-bar-bg: #2c2c2c;
-  --code-activity-bar-text: #858585;
-  --code-activity-bar-text-hover: #ffffff;
-  --code-activity-bar-text-active: #ffffff;
+  --code-activity-bar-bg: #f3f3f3;
+  --code-activity-bar-text: #616161;
+  --code-activity-bar-text-hover: #333333;
+  --code-activity-bar-text-active: #333333;
   --code-status-bar-divider: rgba(255, 255, 255, 0.2);
 }
 

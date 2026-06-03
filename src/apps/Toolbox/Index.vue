@@ -1,5 +1,5 @@
 <template>
-    <MacWindow :title="t('toolbox.title')" width="840" height="560" @close="emit('close')" @minimize="emit('minimize')">
+    <MacWindow ref="macWindowRef" :title="t('toolbox.title')" width="840" height="560" @close="emit('close')" @minimize="emit('minimize')">
         <div class="toolbox-container flex h-full">
             <!-- <div>sidebarSize: {{ sidebarSize }} {{ SIDEBAR_MIN }} - {{ SIDEBAR_MAX }}</div> -->
             <el-splitter class="flex-1">
@@ -70,6 +70,14 @@ watch(sidebarSize, (newSize) => {
     } catch (error) {
         console.warn('Failed to save sidebar width:', error);
     }
+});
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
 });
 
 defineOptions({ name: 'ToolboxApp' });

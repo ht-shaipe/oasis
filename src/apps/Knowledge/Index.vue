@@ -1,5 +1,6 @@
 <template>
     <MacWindow
+        ref="macWindowRef"
         :title="t('knowledge.title')"
         :isMinimized="isMinimized"
         @close="handleClose"
@@ -46,4 +47,12 @@ const handleClose = () => {
 const showMessage = () => {
     ElMessage.info('知识库功能正在开发中...');
 };
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 </script>

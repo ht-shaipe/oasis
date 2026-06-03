@@ -1,11 +1,12 @@
 <template>
     <MacWindow
+        ref="macWindowRef"
         :title="t('credential.title')"
         :isMinimized="isMinimized"
         @close="handleClose"
         @minimize="emit('minimize')"
-        width="1000"
-        height="600">
+        width="1200"
+        height="780">
         <div class="credential-container">
             <!-- ═══ Setup View ═══ -->
             <CredentialAuthCard
@@ -960,7 +961,7 @@ const credentials = ref<CredentialView[]>([]);
 const selectedCategoryId = ref<number | null>(null);
 const searchQuery = ref('');
 const tableLoading = ref(false);
-const pageSize = ref(10);
+const pageSize = ref(13);
 const currentPage = ref(1);
 
 // ── Tree Logic ──
@@ -1381,6 +1382,14 @@ onMounted(async () => {
     window.addEventListener('focus', handleWindowFocus);
 });
 
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
+
 onUnmounted(() => {
     if (autoLockTimer) clearTimeout(autoLockTimer);
     document.removeEventListener('mousemove', onUserActivity);
@@ -1432,6 +1441,11 @@ onUnmounted(() => {
     min-height: 0;
     overflow-y: auto;
     padding: 12px 16px;
+    scrollbar-width: none;
+}
+
+.credential-table-wrapper::-webkit-scrollbar {
+    display: none;
 }
 
 .credential-table-wrapper :deep(.el-table) {

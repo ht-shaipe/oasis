@@ -1,8 +1,9 @@
 <template>
-    <MacWindow 
-        title="Finder" 
-        :isMinimized="isMinimized" 
-        @close="closeApp" 
+    <MacWindow
+        ref="macWindowRef"
+        title="Finder"
+        :isMinimized="isMinimized"
+        @close="closeApp"
         @minimize="toggleMinimize"
         width="800"
         height="600"
@@ -404,6 +405,14 @@ const loadProjectVersions = async (projectId: string) => {
 // 组件挂载后
 onMounted(() => {
     loadProjects();
+});
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
 });
 </script>
 

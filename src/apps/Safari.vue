@@ -1,5 +1,5 @@
 <template>
-    <MacWindow title="Safari" :isMinimized="isMinimized" @close="closeApp" @minimize="toggleMinimize"
+    <MacWindow ref="macWindowRef" title="Safari" :isMinimized="isMinimized" @close="closeApp" @minimize="toggleMinimize"
         :startMaximized="true">
         <div class="preview-content">
             <div class="safari-toolbar">
@@ -18,6 +18,9 @@
                     <span>{{ currentUrl }}</span>
                 </div>
                 <div class="safari-buttons">
+                    <el-button @click="toggleViewMode" size="small" type="primary">
+                        {{ useIframe ? '打开WebView' : '使用内嵌' }}
+                    </el-button>
                     <el-icon>
                         <Share />
                     </el-icon>
@@ -35,6 +38,7 @@
 import { computed, ref, onMounted } from 'vue';
 import { ArrowLeft, ArrowRight, Lock, Share } from '@element-plus/icons-vue';
 import MacWindow from '@/components/common/MacWindow.vue';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 
 // 定义属性
 const props = defineProps({
@@ -54,15 +58,63 @@ const emit = defineEmits(['close', 'minimize']);
 // 状态变量
 const externalUrl = ref('');
 const currentUrl = ref('localhost');
+const useIframe = ref(true); // 控制是否使用iframe
 
 // 组件挂载时检查是否有外部URL
 onMounted(() => {
     const url = localStorage.getItem('safariUrl');
     if (url) {
+        // 使用WebviewWindow打开外部URL，而不是iframe
+        openExternalUrlInWebview(url);
+        // 清除localStorage，避免重复打开
+        localStorage.removeItem('safariUrl');
+    }
+});
+
+// 使用WebviewWindow打开外部URL
+const openExternalUrlInWebview = async (url: string) => {
+    try {
+        // 创建一个唯一的label，避免冲突
+        const label = `safari-external-${Date.now()}`;
+        const webview = new WebviewWindow(label, {
+            url: url,
+            title: `Safari - ${new URL(url).hostname}`,
+            width: 1200,
+            height: 800,
+            center: true,
+            resizable: true,
+            decorations: true,
+        });
+
+        // 监听webview窗口关闭事件
+        webview.once('tauri://window-created', () => {
+            console.log('Webview window created successfully');
+        });
+
+        currentUrl.value = new URL(url).hostname;
+    } catch (error) {
+        console.error('Failed to open webview:', error);
+        // 如果webview失败，回退到iframe
         externalUrl.value = url;
         currentUrl.value = new URL(url).hostname;
     }
-});
+};
+
+// 切换视图模式
+const toggleViewMode = () => {
+    if (externalUrl.value) {
+        if (useIframe.value) {
+            // 从iframe切换到webview
+            openExternalUrlInWebview(externalUrl.value);
+        } else {
+            // 从webview切换回iframe，不需要做任何事，webview窗口已经打开
+            console.log('Switch to iframe mode for internal content');
+        }
+    } else {
+        // 没有外部URL时，只能在iframe模式下显示预览内容
+        console.log('No external URL to open in webview');
+    }
+};
 
 // 关闭应用
 const closeApp = () => {
@@ -73,6 +125,14 @@ const closeApp = () => {
 const toggleMinimize = () => {
     emit('minimize');
 };
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 
 // 计算属性：预览HTML
 const previewHtml = computed(() => {

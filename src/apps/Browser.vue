@@ -1,5 +1,5 @@
 <template>
-    <MacWindow :title="t('browser.title')" @close="emit('close')" @minimize="emit('minimize')">
+    <MacWindow ref="macWindowRef" :title="t('browser.title')" @close="emit('close')" @minimize="emit('minimize')">
         <div class="browser-container">
             <h3>{{ t('browser.cdpLauncher') }}</h3>
             <p class="desc">{{ t('browser.desc') }}</p>
@@ -65,6 +65,14 @@ async function launchChrome() {
         launchLoading.value = false;
     }
 }
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 
 defineOptions({ name: 'BrowserApp' });
 </script>

@@ -1,8 +1,9 @@
 <template>
-    <MacWindow 
-        :title="t('generator.windowTitle')" 
-        :isMinimized="isMinimized" 
-        @close="closeApp" 
+    <MacWindow
+        ref="macWindowRef"
+        :title="t('generator.windowTitle')"
+        :isMinimized="isMinimized"
+        @close="closeApp"
         @minimize="toggleMinimize"
         width="800"
         height="600"
@@ -258,6 +259,14 @@ const generateCode = async () => {
     // 调用apiService中的方法
     await generateCodeStream(params, handleData, handleComplete, handleError);
 };
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 </script>
 
 <style scoped>

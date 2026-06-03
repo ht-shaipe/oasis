@@ -1,14 +1,7 @@
 <template>
     <div class="credential-table-wrapper">
-        <el-empty
-            v-if="total === 0 && !loading"
-            :description="emptyDescription" />
-        <el-table
-            v-else
-            v-loading="loading"
-            :data="data"
-            style="width: 100%"
-            @row-dblclick="handleRowDblClick">
+        <el-empty v-if="total === 0 && !loading" :description="emptyDescription" />
+        <el-table v-else v-loading="loading" :data="data" style="width: 100%" @row-dblclick="handleRowDblClick">
             <el-table-column :label="titleLabel" min-width="200">
                 <template #default="{ row }">
                     <div class="cred-title">
@@ -30,11 +23,7 @@
                         <span class="truncate flex-1" :title="row.url || '-'">
                             {{ row.url || '-' }}
                         </span>
-                        <el-button
-                            v-if="row.url"
-                            link
-                            size="small"
-                            @click.stop="handleOpenUrl(row.url)">
+                        <el-button v-if="row.url" link size="small" @click.stop="handleOpenUrl(row.url)">
                             <el-icon :size="14"><Link /></el-icon>
                         </el-button>
                     </div>
@@ -116,7 +105,7 @@ const props = withDefaults(defineProps<Props>(), {
     loading: false,
     total: 0,
     currentPage: 1,
-    pageSize: 10,
+    pageSize: 15,
 });
 
 const emit = defineEmits<Emits>();

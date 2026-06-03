@@ -1,8 +1,9 @@
 <template>
-    <MacWindow 
-        title="VS Code" 
-        :isMinimized="isMinimized" 
-        @close="closeWindow" 
+    <MacWindow
+        ref="macWindowRef"
+        title="VS Code"
+        :isMinimized="isMinimized"
+        @close="closeWindow"
         @minimize="minimizeWindow"
         width="1100"
         height="700"
@@ -919,6 +920,14 @@ watch(
         });
     }
 );
+
+// MacWindow 组件引用
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+
+// 暴露 bringToFront 方法
+defineExpose({
+    bringToFront: () => macWindowRef.value?.bringToFront()
+});
 </script>
 
 <style scoped>
