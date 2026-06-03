@@ -1,0 +1,13 @@
+[package]
+edition = {workspace = true}
+name = "oasis-ai"
+version = {workspace = true}
+
+[dependencies]
+ai-llm-kit = {path = "../../../../../../rust/kit/ai/llm"}
+serde = {version = "1", features = ["derive"]}
+serde_json = "1"
+tauri = {version = "2", features = ["macos-private-api"]}
+tokio = {version = "1", features = ["full"]}
+tube = {workspace = true, features = ["crypto", "utils"]}
+tube_net = {workspace = true, features = ["actix"]}

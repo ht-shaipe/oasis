@@ -11,6 +11,7 @@ import Credential from '@/apps/Credential/Index.vue';
 import Toolbox from '@/apps/Toolbox/Index.vue';
 import Browser from '@/apps/Browser.vue';
 import Knowledge from '@/apps/Knowledge/Index.vue';
+import Chat from '@/apps/Chat/Index.vue';
 
 export interface AppConfig {
     id: string;
@@ -120,5 +121,14 @@ export const apps: AppConfig[] = [
         showInDock: true,
         showOnDesktop: true,
         nameKey: 'knowledge.title',
+    },
+    {
+        id: 'chat',
+        name: 'AI Chat',
+        icon: '/assets/icons/Features.svg',
+        component: Chat,
+        showInDock: true,
+        showOnDesktop: true,
+        nameKey: 'chat.title',
     },
 ];

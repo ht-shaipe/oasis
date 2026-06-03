@@ -17,6 +17,7 @@ lazy_static = "1.5"
 oasis-browser = {path = "crates/browser"}
 oasis-credential = {path = "crates/credential"}
 oasis-toolbox = {path = "crates/toolbox"}
+oasis-ai = {path = "crates/ai"}
 rand = "0.9"
 reqwest = {version = "0.12", features = ["json"] }
 ring = "0.17"
@@ -33,6 +34,11 @@ tube = {path = "../../../../rust/kit/tube", features = ["net", "sync_net"] }
 [workspace.package]
 edition = "2024"
 version = "0.1.0"
+
+[workspace.dependencies]
+async-trait = "0.1"
+tube = {path = "../../../../rust/kit/tube"}
+tube_net = {path = "../../../../rust/kit/tube/net"}
 
 [dev-dependencies]
 base64 = "0.22"

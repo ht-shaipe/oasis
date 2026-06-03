@@ -458,7 +458,25 @@
       "accessTokenHint": "Optional access token",
       "refreshTokenHint": "Optional refresh token",
       "createSubtitle": "Create new {type} credential",
-      "editSubtitle": "Edit {type} credential"
+      "editSubtitle": "Edit {type} credential",
+      "hostLabel": "Host",
+      "hostHint": "Enter host address",
+      "portLabel": "Port",
+      "portHint": "Enter port number",
+      "dbNameLabel": "Database",
+      "dbNameHint": "Enter database name",
+      "dbTypeLabel": "DB Type",
+      "dbTypeHint": "MySQL/PostgreSQL/Redis etc.",
+      "bankNameLabel": "Bank Name",
+      "bankNameHint": "Enter bank name",
+      "cardNumberLabel": "Card Number",
+      "cardNumberHint": "Enter card number",
+      "cardHolderLabel": "Card Holder",
+      "cardHolderHint": "Enter card holder name",
+      "cvvLabel": "CVV",
+      "cvvHint": "Enter CVV",
+      "validThruLabel": "Valid Thru",
+      "validThruHint": "MM/YY"
     },
     "category": {
       "all": "All Credentials",
@@ -535,7 +553,16 @@
       "templateKeyExists": "Template key already exists",
       "enterTemplateKey": "Please enter template key",
       "enterTemplateName": "Please enter template name",
-      "fieldsIncluded": "Fields Included:"
+      "fieldsIncluded": "Fields Included:",
+      "host": "Host",
+      "port": "Port",
+      "dbName": "Database",
+      "dbType": "DB Type",
+      "bankName": "Bank Name",
+      "cardNumber": "Card Number",
+      "cardHolder": "Card Holder",
+      "cvv": "CVV",
+      "validThru": "Valid Thru"
     },
     "lock": "Lock",
     "autoLockWarning": "Vault has been auto-locked"
@@ -700,5 +727,20 @@
       "title": "LLM Models",
       "empty": "No models configured. Click the button above to add one."
     }
+  },
+  "chat": {
+    "title": "AI Chat",
+    "newChat": "New Chat",
+    "deleteChat": "Delete Chat",
+    "deleteConfirm": "Are you sure you want to delete this conversation?",
+    "selectModel": "Select Model",
+    "sendMessage": "Send Message",
+    "inputPlaceholder": "Type a message...",
+    "emptyHint": "Start a new conversation",
+    "emptyDesc": "Select a configured LLM model to start chatting",
+    "streamingHint": "AI is responding...",
+    "thinking": "Thinking",
+    "modelRequired": "Please select a model first",
+    "modelUnavailable": "Selected model is unavailable"
   }
 }

@@ -20,6 +20,10 @@ fn main() {
             workspace_root.join("crates/browser/src/commands.rs"),
             "oasis_browser::commands::",
         ),
+        (
+            workspace_root.join("crates/ai/src/commands.rs"),
+            "oasis_ai::commands::",
+        ),
     ];
 
     for (path, _) in &sources {

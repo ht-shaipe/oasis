@@ -1,6 +1,15 @@
 import type { SensitiveData } from '@/composables/useCredential';
 
-export type CredentialTemplateKey = 'account' | 'api_key' | 'key_secret' | 'expiring_key' | 'custom' | string;
+export type CredentialTemplateKey =
+    | 'account'
+    | 'api_key'
+    | 'key_secret'
+    | 'expiring_key'
+    | 'database'
+    | 'server'
+    | 'bank_card'
+    | 'custom'
+    | string;
 
 export interface CredentialAccountForm {
     username: string;
@@ -11,6 +20,8 @@ export interface CredentialAccountForm {
     access_token: string;
     refresh_token: string;
     expires_at: string;
+    /** 类型专属字段，如数据库的 host/port/db_name，银行卡的 card_holder/cvv/valid_thru 等 */
+    custom_fields: Record<string, string>;
 }
 
 export const createEmptyCredentialAccount = (): CredentialAccountForm => ({
@@ -22,6 +33,7 @@ export const createEmptyCredentialAccount = (): CredentialAccountForm => ({
     access_token: '',
     refresh_token: '',
     expires_at: '',
+    custom_fields: {},
 });
 
 export interface CredentialFormModel {
@@ -52,6 +64,49 @@ export interface CredentialTemplateOption {
     fields?: string[];
 }
 
+// ── 类型专属字段定义 ─────────────────────────────────────────────────────
+
+export interface CustomFieldDef {
+    key: string;
+    label: string;
+    placeholder?: string;
+    /** 是否为密码类型字段（默认显示隐藏） */
+    secret?: boolean;
+}
+
+/** 每种凭证类型对应的自定义字段定义 */
+export const typeCustomFieldDefs: Record<string, CustomFieldDef[]> = {
+    database: [
+        { key: 'host', label: '主机地址', placeholder: '192.168.1.100' },
+        { key: 'port', label: '端口', placeholder: '3306' },
+        { key: 'db_type', label: '数据库类型', placeholder: 'MySQL' },
+        { key: 'db_name', label: '数据库名', placeholder: 'mydb' },
+    ],
+    server: [
+        { key: 'host', label: '主机地址', placeholder: '192.168.1.100 或 example.com' },
+        { key: 'port', label: '端口', placeholder: '22' },
+    ],
+    bank_card: [
+        { key: 'bank_name', label: '银行名称', placeholder: '招商银行' },
+        { key: 'card_number', label: '卡号', placeholder: '**** **** **** ****', secret: true },
+        { key: 'card_holder', label: '持卡人', placeholder: '张三' },
+        { key: 'cvv', label: 'CVV', placeholder: '***', secret: true },
+        { key: 'valid_thru', label: '有效期', placeholder: 'MM/YY', secret: true },
+    ],
+};
+
+/** 获取指定类型的自定义字段定义 */
+export const getCustomFieldDefs = (type: CredentialTemplateKey): CustomFieldDef[] => {
+    return typeCustomFieldDefs[type] ?? [];
+};
+
+/** 判断该类型是否有自定义字段定义 */
+export const hasCustomFieldDefs = (type: CredentialTemplateKey): boolean => {
+    return (typeCustomFieldDefs[type]?.length ?? 0) > 0;
+};
+
+// ── 模板选项 ─────────────────────────────────────────────────────────────
+
 export const defaultCredentialTemplateOptions: Array<CredentialTemplateOption> = [
     {
         value: 'account',
@@ -76,6 +131,24 @@ export const defaultCredentialTemplateOptions: Array<CredentialTemplateOption> =
         label: '到期密钥',
         description: 'Key + 到期时间，适合会过期的证书或授权。',
         fields: ['api_key', 'expires_at'],
+    },
+    {
+        value: 'database',
+        label: '数据库',
+        description: '主机 + 端口 + 用户名 + 密码 + 数据库名。',
+        fields: ['password'],
+    },
+    {
+        value: 'server',
+        label: '服务器',
+        description: '主机 + 端口 + 用户名 + 密码/密钥。',
+        fields: ['password'],
+    },
+    {
+        value: 'bank_card',
+        label: '银行卡',
+        description: '银行名 + 卡号 + 密码 + CVV + 有效期等。',
+        fields: ['password'],
     },
 ];
 
@@ -127,8 +200,23 @@ export const defaultCredentialForm = (categoryId: number | null): CredentialForm
     },
 });
 
+/** 根据 custom_fields 中的特征 key 推断凭证类型 */
+const inferFromCustomFields = (customFields?: Record<string, string>): CredentialTemplateKey | null => {
+    if (!customFields) return null;
+    if (customFields['db_name'] !== undefined) return 'database';
+    if (customFields['card_number'] !== undefined) return 'bank_card';
+    // server 和 database 都有 host/port，但 server 没有 db_name
+    if (customFields['host'] !== undefined && customFields['db_name'] === undefined) return 'server';
+    return null;
+};
+
 export const inferCredentialType = (sensitiveData?: Partial<SensitiveData> | null): CredentialTemplateKey => {
     if (!sensitiveData) return 'account';
+
+    // 先从 custom_fields 推断
+    const fromCustom = inferFromCustomFields(sensitiveData.custom_fields);
+    if (fromCustom) return fromCustom;
+
     if (sensitiveData.sensitive_sets && sensitiveData.sensitive_sets.length > 0) {
         const firstSet = sensitiveData.sensitive_sets[0];
         if (firstSet.secret_key && firstSet.api_key) return 'key_secret';
@@ -180,6 +268,16 @@ export const buildSensitiveData = (form: CredentialFormModel): SensitiveData => 
     const primarySet = normalizedSets[0];
     const primaryAccountPassword = primarySet?.password ?? form.sensitive.password;
 
+    // 收集类型专属字段
+    const customFieldsFromAccounts: Record<string, string> = {};
+    for (const account of form.accounts) {
+        for (const [key, value] of Object.entries(account.custom_fields)) {
+            if (value.trim()) {
+                customFieldsFromAccounts[key] = value.trim();
+            }
+        }
+    }
+
     const data: SensitiveData = {
         credential_type: form.credential_type,
         api_url: form.api_url.trim() || undefined,
@@ -192,59 +290,82 @@ export const buildSensitiveData = (form: CredentialFormModel): SensitiveData => 
         expires_at: primarySet?.expires_at || form.sensitive.expires_at || undefined,
         access_token: primarySet?.access_token || form.sensitive.access_token || undefined,
         refresh_token: primarySet?.refresh_token || form.sensitive.refresh_token || undefined,
+        custom_fields: Object.keys(customFieldsFromAccounts).length > 0 ? customFieldsFromAccounts : undefined,
     };
 
     return data;
 };
 
+/** 判断是否为"账号类"凭证（用户名+密码模式，支持多套账号） */
+export const isAccountLikeType = (type: CredentialTemplateKey): boolean => {
+    return type === 'account' || type === 'database' || type === 'server' || type === 'bank_card' || type === 'custom';
+};
+
+/** 判断是否为"密钥类"凭证（api_url/doc_url + 密钥字段模式） */
+export const isKeyCredentialType = (type: CredentialTemplateKey): boolean => {
+    return ['api_key', 'key_secret', 'expiring_key'].includes(type);
+};
+
 export const normalizeSensitiveFields = (form: CredentialFormModel): void => {
     if (form.credential_type === 'custom') return;
 
-    if (form.credential_type === 'account') {
+    const type = form.credential_type;
+    const isAccountLike = isAccountLikeType(type);
+    const isKeyLike = isKeyCredentialType(type);
+
+    // 账号类：清空密钥字段
+    if (isAccountLike) {
         for (const account of form.accounts) {
             account.api_key = '';
             account.secret_key = '';
-            account.expires_at = '';
             account.access_token = '';
             account.refresh_token = '';
+            account.expires_at = '';
         }
-        return;
-    }
-
-    if (form.credential_type !== 'account') {
+        // 非账号类：清空密码
+    } else {
         form.sensitive.password = '';
         for (const account of form.accounts) {
             account.password = '';
         }
     }
-    if (
-        form.credential_type !== 'api_key' &&
-        form.credential_type !== 'key_secret' &&
-        form.credential_type !== 'expiring_key'
-    ) {
+
+    // 密钥类之间互斥
+    if (!isKeyLike && !isAccountLike) {
         form.sensitive.api_key = '';
         for (const account of form.accounts) {
             account.api_key = '';
         }
     }
-    if (form.credential_type !== 'key_secret' && form.credential_type !== 'custom') {
+    if (type !== 'key_secret' && !isAccountLike) {
         form.sensitive.secret_key = '';
         for (const account of form.accounts) {
             account.secret_key = '';
         }
     }
-    if (form.credential_type !== 'expiring_key') {
+    if (type !== 'expiring_key' && !isAccountLike) {
         form.sensitive.expires_at = '';
         for (const account of form.accounts) {
             account.expires_at = '';
         }
     }
-    if (form.credential_type !== 'custom') {
-        form.sensitive.access_token = '';
-        form.sensitive.refresh_token = '';
-        for (const account of form.accounts) {
-            account.access_token = '';
-            account.refresh_token = '';
+
+    // 切换类型时，为新类型初始化 custom_fields
+    const defs = getCustomFieldDefs(type);
+    for (const account of form.accounts) {
+        if (!account.custom_fields) account.custom_fields = {};
+        // 保留已有的值，补充新定义的 key
+        for (const def of defs) {
+            if (!(def.key in account.custom_fields)) {
+                account.custom_fields[def.key] = '';
+            }
+        }
+        // 清除不属于当前类型的 custom_fields key
+        const validKeys = new Set(defs.map((d) => d.key));
+        for (const key of Object.keys(account.custom_fields)) {
+            if (!validKeys.has(key)) {
+                delete account.custom_fields[key];
+            }
         }
     }
 };
@@ -277,6 +398,10 @@ export const shouldShowField = (
             return field === 'api_key' || field === 'secret_key';
         case 'expiring_key':
             return field === 'api_key' || field === 'expires_at';
+        case 'database':
+        case 'server':
+        case 'bank_card':
+            return field === 'password';
         default:
             return false;
     }

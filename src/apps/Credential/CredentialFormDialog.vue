@@ -90,7 +90,7 @@
                 </el-form-item>
             </div>
 
-            <!-- 账号凭证：用户名/密码直接跟在网址后面 -->
+            <!-- 账号类凭证：类型专属字段 + 用户名/密码 -->
             <template v-if="isAccountLikeCredential">
                 <div
                     class="flex items-center justify-between m-1 py-1 border-b border-solid border-0 border-[var(--color-window-titlebar-border)]">
@@ -104,26 +104,44 @@
                 </div>
                 <div class="col-span-2 space-y-1.5 mt-1">
                     <div v-for="(account, index) in credForm.accounts" :key="index" class="flex items-start gap-1.5">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start flex-1 min-w-0">
-                            <el-form-item
-                                :label="t('credential.list.username')"
-                                label-width="54px"
-                                class="mb-0 min-w-0">
-                                <el-input v-model="account.username" :placeholder="t('credential.list.username')" />
-                            </el-form-item>
-                            <el-form-item
-                                :label="t('credential.detail.password')"
-                                label-width="54px"
-                                class="mb-0 min-w-0">
-                                <el-input
-                                    v-model="account.password"
-                                    type="password"
-                                    show-password
-                                    :placeholder="t('credential.detail.password')" />
-                            </el-form-item>
-                            <el-form-item :label="t('credential.detail.notes')" label-width="54px" class="mb-0 min-w-0">
-                                <el-input v-model="account.notes" :placeholder="t('credential.detail.notes')" />
-                            </el-form-item>
+                        <div class="flex-1 min-w-0">
+                            <!-- 类型专属字段（数据库/服务器/银行卡） -->
+                            <div v-if="currentHasCustomFields" class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start mb-2">
+                                <el-form-item
+                                    v-for="fieldDef in currentCustomFieldDefs"
+                                    :key="fieldDef.key"
+                                    :label="fieldDef.label"
+                                    label-width="68px"
+                                    class="mb-0 min-w-0">
+                                    <el-input
+                                        v-model="account.custom_fields[fieldDef.key]"
+                                        :type="fieldDef.secret && !visibleFields[fieldDef.key] ? 'password' : 'text'"
+                                        :show-password="fieldDef.secret"
+                                        :placeholder="fieldDef.placeholder || ''" />
+                                </el-form-item>
+                            </div>
+                            <!-- 用户名/密码/备注 -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start">
+                                <el-form-item
+                                    :label="t('credential.list.username')"
+                                    label-width="54px"
+                                    class="mb-0 min-w-0">
+                                    <el-input v-model="account.username" :placeholder="t('credential.list.username')" />
+                                </el-form-item>
+                                <el-form-item
+                                    :label="t('credential.detail.password')"
+                                    label-width="54px"
+                                    class="mb-0 min-w-0">
+                                    <el-input
+                                        v-model="account.password"
+                                        type="password"
+                                        show-password
+                                        :placeholder="t('credential.detail.password')" />
+                                </el-form-item>
+                                <el-form-item :label="t('credential.detail.notes')" label-width="54px" class="mb-0 min-w-0">
+                                    <el-input v-model="account.notes" :placeholder="t('credential.detail.notes')" />
+                                </el-form-item>
+                            </div>
                         </div>
                         <el-button
                             link
@@ -263,6 +281,10 @@ import {
     inferCredentialType,
     normalizeSensitiveFields,
     shouldShowField,
+    isAccountLikeType,
+    isKeyCredentialType as isKeyCredentialTypeFn,
+    getCustomFieldDefs,
+    hasCustomFieldDefs,
     type CredentialAccountForm,
     type CredentialFormModel,
     type CredentialTemplateKey,
@@ -296,13 +318,13 @@ const dialogTitle = computed(() =>
     isEditMode.value ? t('credential.detail.editTitle') : t('credential.detail.createTitle'),
 );
 
-const isAccountLikeCredential = computed(
-    () => credForm.credential_type === 'account' || credForm.credential_type === 'custom',
-);
+const isAccountLikeCredential = computed(() => isAccountLikeType(credForm.credential_type));
 
-const isKeyCredentialType = computed(() =>
-    ['api_key', 'key_secret', 'expiring_key'].includes(credForm.credential_type),
-);
+const isKeyCredentialType = computed(() => isKeyCredentialTypeFn(credForm.credential_type));
+
+const currentCustomFieldDefs = computed(() => getCustomFieldDefs(credForm.credential_type));
+
+const currentHasCustomFields = computed(() => hasCustomFieldDefs(credForm.credential_type));
 
 const allTemplates = computed(() => [...defaultCredentialTemplateOptions, ...customTemplates.value]);
 
@@ -320,6 +342,10 @@ const visibleFields = reactive<Record<string, boolean>>({
     secret_key: false,
     access_token: false,
     refresh_token: false,
+    // bank card fields
+    card_number: false,
+    cvv: false,
+    valid_thru: false,
 });
 
 interface SensitiveFieldDef {
@@ -366,6 +392,8 @@ const resetCredForm = () => {
     for (const key of Object.keys(visibleFields)) {
         visibleFields[key] = false;
     }
+    // 为当前类型初始化 custom_fields
+    normalizeSensitiveFields(credForm);
 };
 
 const fillSensitiveData = (sensitiveData: Partial<SensitiveData>, rowUsername: string | null) => {
@@ -392,6 +420,7 @@ const fillSensitiveData = (sensitiveData: Partial<SensitiveData>, rowUsername: s
             access_token: set.access_token || '',
             refresh_token: set.refresh_token || '',
             expires_at: set.expires_at || '',
+            custom_fields: { ...sensitiveData.custom_fields },
         })) ?? [];
 
     const accountSets =
@@ -404,6 +433,7 @@ const fillSensitiveData = (sensitiveData: Partial<SensitiveData>, rowUsername: s
             access_token: '',
             refresh_token: '',
             expires_at: '',
+            custom_fields: { ...sensitiveData.custom_fields },
         })) ?? [];
 
     if (sensitiveSets.length > 0) {
@@ -429,17 +459,27 @@ const fillSensitiveData = (sensitiveData: Partial<SensitiveData>, rowUsername: s
                 access_token: sensitiveData.access_token || '',
                 refresh_token: sensitiveData.refresh_token || '',
                 expires_at: sensitiveData.expires_at || '',
+                custom_fields: { ...sensitiveData.custom_fields },
             },
         ];
         credForm.username = rowUsername || '';
     }
 
     if (sensitiveData.custom_fields) {
-        customFields.value = Object.entries(sensitiveData.custom_fields).map(([key, value]) => ({
-            key,
-            value,
-            visible: false,
-        }));
+        // 类型专属字段（database/server/bank_card）
+        if (credForm.accounts.length > 0) {
+            credForm.accounts[0].custom_fields = { ...sensitiveData.custom_fields };
+        }
+        // 通用自定义字段
+        customFields.value = Object.entries(sensitiveData.custom_fields)
+            .filter(([key]) => !getCustomFieldDefs(credForm.credential_type).some((d) => d.key === key))
+            .map(([key, value]) => ({
+                key,
+                value,
+                visible: false,
+            }));
+    } else {
+        customFields.value = [];
     }
 };
 
@@ -492,6 +532,7 @@ const handleSaveCredential = async () => {
             access_token: account.access_token,
             refresh_token: account.refresh_token,
             expires_at: account.expires_at,
+            custom_fields: { ...account.custom_fields },
         }))
         .filter((account) => {
             const hasTypeSensitiveValue = sensitiveFieldDefs.some(
@@ -500,10 +541,11 @@ const handleSaveCredential = async () => {
                     String(account[field.key] || '').trim().length > 0,
             );
             const hasAccountMetaValue =
-                (credForm.credential_type === 'account' || credForm.credential_type === 'custom') &&
+                isAccountLikeType(credForm.credential_type) &&
                 (account.username || account.notes);
+            const hasCustomFieldValue = Object.values(account.custom_fields).some((v) => v.trim().length > 0);
 
-            return hasTypeSensitiveValue || hasAccountMetaValue;
+            return hasTypeSensitiveValue || hasAccountMetaValue || hasCustomFieldValue;
         });
 
     if (normalizedAccounts.length === 0) {

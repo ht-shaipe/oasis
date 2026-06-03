@@ -60,23 +60,23 @@ impl Client {
     }
 
     /// 以Post的方式请求数据
-    pub fn post(&self, service: &str, data: &serde_json::Value) -> Result<Value> {
+    pub async fn post(&self, service: &str, data: &serde_json::Value) -> Result<Value> {
         let url = format!("{}/{}", self.url, service);
 
         log!("request url {} , data {data:?}", url);
-        let res = self.get_client().post(&url, &data);
+        let res = self.get_client().post(&url, &data).await;
         let parse_fn = self.parse_response;
         parse_fn(res)
     }
 
     /// 用get的方式获取数据
-    pub fn get(&self, service: &str, data: &Value) -> Result<Value> {
+    pub async fn get(&self, service: &str, data: &Value) -> Result<Value> {
         // 拼接参数
         let url_params = data.to_url_params();
 
         // 拼接url
         let url = format!("{}{service}?{}", self.url, url_params);
-        let res = self.get_client().get(&url);
+        let res = self.get_client().get(&url).await;
         let parse_fn = self.parse_response;
         parse_fn(res)
     }
