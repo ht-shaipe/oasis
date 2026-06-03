@@ -89,7 +89,12 @@
         "appearance": {
             "title": "外观",
             "darkMode": "深色模式",
-            "darkModeDesc": "切换应用的深色/浅色外观"
+            "darkModeDesc": "切换应用的深色/浅色外观",
+            "fontSize": "字体大小",
+            "fontSizeDesc": "调整全局界面字体大小",
+            "fontSizeSmall": "小",
+            "fontSizeMedium": "中",
+            "fontSizeLarge": "大"
         },
         "about": {
             "title": "关于"
@@ -511,6 +516,7 @@
             "merge": "整理",
             "mergeConfirm": "将自动整理相同网址的凭证：相同网址不同账号密码的合并为一个网站，用户名密码完全相同的去重只保留一条。原凭证将被转换为网站账号形式。确认整理？",
             "mergeNoDuplicates": "没有需要整理的重复凭证",
+            "more": "更多操作",
             "mergeResult": "整理完成：发现 {groups} 组相同网址，合并 {merged} 条凭证，去重 {duplicates} 条，新建 {sites} 个网站"
         },
         "detail": {

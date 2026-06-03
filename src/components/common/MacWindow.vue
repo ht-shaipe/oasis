@@ -552,7 +552,7 @@ defineExpose({ bringToFront });
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-window-title);
     font-weight: 500;
     pointer-events: none;

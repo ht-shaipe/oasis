@@ -49,7 +49,7 @@ function setActiveTool(toolId: string) {
     margin: 0 6px 2px;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-secondary, #666);
     transition: all 0.15s ease;
 }

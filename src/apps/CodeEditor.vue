@@ -1003,7 +1003,7 @@ watch(
     padding: 0 8px;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 11px;
+    font-size: var(--app-font-11);
     color: var(--code-text-primary);
 }
 
@@ -1024,7 +1024,7 @@ watch(
     background: none;
     border: none;
     color: var(--code-text-primary);
-    font-size: 16px;
+    font-size: var(--app-font-16);
     cursor: pointer;
 }
 
@@ -1057,7 +1057,7 @@ watch(
     align-items: center;
     padding: 0 8px;
     font-weight: 600;
-    font-size: 11px;
+    font-size: var(--app-font-11);
     text-transform: uppercase;
     color: var(--code-text-secondary);
 }
@@ -1071,7 +1071,7 @@ watch(
     border: none;
     color: var(--code-text-secondary);
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--app-font-14);
 }
 
 .sidebar-item, .file-tree-item {
@@ -1122,7 +1122,7 @@ watch(
     color: var(--code-text-primary);
     margin-right: 4px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     border: 1px solid var(--code-border);
 }
 
@@ -1131,7 +1131,7 @@ watch(
     color: var(--color-text-tertiary);
     text-align: center;
     font-style: italic;
-    font-size: 13px;
+    font-size: var(--app-font-13);
 }
 
 .editor-wrapper {
@@ -1174,7 +1174,7 @@ watch(
     padding: 0 8px;
     background-color: var(--code-bg-tertiary);
     border-right: 1px solid var(--code-border);
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--code-text-primary);
     cursor: pointer;
     flex-shrink: 0;
@@ -1198,7 +1198,7 @@ watch(
     background: none;
     border: none;
     color: var(--code-text-primary);
-    font-size: 16px;
+    font-size: var(--app-font-16);
     cursor: pointer;
     opacity: 0.7;
 }
@@ -1231,14 +1231,14 @@ watch(
 }
 
 .welcome-title {
-    font-size: 32px;
+    font-size: var(--app-font-32);
     font-weight: 300;
     margin-bottom: 10px;
     color: var(--code-activity-bar-text-hover);
 }
 
 .welcome-subtitle {
-    font-size: 18px;
+    font-size: var(--app-font-18);
     margin-bottom: 40px;
     color: var(--code-text-primary);
 }
@@ -1256,7 +1256,7 @@ watch(
 }
 
 .welcome-action-title {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     font-weight: 600;
     margin-bottom: 10px;
     color: var(--code-activity-bar-text-hover);
@@ -1341,7 +1341,7 @@ watch(
     background: none;
     border: none;
     color: var(--code-text-primary);
-    font-size: 16px;
+    font-size: var(--app-font-16);
     cursor: pointer;
 }
 
@@ -1366,13 +1366,13 @@ watch(
 .terminal {
     padding: 10px;
     font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-    font-size: 12px;
+    font-size: var(--app-font-12);
 }
 
 .terminal-prompt {
     color: var(--code-terminal-green);
     margin-right: 8px;
-    font-size: 15px;
+    font-size: var(--app-font-15);
 }
 
 .terminal-command {
@@ -1403,7 +1403,7 @@ watch(
     background-color: var(--code-status-bar-bg);
     color: var(--code-status-bar-text);
     height: 22px;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     width: 100%;
     overflow: hidden;
     z-index: 10;
@@ -1486,7 +1486,7 @@ watch(
     margin-top: 20px;
     padding: 4px 16px;
     border-radius: 4px;
-    font-size: 15px;
+    font-size: var(--app-font-15);
     text-align: center;
 }
 

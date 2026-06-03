@@ -77,11 +77,11 @@ defineOptions({ name: 'BrowserApp' });
 
 h3 {
     margin: 0 0 8px;
-    font-size: 16px;
+    font-size: var(--app-font-16);
 }
 
 .desc {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-muted, #999);
     margin-bottom: 20px;
 }
@@ -94,18 +94,18 @@ h3 {
 }
 
 .chrome-path {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     font-family: monospace;
     color: var(--color-success, #67c23a);
 }
 
 .launch-msg {
     margin-top: 16px;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-success, #67c23a);
 }
 .hint {
     color: var(--color-text-muted, #888);
-    font-size: 12px;
+    font-size: var(--app-font-12);
 }
 </style>

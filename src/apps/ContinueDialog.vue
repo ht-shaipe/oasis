@@ -198,7 +198,7 @@ onMounted(async () => {
     margin-top: 0;
     margin-bottom: 10px;
     color: var(--color-text-primary);
-    font-size: 14px;
+    font-size: var(--app-font-14);
 }
 
 .dialog-actions {
@@ -223,7 +223,7 @@ onMounted(async () => {
     color: #67c23a;
     border-radius: 10px;
     padding: 1px 4px;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     border: 1px solid #e1f3d8;
     line-height: 13px;
     margin-left: 10px;

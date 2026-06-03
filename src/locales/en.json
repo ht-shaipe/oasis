@@ -492,6 +492,7 @@
       "merge": "Tidy Up",
       "mergeConfirm": "Automatically tidy credentials with the same URL: merge different accounts under the same site, deduplicate identical username/password pairs. Original credentials will be converted to site accounts. Continue?",
       "mergeNoDuplicates": "No duplicate credentials to tidy",
+      "more": "More",
       "mergeResult": "Tidy complete: {groups} URL groups found, {merged} credentials merged, {duplicates} duplicates removed, {sites} sites created"
     },
     "detail": {
@@ -680,7 +681,12 @@
     "appearance": {
       "title": "Appearance",
       "darkMode": "Dark Mode",
-      "darkModeDesc": "Toggle dark/light appearance"
+      "darkModeDesc": "Toggle dark/light appearance",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust global interface font size",
+      "fontSizeSmall": "Small",
+      "fontSizeMedium": "Medium",
+      "fontSizeLarge": "Large"
     },
     "about": {
       "title": "About"

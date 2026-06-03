@@ -78,7 +78,7 @@ async function pickOutputPath() {
 
 .form-label {
     display: block;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     font-weight: 500;
     color: var(--color-text-tertiary, #999);
     margin-bottom: 6px;
@@ -88,7 +88,7 @@ async function pickOutputPath() {
 .result-msg {
     color: #2d8c3c;
     margin-top: 12px;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     font-weight: 500;
 }
 </style>

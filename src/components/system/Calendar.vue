@@ -69,7 +69,7 @@ onMounted(() => {
 
 .calendar-header h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: var(--color-text-primary);
 }
 
@@ -94,7 +94,7 @@ onMounted(() => {
     padding: 8px 0;
     border-bottom: 1px solid #eee;
     color: var(--color-text-secondary);
-    font-size: 13px;
+    font-size: var(--app-font-13);
 }
 
 .calendar-item:last-child {

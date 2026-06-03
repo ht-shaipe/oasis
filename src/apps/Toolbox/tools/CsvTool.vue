@@ -204,7 +204,7 @@ async function pickFileSave() {
     padding: 8px 18px;
     border: none;
     background: none;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     font-weight: 500;
     color: var(--color-text-tertiary);
     cursor: pointer;
@@ -236,7 +236,7 @@ async function pickFileSave() {
 
 .form-label {
     display: block;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     font-weight: 500;
     color: var(--color-text-tertiary);
     margin-bottom: 6px;
@@ -270,7 +270,7 @@ async function pickFileSave() {
 }
 
 .result-badge {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-primary);
 }
 
@@ -281,7 +281,7 @@ async function pickFileSave() {
 .result-msg {
     color: #2d8c3c;
     margin-top: 12px;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     font-weight: 500;
 }
 </style>

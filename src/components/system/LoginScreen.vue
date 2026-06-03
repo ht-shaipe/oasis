@@ -373,7 +373,7 @@ onMounted(async () => {
 }
 
 .login-username {
-    font-size: 22px;
+    font-size: var(--app-font-22);
     color: white;
     font-weight: 400;
     margin-bottom: 20px;
@@ -397,7 +397,7 @@ onMounted(async () => {
     border-radius: 10px;
     padding: 0 45px 0 15px;
     color: white;
-    font-size: 16px;
+    font-size: var(--app-font-16);
     outline: none;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
@@ -454,7 +454,7 @@ onMounted(async () => {
 }
 
 .login-text {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: rgba(255, 255, 255, 0.9);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
@@ -484,7 +484,7 @@ onMounted(async () => {
 }
 
 .verification-message span {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: white;
     margin-bottom: 12px;
 }
@@ -495,7 +495,7 @@ onMounted(async () => {
     border-radius: 6px;
     padding: 6px 15px;
     color: white;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     cursor: pointer;
     transition: background-color 0.2s;
 }

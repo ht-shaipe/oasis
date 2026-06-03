@@ -132,7 +132,7 @@ const previewHtml = computed(() => {
             padding: 15px;
             border-radius: 4px;
             overflow: auto;
-            font-size: 14px;
+            font-size: var(--app-font-14);
           }
           code {
             font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
@@ -202,13 +202,13 @@ const previewHtml = computed(() => {
     padding: 0 10px;
     height: 28px;
     margin: 0 10px;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-primary);
 }
 
 .safari-address-bar .el-icon {
     margin-right: 6px;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: #00890a;
 }
 

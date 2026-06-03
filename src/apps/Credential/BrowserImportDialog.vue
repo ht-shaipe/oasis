@@ -13,19 +13,24 @@
                 <el-collapse-item title="使用提示：如何从浏览器导出密码 CSV" name="1">
                     <ul class="tip-list">
                         <li>
-                            <strong>Chrome</strong>：打开 <code>chrome://password-manager/settings</code> &rarr; 下载文件 &rarr; 选择导出的 CSV
+                            <strong>Chrome</strong>：打开 <code>chrome://password-manager/settings</code> &rarr;
+                            下载文件 &rarr; 选择导出的 CSV
                         </li>
                         <li>
-                            <strong>Edge</strong>：打开 <code>edge://wallet/passwords</code> &rarr; 设置 &rarr; 导出密码 &rarr; 选择导出的 CSV
+                            <strong>Edge</strong>：打开 <code>edge://wallet/passwords</code> &rarr; 设置 &rarr; 导出密码
+                            &rarr; 选择导出的 CSV
                         </li>
                         <li>
-                            <strong>Firefox</strong>：打开 <code>about:logins</code> &rarr; 三点菜单 &rarr; 导出登录信息 &rarr; 选择导出的 CSV
+                            <strong>Firefox</strong>：打开 <code>about:logins</code> &rarr; 三点菜单 &rarr; 导出登录信息
+                            &rarr; 选择导出的 CSV
                         </li>
                         <li>
-                            <strong>Brave</strong>：打开 <code>brave://password-manager/settings</code> &rarr; 下载文件 &rarr; 选择导出的 CSV
+                            <strong>Brave</strong>：打开 <code>brave://password-manager/settings</code> &rarr; 下载文件
+                            &rarr; 选择导出的 CSV
                         </li>
                         <li>
-                            <strong>Safari</strong>：打开 Safari &rarr; 设置 &rarr; 密码 &rarr; 三点菜单 &rarr; 导出所有密码 &rarr; 选择导出的 CSV
+                            <strong>Safari</strong>：打开 Safari &rarr; 设置 &rarr; 密码 &rarr; 三点菜单 &rarr;
+                            导出所有密码 &rarr; 选择导出的 CSV
                         </li>
                     </ul>
                 </el-collapse-item>
@@ -51,7 +56,11 @@
                 <div class="config-row">
                     <div class="config-item">
                         <span class="config-label">凭证类型：</span>
-                        <el-select v-model="selectedCredentialType" placeholder="选择凭证类型" size="small" class="type-select">
+                        <el-select
+                            v-model="selectedCredentialType"
+                            placeholder="选择凭证类型"
+                            size="small"
+                            class="type-select">
                             <el-option
                                 v-for="opt in credentialTemplateOptions"
                                 :key="opt.value"
@@ -131,7 +140,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { View, Hide, Loading, UploadFilled } from '@element-plus/icons-vue';
-import { useCredential, type CreateCredentialRequest } from '@/composables/useCredential';
+import { Category, useCredential, type CreateCredentialRequest } from '@/composables/useCredential';
 import { useFileDialog } from '@/composables/useFileDialog';
 import { credentialTemplateOptions, type CredentialTemplateKey } from './credentialForm';
 import AppDialog from '@/components/common/AppDialog.vue';
@@ -157,7 +166,7 @@ onMounted(() => {
     fetchCategories();
 });
 
-const { importCsvPasswords, createCredential, listCategories, createCategory } = useCredential();
+const { importCsvPasswords, createCredential, listCategories, listCredentials, createCategory } = useCredential();
 const { selectFile } = useFileDialog();
 
 // ── Usage tips collapse ──
@@ -173,22 +182,16 @@ const parsing = ref(false);
 const selectedCredentialType = ref<CredentialTemplateKey>('account');
 const selectedCategoryId = ref<number | null>(null);
 
-interface CategoryNode {
-    id: number;
-    name: string;
-    parent_id: number | null;
-    children?: CategoryNode[];
-}
-
-const categoryTree = ref<CategoryNode[]>([]);
+const categoryTree = ref<Category[]>([]);
 
 const fetchCategories = async () => {
     try {
-        const categories: CategoryNode[] = await listCategories();
+        const categories: Category[] = await listCategories();
         const roots = categories.filter((c) => c.parent_id == null);
-        const map = new Map<number, CategoryNode>();
+        const map = new Map<number, Category>();
         categories.forEach((c) => map.set(c.id, { ...c, children: [] }));
-        const tree: CategoryNode[] = [];
+
+        const tree: Category[] = [];
         categories.forEach((c) => {
             const node = map.get(c.id)!;
             if (c.parent_id != null) {
@@ -197,9 +200,40 @@ const fetchCategories = async () => {
             }
         });
         roots.forEach((r) => tree.push(map.get(r.id)!));
+
         categoryTree.value = tree;
+
+        // 异步加载凭证数量统计（不阻塞树展示）
+        loadCounts();
     } catch (err) {
         console.error('获取分类列表失败:', err);
+    }
+};
+
+const loadCounts = async () => {
+    try {
+        const credentials = await listCredentials();
+        const countMap = new Map<number, number>();
+        credentials.forEach((cred) => {
+            if (cred.category_id != null) {
+                countMap.set(cred.category_id, (countMap.get(cred.category_id) || 0) + 1);
+            }
+        });
+
+        // 递归重建节点名称（含数量），返回新数组触发响应式更新
+        const attachCount = (nodes: Category[]): Category[] => {
+            return nodes.map((n) => {
+                const cnt = countMap.get(n.id) || 0;
+                return {
+                    ...n,
+                    name: `${n.name} (${cnt})`,
+                    children: n.children ? attachCount(n.children) : undefined,
+                };
+            });
+        };
+        categoryTree.value = attachCount(categoryTree.value);
+    } catch (err) {
+        console.error('加载凭证数量失败:', err);
     }
 };
 
@@ -421,7 +455,7 @@ watch(
 .tip-list {
     margin: 0;
     padding-left: 20px;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     line-height: 2;
     color: #4b5563;
 }
@@ -430,7 +464,7 @@ watch(
     background: #f3f4f6;
     padding: 1px 4px;
     border-radius: 3px;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: #1f2937;
 }
 
@@ -443,7 +477,9 @@ watch(
     border: 2px dashed #d1d5db;
     border-radius: 8px;
     cursor: pointer;
-    transition: border-color 0.2s, background-color 0.2s;
+    transition:
+        border-color 0.2s,
+        background-color 0.2s;
     margin-bottom: 8px;
 }
 
@@ -458,13 +494,13 @@ watch(
 }
 
 .upload-text {
-    font-size: 15px;
+    font-size: var(--app-font-15);
     color: #374151;
     margin-bottom: 6px;
 }
 
 .upload-tip {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: #9ca3af;
 }
 
@@ -496,7 +532,7 @@ watch(
 }
 
 .config-label {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: #4b5563;
     white-space: nowrap;
 }
@@ -507,7 +543,7 @@ watch(
     gap: 8px;
     padding: 24px 0;
     color: #6b7280;
-    font-size: 14px;
+    font-size: var(--app-font-14);
 }
 
 .password-cell {

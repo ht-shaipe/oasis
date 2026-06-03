@@ -318,13 +318,13 @@ watch(visible, (val) => {
 }
 
 .template-label {
-    font-size: 16px;
+    font-size: var(--app-font-16);
     font-weight: 600;
     color: var(--color-text-primary);
 }
 
 .template-desc {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-secondary);
     line-height: 1.5;
 }
@@ -337,12 +337,12 @@ watch(visible, (val) => {
 }
 
 .template-builtin-note {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-tertiary);
 }
 
 .field-label {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-tertiary);
 }
 

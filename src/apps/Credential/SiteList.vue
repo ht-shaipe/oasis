@@ -328,7 +328,7 @@ onMounted(() => {
 
 .site-name {
     margin: 0 0 4px 0;
-    font-size: 16px;
+    font-size: var(--app-font-16);
     font-weight: 600;
     color: var(--color-text-primary);
     white-space: nowrap;
@@ -337,7 +337,7 @@ onMounted(() => {
 }
 
 .site-url {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-link);
     text-decoration: none;
     white-space: nowrap;
@@ -363,7 +363,7 @@ onMounted(() => {
 }
 
 .accounts-count {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-secondary);
 }
 
@@ -374,7 +374,7 @@ onMounted(() => {
 }
 
 .tag-item {
-    font-size: 11px;
+    font-size: var(--app-font-11);
 }
 
 /* 响应式 */

@@ -6,7 +6,7 @@
         width="800"
         append-to-body
         destroy-on-close
-        class="credential-form-dialog [&_.el-dialog]:rounded-3 [&_.el-dialog]:overflow-hidden [&_.el-dialog]:h-[82vh] [&_.el-dialog]:flex [&_.el-dialog]:flex-col [&_.el-dialog__header]:px-6 [&_.el-dialog__header]:pt-5 [&_.el-dialog__header]:pb-4 [&_.el-dialog__header]:border-b [&_.el-dialog__header]:border-[var(--color-window-titlebar-border)] [&_.el-dialog__header]:bg-[var(--color-bg-glass)] [&_.el-dialog__title]:text-[16px] [&_.el-dialog__title]:font-600 [&_.el-dialog__title]:text-[var(--color-text-primary)] [&_.el-dialog__body]:p-6 [&_.el-dialog__body]:flex-1 [&_.el-dialog__body]:min-h-0 [&_.el-dialog__body]:overflow-y-auto [&_.el-dialog__footer]:px-6 [&_.el-dialog__footer]:py-4 [&_.el-dialog__footer]:border-t [&_.el-dialog__footer]:border-[var(--color-window-titlebar-border)] [&_.el-dialog__footer]:bg-[var(--color-bg-glass)]">
+        class="credential-form-dialog [&_.el-dialog]:rounded-3 [&_.el-dialog]:overflow-hidden [&_.el-dialog]:h-[82vh] [&_.el-dialog]:flex [&_.el-dialog]:flex-col [&_.el-dialog__header]:px-6 [&_.el-dialog__header]:pt-5 [&_.el-dialog__header]:pb-4 [&_.el-dialog__header]:border-b [&_.el-dialog__header]:border-[var(--color-window-titlebar-border)] [&_.el-dialog__header]:bg-[var(--color-bg-glass)] [&_.el-dialog__title]:text-[var(--app-font-16)] [&_.el-dialog__title]:font-600 [&_.el-dialog__title]:text-[var(--color-text-primary)] [&_.el-dialog__body]:p-6 [&_.el-dialog__body]:flex-1 [&_.el-dialog__body]:min-h-0 [&_.el-dialog__body]:overflow-y-auto [&_.el-dialog__footer]:px-6 [&_.el-dialog__footer]:py-4 [&_.el-dialog__footer]:border-t [&_.el-dialog__footer]:border-[var(--color-window-titlebar-border)] [&_.el-dialog__footer]:bg-[var(--color-bg-glass)]">
         <el-form
             :model="credForm"
             @submit.prevent="handleSaveCredential"
@@ -66,9 +66,56 @@
                     <el-input v-model="credForm.title" />
                 </el-form-item>
 
-                <el-form-item :label="t('credential.list.url')">
+                <el-form-item :label="t('credential.list.url')" class="col-span-2">
                     <el-input v-model="credForm.url" :placeholder="t('credential.form.urlHint')" />
                 </el-form-item>
+
+                <!-- 账号凭证：用户名/密码直接跟在网址后面 -->
+                <template v-if="isAccountLikeCredential">
+                    <div class="col-span-2 space-y-1.5">
+                        <div
+                            v-for="(account, index) in credForm.accounts"
+                            :key="index"
+                            class="flex items-start gap-1.5">
+                            <div class="grid grid-cols-1 gap-2 lg:grid-cols-25 items-start flex-1 min-w-0">
+                                <el-form-item
+                                    :label="t('credential.list.username')"
+                                    label-width="54px"
+                                    class="mb-0 min-w-0 col-span-12 lg:col-span-8">
+                                    <el-input v-model="account.username" :placeholder="t('credential.list.username')" />
+                                </el-form-item>
+                                <el-form-item
+                                    :label="t('credential.detail.password')"
+                                    label-width="54px"
+                                    class="mb-0 min-w-0 col-span-12 lg:col-span-8">
+                                    <el-input
+                                        v-model="account.password"
+                                        type="password"
+                                        show-password
+                                        :placeholder="t('credential.detail.password')" />
+                                </el-form-item>
+                                <el-form-item
+                                    :label="t('credential.detail.notes')"
+                                    label-width="54px"
+                                    class="mb-0 min-w-0 col-span-12 lg:col-span-8">
+                                    <el-input v-model="account.notes" :placeholder="t('credential.detail.notes')" />
+                                </el-form-item>
+                            </div>
+                            <el-button
+                                link
+                                type="danger"
+                                :disabled="credForm.accounts.length === 1"
+                                class="self-start mt-4.5 shrink-0"
+                                @click="removeAccountSet(index)">
+                                <el-icon><Delete /></el-icon>
+                            </el-button>
+                        </div>
+                        <el-button text size="small" class="mt-0.5" @click="addAccountSet">
+                            <el-icon><Plus /></el-icon>
+                            添加一套账号
+                        </el-button>
+                    </div>
+                </template>
 
                 <template v-if="isKeyCredentialType">
                     <el-form-item label="接口地址">
@@ -89,45 +136,53 @@
                 </el-form-item>
             </div>
 
-            <div
-                class="flex items-center justify-between m-1 border-b border-solid border-0 border-[var(--color-window-titlebar-border)]">
-                <h4 class="m-1 pb-1.5 text-sm font-600 text-[var(--color-text-primary)]">
-                    {{ t('credential.detail.sensitiveInfo') }}
-                </h4>
+            <!-- 非账号凭证：敏感信息独立区块 -->
+            <template v-if="!isAccountLikeCredential">
+                <div
+                    class="flex items-center justify-between m-1 border-b border-solid border-0 border-[var(--color-window-titlebar-border)]">
+                    <h4 class="m-1 pb-1.5 text-sm font-600 text-[var(--color-text-primary)]">
+                        {{ t('credential.detail.sensitiveInfo') }}
+                    </h4>
+                </div>
 
-                <el-button text class="mt-2" @click="addAccountSet">
-                    <el-icon><Plus /></el-icon>
-                    添加一套账号
-                </el-button>
-            </div>
-            <template v-if="isAccountLikeCredential">
                 <div class="space-y-2 border border-solid border-[var(--color-window-titlebar-border)] rounded-2 p-2">
-                    <div
-                        v-for="(account, index) in credForm.accounts"
-                        :key="index"
-                        class="bg-[var(--color-bg-page)] p-1">
+                    <div v-for="(account, index) in credForm.accounts" :key="index" class="bg-[var(--color-bg-page)] p-1">
                         <div class="grid grid-cols-1 gap-2 lg:grid-cols-25 items-start">
-                            <el-form-item
-                                :label="t('credential.list.username')"
-                                label-width="54px"
-                                class="mb-0 min-w-0 col-span-12 lg:col-span-8">
-                                <el-input v-model="account.username" :placeholder="t('credential.list.username')" />
-                            </el-form-item>
-
-                            <el-form-item
-                                :label="t('credential.detail.password')"
-                                label-width="54px"
-                                class="mb-0 min-w-0 col-span-12 lg:col-span-8">
-                                <el-input
-                                    v-model="account.password"
-                                    type="password"
-                                    show-password
-                                    :placeholder="t('credential.detail.password')" />
-                            </el-form-item>
+                            <template v-for="field in sensitiveFieldDefs" :key="field.key">
+                                <el-form-item
+                                    v-if="shouldShowField(credForm.credential_type, field.key)"
+                                    label-width="68px"
+                                    :class="[
+                                        'mb-0 min-w-0 col-span-12',
+                                        templateFieldsLength(credForm.credential_type) < 2
+                                            ? 'lg:col-span-16'
+                                            : 'lg:col-span-8',
+                                    ]"
+                                    :label="t(field.labelKey)">
+                                    <el-date-picker
+                                        v-if="field.isDatePicker"
+                                        v-model="account[field.key]"
+                                        class="w-full"
+                                        type="datetime"
+                                        :placeholder="t(field.hintKey)"
+                                        value-format="YYYY-MM-DD HH:mm:ss" />
+                                    <div v-else class="flex items-center gap-1 w-full">
+                                        <el-input
+                                            v-model="account[field.key]"
+                                            :placeholder="t(field.hintKey)"
+                                            :type="visibleFields[field.key] ? 'text' : 'password'"
+                                            :show-password="!visibleFields[field.key]"
+                                            class="flex-1" />
+                                        <el-button link @click="copyToClipboard(account[field.key])">
+                                            <el-icon><CopyDocument /></el-icon>
+                                        </el-button>
+                                    </div>
+                                </el-form-item>
+                            </template>
 
                             <el-form-item
                                 :label="t('credential.detail.notes')"
-                                label-width="54px"
+                                label-width="64px"
                                 class="mb-0 min-w-0 col-span-12 lg:col-span-8">
                                 <el-input v-model="account.notes" :placeholder="t('credential.detail.notes')" />
                             </el-form-item>
@@ -144,62 +199,6 @@
                     </div>
                 </div>
             </template>
-
-            <div
-                v-else
-                class="space-y-2 border border-solid border-[var(--color-window-titlebar-border)] rounded-2 p-2">
-                <div v-for="(account, index) in credForm.accounts" :key="index" class="bg-[var(--color-bg-page)] p-1">
-                    <div class="grid grid-cols-1 gap-2 lg:grid-cols-25 items-start">
-                        <template v-for="field in sensitiveFieldDefs" :key="field.key">
-                            <el-form-item
-                                v-if="shouldShowField(credForm.credential_type, field.key)"
-                                label-width="68px"
-                                :class="[
-                                    'mb-0 min-w-0 col-span-12',
-                                    templateFieldsLength(credForm.credential_type) < 2
-                                        ? 'lg:col-span-16'
-                                        : 'lg:col-span-8',
-                                ]"
-                                :label="t(field.labelKey)">
-                                <el-date-picker
-                                    v-if="field.isDatePicker"
-                                    v-model="account[field.key]"
-                                    class="w-full"
-                                    type="datetime"
-                                    :placeholder="t(field.hintKey)"
-                                    value-format="YYYY-MM-DD HH:mm:ss" />
-                                <div v-else class="flex items-center gap-1 w-full">
-                                    <el-input
-                                        v-model="account[field.key]"
-                                        :placeholder="t(field.hintKey)"
-                                        :type="visibleFields[field.key] ? 'text' : 'password'"
-                                        :show-password="!visibleFields[field.key]"
-                                        class="flex-1" />
-                                    <el-button link @click="copyToClipboard(account[field.key])">
-                                        <el-icon><CopyDocument /></el-icon>
-                                    </el-button>
-                                </div>
-                            </el-form-item>
-                        </template>
-
-                        <el-form-item
-                            :label="t('credential.detail.notes')"
-                            label-width="64px"
-                            class="mb-0 min-w-0 col-span-12 lg:col-span-8">
-                            <el-input v-model="account.notes" :placeholder="t('credential.detail.notes')" />
-                        </el-form-item>
-
-                        <el-button
-                            link
-                            type="danger"
-                            :disabled="credForm.accounts.length === 1"
-                            class="col-span-12 lg:col-span-1 self-start justify-self-end mt-1"
-                            @click="removeAccountSet(index)">
-                            <el-icon><Delete /></el-icon>
-                        </el-button>
-                    </div>
-                </div>
-            </div>
 
             <div
                 class="flex items-center justify-between mt-5 mb-3 border-b border-solid border-0 border-[var(--color-window-titlebar-border)]">

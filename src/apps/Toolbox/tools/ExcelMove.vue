@@ -123,7 +123,7 @@ async function pickOutputDir() {
 
 .form-label {
     display: block;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     font-weight: 500;
     color: var(--color-text-tertiary, #999);
     margin-bottom: 6px;
@@ -157,7 +157,7 @@ async function pickOutputDir() {
 }
 
 .result-badge {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-primary, #333);
 }
 

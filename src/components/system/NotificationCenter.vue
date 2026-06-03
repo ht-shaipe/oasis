@@ -61,7 +61,7 @@ const closeNotificationCenter = () => {
 
 .notification-header h3 {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--app-font-16);
     color: var(--color-text-primary);
 }
 
@@ -108,6 +108,6 @@ const closeNotificationCenter = () => {
 .notification-text p {
     margin: 0;
     color: var(--color-text-secondary);
-    font-size: 13px;
+    font-size: var(--app-font-13);
 }
 </style>

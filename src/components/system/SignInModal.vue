@@ -240,13 +240,13 @@ watchEffect(() => {
 }
 
 .days-count {
-    font-size: 32px;
+    font-size: var(--app-font-32);
     font-weight: bold;
     color: #409eff;
 }
 
 .days-text {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: var(--color-text-secondary);
 }
 
@@ -255,12 +255,12 @@ watchEffect(() => {
 }
 
 .reward-text {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: var(--color-text-secondary);
 }
 
 .reward-amount {
-    font-size: 20px;
+    font-size: var(--app-font-20);
     font-weight: bold;
     color: #ff9500;
 }
@@ -275,7 +275,7 @@ watchEffect(() => {
 .calendar-header {
     text-align: center;
     margin-bottom: 10px;
-    font-size: 16px;
+    font-size: var(--app-font-16);
     font-weight: bold;
 }
 
@@ -287,7 +287,7 @@ watchEffect(() => {
 }
 
 .weekday {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     color: var(--color-text-secondary);
     padding: 5px 0;
 }
@@ -304,7 +304,7 @@ watchEffect(() => {
     justify-content: center;
     align-items: center;
     position: relative;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     border-radius: 4px;
 }
 
@@ -329,7 +329,7 @@ watchEffect(() => {
     position: absolute;
     right: 2px;
     bottom: 2px;
-    font-size: 10px;
+    font-size: var(--app-font-10);
 }
 
 .sign-in-button-container {
@@ -340,7 +340,7 @@ watchEffect(() => {
 .sign-in-button {
     width: 200px;
     height: 44px;
-    font-size: 16px;
+    font-size: var(--app-font-16);
 }
 
 .credit-rules {
@@ -350,7 +350,7 @@ watchEffect(() => {
 }
 
 .rule-title {
-    font-size: 16px;
+    font-size: var(--app-font-16);
     font-weight: bold;
     margin-bottom: 10px;
     color: var(--color-text-primary);
@@ -360,7 +360,7 @@ watchEffect(() => {
     display: flex;
     justify-content: space-between;
     margin-bottom: 8px;
-    font-size: 14px;
+    font-size: var(--app-font-14);
 }
 
 .rule-days {

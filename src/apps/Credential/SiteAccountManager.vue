@@ -323,7 +323,7 @@ watch(visible, (val) => {
 
 <style scoped>
 .section-title {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     font-weight: 600;
     color: var(--color-text-primary);
     margin: 20px 0 12px;
@@ -352,7 +352,7 @@ watch(visible, (val) => {
 }
 
 .account-index {
-    font-size: 14px;
+    font-size: var(--app-font-14);
     font-weight: 600;
     color: var(--color-text-primary);
 }
@@ -370,13 +370,13 @@ watch(visible, (val) => {
 }
 
 .info-row .label {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-secondary);
     width: 80px;
 }
 
 .info-row .value {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-primary);
     font-weight: 500;
 }

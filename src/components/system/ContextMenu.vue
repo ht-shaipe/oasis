@@ -165,7 +165,7 @@ onUnmounted(() => {
 .menu-item {
     padding: 8px 15px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--app-font-14);
     display: flex;
     align-items: center;
     transition: all 0.1s;

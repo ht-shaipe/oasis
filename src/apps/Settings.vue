@@ -57,6 +57,25 @@
 
                     <div class="setting-row">
                         <div class="setting-info">
+                            <span class="setting-label">{{ t('settings.appearance.fontSize') }}</span>
+                            <span class="setting-desc">{{ t('settings.appearance.fontSizeDesc') }}</span>
+                        </div>
+                        <div class="font-size-selector">
+                            <button
+                                v-for="option in fontSizeOptions"
+                                :key="option.value"
+                                class="font-size-option"
+                                :class="{ active: fontSize === option.value }"
+                                @click="setFontSize(option.value)"
+                            >
+                                <span class="font-size-label">{{ option.label }}</span>
+                                <span class="font-size-preview">{{ option.preview }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
                             <span class="setting-label">{{ t('settings.appearance.darkMode') }}</span>
                             <span class="setting-desc">{{ t('settings.appearance.darkModeDesc') }}</span>
                         </div>
@@ -94,6 +113,7 @@ import { ref, computed, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useThemeStore } from '@/store/theme';
+import { useFontSizeStore, type FontSize } from '@/store/fontSize';
 
 const { t } = useI18n();
 
@@ -110,6 +130,16 @@ const emit = defineEmits(['close', 'minimize']);
 const themeStore = useThemeStore();
 const isDark = computed(() => themeStore.isDark);
 const toggleTheme = () => themeStore.toggle();
+
+// Font size
+const fontSizeStore = useFontSizeStore();
+const fontSize = computed(() => fontSizeStore.size);
+const fontSizeOptions = computed(() => [
+    { value: 'small', label: t('settings.appearance.fontSizeSmall'), preview: 'Aa' },
+    { value: 'medium', label: t('settings.appearance.fontSizeMedium'), preview: 'Aa' },
+    { value: 'large', label: t('settings.appearance.fontSizeLarge'), preview: 'Aa' }
+]);
+const setFontSize = (size: FontSize) => fontSizeStore.setSize(size);
 
 // Active section
 const activeSection = ref('general');
@@ -218,7 +248,7 @@ const toggleMinimize = () => {
 }
 
 .sidebar-label {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-primary);
     white-space: nowrap;
     overflow: hidden;
@@ -242,7 +272,7 @@ const toggleMinimize = () => {
 }
 
 .section-heading {
-    font-size: 22px;
+    font-size: var(--app-font-22);
     font-weight: 600;
     color: var(--color-text-primary);
     margin: 0 0 20px 0;
@@ -265,13 +295,13 @@ const toggleMinimize = () => {
 }
 
 .setting-label {
-    font-size: 13px;
+    font-size: var(--app-font-13);
     font-weight: 500;
     color: var(--color-text-primary);
 }
 
 .setting-desc {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-tertiary);
     line-height: 1.4;
 }
@@ -286,7 +316,7 @@ const toggleMinimize = () => {
 .workspace-input {
     flex: 1;
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
     background: var(--color-input-bg);
     border: 1px solid var(--color-input-border);
@@ -301,7 +331,7 @@ const toggleMinimize = () => {
 
 .workspace-browse-btn {
     padding: 6px 14px;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     border-radius: 6px;
     border: 1px solid var(--color-input-border);
     background: var(--color-input-bg);
@@ -322,7 +352,7 @@ const toggleMinimize = () => {
 
 .workspace-status {
     margin: 4px 0 0 0;
-    font-size: 11px;
+    font-size: var(--app-font-11);
     color: #34c759;
 }
 
@@ -376,6 +406,68 @@ const toggleMinimize = () => {
     transform: translateX(18px);
 }
 
+/* ── Font Size Selector ── */
+.font-size-selector {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.font-size-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 52px;
+    border-radius: 8px;
+    border: 1.5px solid var(--color-input-border);
+    background: var(--color-input-bg);
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 4px;
+    gap: 2px;
+}
+
+.font-size-option:hover {
+    border-color: var(--code-accent);
+    background: var(--color-sidebar-item-hover);
+}
+
+.font-size-option.active {
+    border-color: #1977f3;
+    background: rgba(25, 119, 243, 0.08);
+    box-shadow: 0 0 0 1px rgba(25, 119, 243, 0.2);
+}
+
+.font-size-label {
+    font-size: var(--app-font-11);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.font-size-option.active .font-size-label {
+    color: #1977f3;
+}
+
+.font-size-preview {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    transition: font-size 0.15s;
+}
+
+.font-size-option:first-child .font-size-preview {
+    font-size: var(--app-font-13);
+}
+
+.font-size-option:nth-child(2) .font-size-preview {
+    font-size: var(--app-font-16);
+}
+
+.font-size-option:last-child .font-size-preview {
+    font-size: var(--app-font-20);
+}
+
 /* ── About ── */
 .about-card {
     display: flex;
@@ -395,28 +487,28 @@ const toggleMinimize = () => {
 
 .about-info h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--app-font-18);
     font-weight: 600;
     color: var(--color-text-primary);
 }
 
 .about-version {
     display: block;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-tertiary);
     margin-top: 2px;
 }
 
 .about-desc {
     display: block;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     color: var(--color-text-secondary);
     margin-top: 6px;
 }
 
 .about-copyright {
     margin-top: 20px;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-tertiary);
 }
 

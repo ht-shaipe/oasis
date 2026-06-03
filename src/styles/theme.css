@@ -2,6 +2,27 @@
 
 :root,
 [data-theme="light"] {
+  /* 字体大小 - 默认中等 */
+  --font-size-base: 14px;
+  --font-size-small: 13px;
+  --font-size-medium: 14px;
+  --font-size-large: 16px;
+
+  /* 应用字体大小变量（rem 基准，可随根字体缩放） */
+  --app-font-10: 0.7143rem;
+  --app-font-11: 0.7857rem;
+  --app-font-12: 0.8571rem;
+  --app-font-13: 0.9286rem;
+  --app-font-14: 1rem;
+  --app-font-15: 1.0714rem;
+  --app-font-16: 1.1429rem;
+  --app-font-18: 1.2857rem;
+  --app-font-20: 1.4286rem;
+  --app-font-22: 1.5714rem;
+  --app-font-24: 1.7143rem;
+  --app-font-32: 2.2857rem;
+  --app-font-40: 2.8571rem;
+
   /* Z-Index 层级管理 */
   --z-index-base: 1000;
   --z-index-window: 1000;
@@ -72,6 +93,16 @@
   /* 阴影 */
   --color-shadow: rgba(0, 0, 0, 0.2);
   --color-shadow-light: rgba(0, 0, 0, 0.1);
+
+  /* 认证卡片 */
+  --color-auth-bg-start: #f5f7fa;
+  --color-auth-bg-end: #c3cfe2;
+  --color-auth-card-bg: rgba(255, 255, 255, 0.72);
+  --color-auth-card-border: rgba(255, 255, 255, 0.3);
+  --color-auth-card-shadow: rgba(0, 0, 0, 0.08);
+
+  /* 语义色 */
+  --color-danger: #f56c6c;
 
   /* 代码编辑器 */
   --code-bg: #ffffff;
@@ -170,6 +201,16 @@
   /* 阴影 */
   --color-shadow: rgba(0, 0, 0, 0.5);
   --color-shadow-light: rgba(0, 0, 0, 0.3);
+
+  /* 认证卡片 */
+  --color-auth-bg-start: #1a1a2e;
+  --color-auth-bg-end: #16213e;
+  --color-auth-card-bg: rgba(40, 40, 44, 0.72);
+  --color-auth-card-border: rgba(255, 255, 255, 0.1);
+  --color-auth-card-shadow: rgba(0, 0, 0, 0.3);
+
+  /* 语义色 */
+  --color-danger: #f87171;
 
   /* 代码编辑器 */
   --code-bg: #1e1e1e;

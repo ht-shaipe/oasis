@@ -24,6 +24,7 @@
                     @submit.prevent="handleSetup">
                     <el-form-item :label="t('credential.setup.password')" prop="password">
                         <el-input
+                            ref="setupPasswordInput"
                             v-model="setupForm.password"
                             type="password"
                             show-password
@@ -69,6 +70,7 @@
                     @submit.prevent="handleUnlock">
                     <el-form-item :label="t('credential.unlock.password')" prop="password">
                         <el-input
+                            ref="unlockPasswordInput"
                             v-model="unlockForm.password"
                             type="password"
                             show-password
@@ -96,7 +98,7 @@
                     <CredentialSidebar
                         :title="t('credential.title')"
                         :all-label="t('credential.category.all')"
-                        :category-tree="categoryTree"
+                        :category-tree="sidebarTree"
                         :selected-category-id="selectedCategoryId"
                         @add-category="showAddCategoryDialog = true"
                         @select-category="selectCategory"
@@ -113,6 +115,7 @@
                             :add-label="t('credential.list.add')"
                             :lock-label="t('credential.lock')"
                             :merge-label="t('credential.list.merge')"
+                            :more-label="t('credential.list.more')"
                             @add="openCreateDialog"
                             @lock="handleLock"
                             @import-browser="showImportDialog = true"
@@ -724,7 +727,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, reactive, watch, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
@@ -799,6 +802,30 @@ const emit = defineEmits<{
 
 type ViewState = 'setup' | 'unlock' | 'main';
 const viewState = ref<ViewState>('unlock');
+
+// ── Input refs for auto-focus ──
+
+const setupPasswordInput = ref<{ focus: () => void }>();
+const unlockPasswordInput = ref<{ focus: () => void }>();
+
+// Auto-focus password input when entering setup or unlock view
+watch(viewState, async (state) => {
+    await nextTick();
+    if (state === 'setup') {
+        setupPasswordInput.value?.focus();
+    } else if (state === 'unlock') {
+        unlockPasswordInput.value?.focus();
+    }
+});
+
+// Auto-focus password input when window gains focus
+const handleWindowFocus = () => {
+    if (viewState.value === 'setup') {
+        setupPasswordInput.value?.focus();
+    } else if (viewState.value === 'unlock') {
+        unlockPasswordInput.value?.focus();
+    }
+};
 
 // ── Setup form ──
 
@@ -956,6 +983,24 @@ const categoryTree = computed(() => {
         }
     });
     return roots;
+});
+
+// Sidebar tree with credential counts appended to node names
+const sidebarTree = computed(() => {
+    const countMap = new Map<number, number>();
+    credentials.value.forEach((cred) => {
+        if (cred.category_id != null) {
+            countMap.set(cred.category_id, (countMap.get(cred.category_id) ?? 0) + 1);
+        }
+    });
+
+    const attachCount = (nodes: CategoryNode[]): CategoryNode[] =>
+        nodes.map((n) => {
+            const cnt = countMap.get(n.id) ?? 0;
+            return { ...n, name: `${n.name} (${cnt})`, children: attachCount(n.children) };
+        });
+
+    return attachCount(categoryTree.value);
 });
 
 // Flattened list for sidebar and selects
@@ -1331,6 +1376,9 @@ onMounted(async () => {
     document.addEventListener('mousemove', onUserActivity);
     document.addEventListener('keydown', onUserActivity);
     document.addEventListener('click', onUserActivity);
+
+    // Window focus → auto-focus password field
+    window.addEventListener('focus', handleWindowFocus);
 });
 
 onUnmounted(() => {
@@ -1338,6 +1386,7 @@ onUnmounted(() => {
     document.removeEventListener('mousemove', onUserActivity);
     document.removeEventListener('keydown', onUserActivity);
     document.removeEventListener('click', onUserActivity);
+    window.removeEventListener('focus', handleWindowFocus);
 });
 </script>
 
@@ -1351,8 +1400,8 @@ onUnmounted(() => {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 .unlock-error {
-    color: #f56c6c;
-    font-size: 13px;
+    color: var(--color-danger);
+    font-size: var(--app-font-13);
     margin: -8px 0 8px;
 }
 

@@ -14,6 +14,7 @@ export interface Category {
     sort_order: number;
     created_at: string;
     parent_id?: number | null;
+    children?: Category[];
 }
 
 export interface CredentialView {
@@ -262,9 +263,9 @@ export function useCredential() {
 
     // ── Browser CSV Import ──
 
-    const importCsvPasswords = async (csvPath: string): Promise<
-        Array<{ id: number; url: string; username: string; password: string; browser: string }>
-    > => {
+    const importCsvPasswords = async (
+        csvPath: string,
+    ): Promise<Array<{ id: number; url: string; username: string; password: string; browser: string }>> => {
         return invoke('import_csv_passwords', { csvPath });
     };
 

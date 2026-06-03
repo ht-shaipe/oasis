@@ -273,7 +273,7 @@ const generateCode = async () => {
     color: #67c23a;
     border-radius: 10px;
     padding: 1px 4px;
-    font-size: 13px;
+    font-size: var(--app-font-13);
     border: 1px solid #e1f3d8;
     line-height: 13px;
     margin-left: 10px;

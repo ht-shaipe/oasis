@@ -55,7 +55,7 @@ const { ipRange, ports, timeout, showClosed, loading, result, run } = useNetwork
 
 .form-label {
     display: block;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     font-weight: 500;
     color: var(--color-text-tertiary, #999);
     margin-bottom: 6px;
@@ -80,7 +80,7 @@ const { ipRange, ports, timeout, showClosed, loading, result, run } = useNetwork
 }
 
 .unit-text {
-    font-size: 12px;
+    font-size: var(--app-font-12);
     color: var(--color-text-tertiary, #999);
 }
 
@@ -96,7 +96,7 @@ const { ipRange, ports, timeout, showClosed, loading, result, run } = useNetwork
     background: var(--color-input-bg, #fff);
     padding: 14px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: var(--app-font-12);
     line-height: 1.6;
     overflow-x: auto;
     white-space: pre;
