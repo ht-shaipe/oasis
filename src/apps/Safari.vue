@@ -1,6 +1,11 @@
 <template>
-    <MacWindow ref="macWindowRef" title="Safari" :isMinimized="isMinimized" @close="closeApp" @minimize="toggleMinimize"
-        :startMaximized="true">
+    <MacWindow
+        ref="macWindowRef"
+        title="Safari"
+        :isMinimized="isMinimized"
+        @close="closeApp"
+        @minimize="toggleMinimize"
+        :startMaximized="false">
         <div class="preview-content">
             <div class="safari-toolbar">
                 <div class="safari-arrow-buttons">
@@ -15,20 +20,25 @@
                     <el-icon>
                         <Lock />
                     </el-icon>
-                    <span>{{ currentUrl }}</span>
+                    <input
+                        v-model="addressInput"
+                        class="safari-address-input"
+                        @keyup.enter="navigateToUrl"
+                        @focus="($event.target as HTMLInputElement).select()"
+                        placeholder="输入网址或搜索" />
                 </div>
                 <div class="safari-buttons">
-                    <el-button @click="toggleViewMode" size="small" type="primary">
-                        {{ useIframe ? '打开WebView' : '使用内嵌' }}
+                    <el-button @click="toggleViewMode" size="small" type="primary" v-if="externalUrl">
+                        {{ useIframe ? '原生WebView' : '内嵌Iframe' }}
                     </el-button>
-                    <el-icon>
+                    <el-icon @click="toggleViewMode" style="cursor: pointer" v-else>
                         <Share />
                     </el-icon>
                 </div>
             </div>
             <div class="safari-content">
-                <iframe v-if="externalUrl" :src="externalUrl" class="preview-frame"></iframe>
-                <iframe v-else :srcdoc="previewHtml" class="preview-frame"></iframe>
+                <iframe v-if="useIframe && externalUrl" :src="externalUrl" class="preview-frame"></iframe>
+                <iframe v-else-if="!externalUrl" :srcdoc="previewHtml" class="preview-frame"></iframe>
             </div>
         </div>
     </MacWindow>
@@ -38,18 +48,19 @@
 import { computed, ref, onMounted } from 'vue';
 import { ArrowLeft, ArrowRight, Lock, Share } from '@element-plus/icons-vue';
 import MacWindow from '@/components/common/MacWindow.vue';
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { Webview } from '@tauri-apps/api/webview';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // 定义属性
 const props = defineProps({
     isMinimized: {
         type: Boolean,
-        default: false
+        default: false,
     },
     code: {
         type: String,
-        default: ''
-    }
+        default: '',
+    },
 });
 
 // 事件发射
@@ -58,45 +69,79 @@ const emit = defineEmits(['close', 'minimize']);
 // 状态变量
 const externalUrl = ref('');
 const currentUrl = ref('localhost');
+const addressInput = ref('');
 const useIframe = ref(true); // 控制是否使用iframe
+const embeddedWebview = ref<Webview | null>(null);
+
+// 导航到用户输入的 URL
+const navigateToUrl = () => {
+    let raw = addressInput.value.trim();
+    if (!raw) return;
+    if (!/^https?:\/\//i.test(raw)) {
+        raw = 'https://' + raw;
+    }
+    // 如果当前在原生 WebView 模式，直接用新的 WebView 替换
+    if (!useIframe.value && embeddedWebview.value) {
+        openExternalUrlInWebview(raw);
+        return;
+    }
+    externalUrl.value = raw;
+    currentUrl.value = new URL(raw).hostname;
+    useIframe.value = true;
+};
+
+// 同步地址栏到 currentUrl 或 externalUrl
+const syncAddressInput = () => {
+    if (externalUrl.value) {
+        addressInput.value = externalUrl.value;
+    } else {
+        addressInput.value = currentUrl.value;
+    }
+};
 
 // 组件挂载时检查是否有外部URL
 onMounted(() => {
     const url = localStorage.getItem('safariUrl');
     if (url) {
-        // 使用WebviewWindow打开外部URL，而不是iframe
         openExternalUrlInWebview(url);
-        // 清除localStorage，避免重复打开
         localStorage.removeItem('safariUrl');
     }
+    syncAddressInput();
 });
 
-// 使用WebviewWindow打开外部URL
+// 使用 Webview（子 webview 嵌入窗口内）替代 WebviewWindow（独立 OS 窗口）
 const openExternalUrlInWebview = async (url: string) => {
     try {
-        // 创建一个唯一的label，避免冲突
-        const label = `safari-external-${Date.now()}`;
-        const webview = new WebviewWindow(label, {
+        // 关闭之前的嵌入式 webview
+        if (embeddedWebview.value) {
+            await embeddedWebview.value.close();
+            embeddedWebview.value = null;
+        }
+
+        const mainWindow = getCurrentWindow();
+        const mainSize = await mainWindow.innerSize();
+        const toolbarHeight = 50;
+
+        const label = `safari-embedded-${Date.now()}`;
+
+        const webview = new Webview(mainWindow, label, {
             url: url,
-            title: `Safari - ${new URL(url).hostname}`,
-            width: 1200,
-            height: 800,
-            center: true,
-            resizable: true,
-            decorations: true,
+            x: 0,
+            y: toolbarHeight,
+            width: mainSize.width,
+            height: mainSize.height - toolbarHeight,
         });
 
-        // 监听webview窗口关闭事件
-        webview.once('tauri://window-created', () => {
-            console.log('Webview window created successfully');
-        });
-
+        embeddedWebview.value = webview;
+        useIframe.value = false;
         currentUrl.value = new URL(url).hostname;
+        syncAddressInput();
     } catch (error) {
-        console.error('Failed to open webview:', error);
-        // 如果webview失败，回退到iframe
+        console.error('Failed to create embedded webview:', error);
         externalUrl.value = url;
         currentUrl.value = new URL(url).hostname;
+        useIframe.value = true;
+        syncAddressInput();
     }
 };
 
@@ -104,20 +149,27 @@ const openExternalUrlInWebview = async (url: string) => {
 const toggleViewMode = () => {
     if (externalUrl.value) {
         if (useIframe.value) {
-            // 从iframe切换到webview
+            // 从iframe切换到嵌入式webview
             openExternalUrlInWebview(externalUrl.value);
         } else {
-            // 从webview切换回iframe，不需要做任何事，webview窗口已经打开
-            console.log('Switch to iframe mode for internal content');
+            // 关闭嵌入式webview，切换回iframe
+            if (embeddedWebview.value) {
+                embeddedWebview.value.close();
+                embeddedWebview.value = null;
+            }
+            useIframe.value = true;
         }
     } else {
-        // 没有外部URL时，只能在iframe模式下显示预览内容
-        console.log('No external URL to open in webview');
+        console.log('没有外部URL可打开');
     }
 };
 
 // 关闭应用
 const closeApp = () => {
+    if (embeddedWebview.value) {
+        embeddedWebview.value.close();
+        embeddedWebview.value = null;
+    }
     emit('close');
 };
 
@@ -131,7 +183,7 @@ const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
 
 // 暴露 bringToFront 方法
 defineExpose({
-    bringToFront: () => macWindowRef.value?.bringToFront()
+    bringToFront: () => macWindowRef.value?.bringToFront(),
 });
 
 // 计算属性：预览HTML
@@ -141,8 +193,7 @@ const previewHtml = computed(() => {
     const code = props.code || '';
 
     // 如果是HTML或包含HTML标签的内容，直接渲染
-    if (code.includes('<html>') ||
-        code.includes('<body>')) {
+    if (code.includes('<html>') || code.includes('<body>')) {
         previewContent = code;
     } else if (code.includes('<template>') && code.includes('<script lang="ts">')) {
         // Vue单文件组件，用注释提示
@@ -151,8 +202,11 @@ const previewHtml = computed(() => {
       <p>这是一个 Vue 单文件组件，需要在 Vue 项目中使用。</p>
       <pre><code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
     `;
-    } else if (code.includes('@media') || code.includes('@keyframes') ||
-        code.includes('{') && code.includes('}') && !code.includes('function')) {
+    } else if (
+        code.includes('@media') ||
+        code.includes('@keyframes') ||
+        (code.includes('{') && code.includes('}') && !code.includes('function'))
+    ) {
         // CSS预览
         previewContent = `
       <style>${code}</style>
@@ -270,6 +324,22 @@ const previewHtml = computed(() => {
     margin-right: 6px;
     font-size: var(--app-font-14);
     color: #00890a;
+    flex-shrink: 0;
+}
+
+.safari-address-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-size: var(--app-font-13);
+    height: 100%;
+}
+
+.safari-address-input::placeholder {
+    color: var(--color-text-tertiary);
 }
 
 .safari-buttons {
