@@ -652,6 +652,11 @@
     "apiKey": "API Key",
     "apiKeyPlaceholder": "Enter API key",
     "apiKeyRequired": "Please enter API key",
+    "authType": "Auth Type",
+    "authApiKey": "API Key",
+    "authTokenPlan": "Token Plan",
+    "tokenPlan": "Token Plan",
+    "tokenPlanPlaceholder": "Enter Token Plan",
     "temperature": "Temperature",
     "maxTokens": "Max Tokens",
     "description": "Description",
@@ -690,6 +695,10 @@
     },
     "about": {
       "title": "About"
+    },
+    "llm": {
+      "title": "LLM Models",
+      "empty": "No models configured. Click the button above to add one."
     }
   }
 }

@@ -8,80 +8,80 @@
         width="800"
         height="600"
     >
-        <div class="notes-container">
-            <div class="notes-sidebar">
-                <div class="sidebar-header">
-                    <h3>{{ t('notes.title') }}</h3>
-                    <button class="add-note-btn" :title="t('notes.newNote')">
+        <div class="flex h-full bg-[#f5f5f5] rounded-b-2.5">
+            <div class="w-52.5 bg-[var(--color-sidebar-bg)] border-r border-[var(--color-window-titlebar-border)] flex flex-col">
+                <div class="p-3.75 flex justify-between items-center border-b border-[var(--color-window-titlebar-border)]">
+                    <h3 class="m-0 text-[var(--color-text-primary)]">{{ t('notes.title') }}</h3>
+                    <button class="bg-none border-0 text-[var(--app-font-18)] text-[#007aff] cursor-pointer" :title="t('notes.newNote')">
                         <i class="el-icon-plus"></i>
                     </button>
                 </div>
-                <div class="notes-list">
-                    <div class="note-item active">
-                        <div class="note-title">{{ t('notes.helpTitle') }}</div>
-                        <div class="note-preview">{{ t('notes.helpPreview') }}</div>
+                <div class="flex-1 overflow-y-auto">
+                    <div class="p-3.75 border-b border-[var(--color-window-titlebar-border)] cursor-pointer hover:bg-[var(--color-input-bg)] bg-[#e2e2e2]">
+                        <div class="font-bold text-[var(--color-text-primary)] mb-1.25">{{ t('notes.helpTitle') }}</div>
+                        <div class="text-[var(--color-text-secondary)] text-[var(--app-font-12)] whitespace-nowrap overflow-hidden text-ellipsis">{{ t('notes.helpPreview') }}</div>
                     </div>
                 </div>
             </div>
-            <div class="notes-content">
-                <div class="note-editor">
-                    <h1>{{ t('notes.mainTitle') }}</h1>
-                    
-                    <h2>{{ t('notes.introduction') }}</h2>
-                    <p>{{ t('notes.introDesc') }}</p>
-                    
-                    <h2>{{ t('help.basicUsage') }}</h2>
-                    <ol>
-                        <li><strong>{{ t('notes.step0') }}</strong></li>
-                        <li><strong>{{ t('notes.openCodeGenerator') }}</strong></li>
-                        <li><strong>{{ t('notes.describeNeeds') }}</strong>{{ t('notes.step2Desc') }}</li>
-                        <li><strong>{{ t('notes.selectConfig') }}</strong></li>
-                        <li><strong>{{ t('notes.step4Desc') }}</strong></li>
-                        <li><strong>{{ t('notes.step5Desc') }}</strong></li>
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <div class="flex-1 p-5 bg-white overflow-y-auto leading-relaxed">
+                    <h1 class="text-[var(--color-text-primary)] text-[var(--app-font-24)] mt-0 mb-5">{{ t('notes.mainTitle') }}</h1>
+
+                    <h2 class="text-[#444] text-[var(--app-font-20)] mt-6.25 mb-3.75 border-b border-[#eee] pb-1.25">{{ t('notes.introduction') }}</h2>
+                    <p class="mb-3.75">{{ t('notes.introDesc') }}</p>
+
+                    <h2 class="text-[#444] text-[var(--app-font-20)] mt-6.25 mb-3.75 border-b border-[#eee] pb-1.25">{{ t('help.basicUsage') }}</h2>
+                    <ol class="mb-3.75 pl-6.25">
+                        <li class="mb-2"><strong>{{ t('notes.step0') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.openCodeGenerator') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.describeNeeds') }}</strong>{{ t('notes.step2Desc') }}</li>
+                        <li class="mb-2"><strong>{{ t('notes.selectConfig') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.step4Desc') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.step5Desc') }}</strong></li>
                     </ol>
-                    
-                    <h2>{{ t('help.features') }}</h2>
-                    <h3>{{ t('notes.codeGeneratorTitle') }}</h3>
-                    <p>{{ t('notes.codeGeneratorDesc') }}</p>
-                    <ul>
-                        <li><strong>{{ t('notes.aiModel') }}</strong></li>
-                        <li><strong>{{ t('notes.uiFramework') }}</strong></li>
-                        <li><strong>{{ t('notes.jsFramework') }}</strong></li>
-                        <li><strong>{{ t('notes.cdnSource') }}</strong></li>
-                        <li><strong>{{ t('notes.deviceAdapt') }}</strong></li>
+
+                    <h2 class="text-[#444] text-[var(--app-font-20)] mt-6.25 mb-3.75 border-b border-[#eee] pb-1.25">{{ t('help.features') }}</h2>
+                    <h3 class="text-[#555] text-[var(--app-font-16)] mt-5 mb-2.5">{{ t('notes.codeGeneratorTitle') }}</h3>
+                    <p class="mb-3.75">{{ t('notes.codeGeneratorDesc') }}</p>
+                    <ul class="mb-3.75 pl-6.25">
+                        <li class="mb-2"><strong>{{ t('notes.aiModel') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.uiFramework') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.jsFramework') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.cdnSource') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.deviceAdapt') }}</strong></li>
                     </ul>
-                    
-                    <h3>{{ t('notes.editorTitle') }}</h3>
-                    <p>{{ t('notes.editorDesc') }}</p>
-                    <ul>
-                        <li>{{ t('codeEditor.syntaxHighlight') }}</li>
-                        <li>{{ t('generator.codeFormatting') }}</li>
-                        <li>{{ t('generator.autoSave') }}</li>
+
+                    <h3 class="text-[#555] text-[var(--app-font-16)] mt-5 mb-2.5">{{ t('notes.editorTitle') }}</h3>
+                    <p class="mb-3.75">{{ t('notes.editorDesc') }}</p>
+                    <ul class="mb-3.75 pl-6.25">
+                        <li class="mb-2">{{ t('codeEditor.syntaxHighlight') }}</li>
+                        <li class="mb-2">{{ t('generator.codeFormatting') }}</li>
+                        <li class="mb-2">{{ t('generator.autoSave') }}</li>
                     </ul>
-                    
-                    <h3>{{ t('notes.previewTitle') }}</h3>
-                    <p>{{ t('notes.previewDesc') }}</p>
-                    
-                    <h3>{{ t('notes.versionTitle') }}</h3>
-                    <p>{{ t('notes.versionDesc') }}</p>
-                    
-                    <h2>{{ t('help.tips') }}</h2>
-                    <ul>
-                        <li><strong>{{ t('notes.detailDesc') }}</strong></li>
-                        <li><strong>{{ t('notes.specifyStack') }}</strong></li>
-                        <li><strong>{{ t('notes.continueConv') }}</strong></li>
-                        <li><strong>{{ t('notes.saveVersion') }}</strong></li>
+
+                    <h3 class="text-[#555] text-[var(--app-font-16)] mt-5 mb-2.5">{{ t('notes.previewTitle') }}</h3>
+                    <p class="mb-3.75">{{ t('notes.previewDesc') }}</p>
+
+                    <h3 class="text-[#555] text-[var(--app-font-16)] mt-5 mb-2.5">{{ t('notes.versionTitle') }}</h3>
+                    <p class="mb-3.75">{{ t('notes.versionDesc') }}</p>
+
+                    <h2 class="text-[#444] text-[var(--app-font-20)] mt-6.25 mb-3.75 border-b border-[#eee] pb-1.25">{{ t('help.tips') }}</h2>
+                    <ul class="mb-3.75 pl-6.25">
+                        <li class="mb-2"><strong>{{ t('notes.detailDesc') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.specifyStack') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.continueConv') }}</strong></li>
+                        <li class="mb-2"><strong>{{ t('notes.saveVersion') }}</strong></li>
                     </ul>
-                    
-                    <h2>{{ t('help.faq') }}</h2>
-                    <p><strong>{{ t('notes.faq3FullQ') }}</strong></p>
-                    <p>{{ t('notes.faq3FullA') }}</p>
-                    
-                    <p><strong>{{ t('notes.faq1FullQ') }}</strong></p>
-                    <p>{{ t('notes.faq1FullA') }}</p>
-                    
-                    <p><strong>{{ t('notes.faq2FullQ') }}</strong></p>
-                    <p>{{ t('notes.faq2FullA') }}</p>
+
+                    <h2 class="text-[#444] text-[var(--app-font-20)] mt-6.25 mb-3.75 border-b border-[#eee] pb-1.25">{{ t('help.faq') }}</h2>
+                    <p class="mb-3.75"><strong>{{ t('notes.faq3FullQ') }}</strong></p>
+                    <p class="mb-3.75">{{ t('notes.faq3FullA') }}</p>
+
+                    <p class="mb-3.75"><strong>{{ t('notes.faq1FullQ') }}</strong></p>
+                    <p class="mb-3.75">{{ t('notes.faq1FullA') }}</p>
+
+                    <p class="mb-3.75"><strong>{{ t('notes.faq2FullQ') }}</strong></p>
+                    <p class="mb-3.75">{{ t('notes.faq2FullA') }}</p>
                 </div>
             </div>
         </div>
@@ -126,127 +126,5 @@ defineExpose({
 </script>
 
 <style scoped>
-.notes-container {
-    display: flex;
-    height: 100%;
-    background-color: #f5f5f5;
-    border-radius: 0 0 10px 10px;
-}
-
-.notes-sidebar {
-    width: 210px;
-    background-color: var(--color-sidebar-bg);
-    border-right: 1px solid var(--color-window-titlebar-border);
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar-header {
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--color-window-titlebar-border);
-}
-
-.sidebar-header h3 {
-    margin: 0;
-    color: var(--color-text-primary);
-}
-
-.add-note-btn {
-    background: none;
-    border: none;
-    font-size: var(--app-font-18);
-    color: #007aff;
-    cursor: pointer;
-}
-
-.notes-list {
-    flex: 1;
-    overflow-y: auto;
-}
-
-.note-item {
-    padding: 15px;
-    border-bottom: 1px solid var(--color-window-titlebar-border);
-    cursor: pointer;
-}
-
-.note-item:hover {
-    background-color: var(--color-input-bg);
-}
-
-.note-item.active {
-    background-color: #e2e2e2;
-}
-
-.note-title {
-    font-weight: bold;
-    color: var(--color-text-primary);
-    margin-bottom: 5px;
-}
-
-.note-preview {
-    color: var(--color-text-secondary);
-    font-size: var(--app-font-12);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.notes-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.note-editor {
-    flex: 1;
-    padding: 20px;
-    background: white;
-    overflow-y: auto;
-    line-height: 1.6;
-}
-
-.note-editor h1 {
-    color: var(--color-text-primary);
-    font-size: var(--app-font-24);
-    margin-top: 0;
-    margin-bottom: 20px;
-}
-
-.note-editor h2 {
-    color: #444;
-    font-size: var(--app-font-20);
-    margin-top: 25px;
-    margin-bottom: 15px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 5px;
-}
-
-.note-editor h3 {
-    color: #555;
-    font-size: var(--app-font-16);
-    margin-top: 20px;
-    margin-bottom: 10px;
-}
-
-.note-editor p {
-    margin-bottom: 15px;
-}
-
-.note-editor ul, .note-editor ol {
-    margin-bottom: 15px;
-    padding-left: 25px;
-}
-
-.note-editor li {
-    margin-bottom: 8px;
-}
-
-.note-editor strong {
-    font-weight: 600;
-}
+/* Notes组件样式已全部转换为UnoCSS工具类 */
 </style>

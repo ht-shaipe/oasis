@@ -98,6 +98,10 @@
         },
         "about": {
             "title": "关于"
+        },
+        "llm": {
+            "title": "大模型",
+            "empty": "暂无模型配置，点击右上角按钮添加"
         }
     },
     "finder": {
@@ -681,6 +685,11 @@
         "apiKey": "API密钥",
         "apiKeyPlaceholder": "请输入API密钥",
         "apiKeyRequired": "请输入API密钥",
+        "authType": "认证方式",
+        "authApiKey": "API Key",
+        "authTokenPlan": "Token Plan",
+        "tokenPlan": "Token Plan",
+        "tokenPlanPlaceholder": "请输入Token Plan",
         "temperature": "温度",
         "maxTokens": "最大令牌数",
         "description": "描述",

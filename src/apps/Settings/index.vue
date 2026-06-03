@@ -8,7 +8,6 @@
         width="780"
         height="520">
         <div class="settings-container">
-            <!-- Left Sidebar: icon list -->
             <div class="settings-sidebar">
                 <div
                     v-for="item in sidebarItems"
@@ -22,86 +21,11 @@
                 </div>
             </div>
 
-            <!-- Right Content -->
             <div class="settings-content">
-                <!-- General -->
-                <div v-if="activeSection === 'general'" class="section-panel">
-                    <h2 class="section-heading">{{ t('settings.general.title') }}</h2>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <span class="setting-label">{{ t('settings.workspace.title') }}</span>
-                            <span class="setting-desc">{{ t('settings.workspace.desc') }}</span>
-                        </div>
-                    </div>
-                    <div class="setting-row">
-                        <div class="workspace-path-row">
-                            <input
-                                class="workspace-input"
-                                :value="workspaceDir"
-                                readonly
-                                :placeholder="t('settings.workspace.placeholder')"
-                            />
-                            <button class="workspace-browse-btn" @click="pickDirectory" :disabled="pickingDir">
-                                {{ pickingDir ? '...' : t('settings.workspace.browse') }}
-                            </button>
-                        </div>
-                        <p v-if="workspaceStatus" class="workspace-status" :class="{ error: workspaceError }">
-                            {{ workspaceStatus }}
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Appearance -->
-                <div v-if="activeSection === 'appearance'" class="section-panel">
-                    <h2 class="section-heading">{{ t('settings.appearance.title') }}</h2>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <span class="setting-label">{{ t('settings.appearance.fontSize') }}</span>
-                            <span class="setting-desc">{{ t('settings.appearance.fontSizeDesc') }}</span>
-                        </div>
-                        <div class="font-size-selector">
-                            <button
-                                v-for="option in fontSizeOptions"
-                                :key="option.value"
-                                class="font-size-option"
-                                :class="{ active: fontSize === option.value }"
-                                @click="setFontSize(option.value)"
-                            >
-                                <span class="font-size-label">{{ option.label }}</span>
-                                <span class="font-size-preview">{{ option.preview }}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <span class="setting-label">{{ t('settings.appearance.darkMode') }}</span>
-                            <span class="setting-desc">{{ t('settings.appearance.darkModeDesc') }}</span>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" :checked="isDark" @change="toggleTheme" />
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- About -->
-                <div v-if="activeSection === 'about'" class="section-panel">
-                    <h2 class="section-heading">{{ t('settings.about.title') }}</h2>
-                    <div class="about-card">
-                        <img src="/assets/icons/AppStore.svg" alt="Oasis" class="about-logo" />
-                        <div class="about-info">
-                            <h3>Oasis</h3>
-                            <span class="about-version">{{ t('about.version') }} 1.0.0</span>
-                            <span class="about-desc">{{ t('about.description') }}</span>
-                        </div>
-                    </div>
-                    <div class="about-copyright">
-                        © 2026 <a href="https://htui.tech/" target="_blank">HongTui</a>
-                    </div>
-                </div>
+                <GeneralPanel v-if="activeSection === 'general'" />
+                <AppearancePanel v-if="activeSection === 'appearance'" />
+                <LlmPanel v-if="activeSection === 'llm'" />
+                <AboutPanel v-if="activeSection === 'about'" />
             </div>
         </div>
     </MacWindow>
@@ -110,11 +34,11 @@
 <script setup lang="ts">
 import MacWindow from '@/components/common/MacWindow.vue';
 import { useI18n } from 'vue-i18n';
-import { ref, computed, onMounted } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
-import { useThemeStore } from '@/store/theme';
-import { useFontSizeStore, type FontSize } from '@/store/fontSize';
+import { ref, computed } from 'vue';
+import GeneralPanel from './panels/GeneralPanel.vue';
+import AppearancePanel from './panels/AppearancePanel.vue';
+import LlmPanel from './panels/LlmPanel.vue';
+import AboutPanel from './panels/AboutPanel.vue';
 
 const { t } = useI18n();
 
@@ -127,90 +51,21 @@ defineProps({
 
 const emit = defineEmits(['close', 'minimize']);
 
-// Theme
-const themeStore = useThemeStore();
-const isDark = computed(() => themeStore.isDark);
-const toggleTheme = () => themeStore.toggle();
-
-// Font size
-const fontSizeStore = useFontSizeStore();
-const fontSize = computed(() => fontSizeStore.size);
-const fontSizeOptions = computed(() => [
-    { value: 'small', label: t('settings.appearance.fontSizeSmall'), preview: 'Aa' },
-    { value: 'medium', label: t('settings.appearance.fontSizeMedium'), preview: 'Aa' },
-    { value: 'large', label: t('settings.appearance.fontSizeLarge'), preview: 'Aa' }
-]);
-const setFontSize = (size: FontSize) => fontSizeStore.setSize(size);
-
-// Active section
 const activeSection = ref('general');
 
-// Sidebar items
 const sidebarItems = computed(() => [
     { id: 'general', icon: '/assets/icons/Settings.svg', label: t('settings.general.title') },
     { id: 'appearance', icon: '/assets/icons/Features.svg', label: t('settings.appearance.title') },
+    { id: 'llm', icon: '/assets/icons/Books.svg', label: t('settings.llm.title') },
     { id: 'about', icon: '/assets/icons/AppStore.svg', label: t('settings.about.title') },
 ]);
 
-// Workspace
-const workspaceDir = ref('');
-const pickingDir = ref(false);
-const workspaceStatus = ref('');
-const workspaceError = ref(false);
+const closeApp = () => emit('close');
+const toggleMinimize = () => emit('minimize');
 
-const loadWorkspaceDir = async () => {
-    try {
-        workspaceDir.value = await invoke<string>('get_workspace_dir');
-        workspaceStatus.value = '';
-        workspaceError.value = false;
-    } catch (e) {
-        workspaceStatus.value = String(e);
-        workspaceError.value = true;
-    }
-};
-
-const pickDirectory = async () => {
-    pickingDir.value = true;
-    try {
-        const selected = await open({
-            directory: true,
-            multiple: false,
-            title: t('settings.workspace.selectTitle'),
-        });
-        if (selected) {
-            const path = typeof selected === 'string' ? selected : selected;
-            const result = await invoke<string>('set_workspace_dir', { path });
-            workspaceDir.value = result;
-            workspaceStatus.value = t('settings.workspace.saved');
-            workspaceError.value = false;
-            setTimeout(() => { workspaceStatus.value = ''; }, 3000);
-        }
-    } catch (e) {
-        workspaceStatus.value = String(e);
-        workspaceError.value = true;
-    } finally {
-        pickingDir.value = false;
-    }
-};
-
-onMounted(() => {
-    loadWorkspaceDir();
-});
-
-const closeApp = () => {
-    emit('close');
-};
-
-const toggleMinimize = () => {
-    emit('minimize');
-};
-
-// MacWindow 组件引用
 const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
-
-// 暴露 bringToFront 方法
 defineExpose({
-    bringToFront: () => macWindowRef.value?.bringToFront()
+    bringToFront: () => macWindowRef.value?.bringToFront(),
 });
 </script>
 
@@ -220,7 +75,6 @@ defineExpose({
     height: 100%;
 }
 
-/* ── Sidebar ── */
 .settings-sidebar {
     width: 200px;
     min-width: 200px;
@@ -264,20 +118,23 @@ defineExpose({
     text-overflow: ellipsis;
 }
 
-/* ── Content ── */
 .settings-content {
     flex: 1;
     padding: 24px 28px;
     overflow-y: auto;
 }
+</style>
+
+<style>
+/* ── Shared Panel Styles (non-scoped, cascades to child panels) ── */
 
 .section-panel {
-    animation: fadeIn 0.15s ease;
+    animation: settingsFadeIn 0.15s ease;
 }
 
-@keyframes fadeIn {
+@keyframes settingsFadeIn {
     from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .section-heading {
@@ -287,7 +144,6 @@ defineExpose({
     margin: 0 0 20px 0;
 }
 
-/* ── Setting Row ── */
 .setting-row {
     display: flex;
     align-items: flex-start;
@@ -315,7 +171,7 @@ defineExpose({
     line-height: 1.4;
 }
 
-/* ── Workspace Path ── */
+/* Workspace */
 .workspace-path-row {
     display: flex;
     gap: 8px;
@@ -369,7 +225,7 @@ defineExpose({
     color: #ff3b30;
 }
 
-/* ── Toggle Switch (macOS style) ── */
+/* Toggle Switch */
 .toggle-switch {
     position: relative;
     display: inline-block;
@@ -415,7 +271,7 @@ defineExpose({
     transform: translateX(18px);
 }
 
-/* ── Font Size Selector ── */
+/* Font Size Selector */
 .font-size-selector {
     display: flex;
     gap: 6px;
@@ -477,7 +333,7 @@ defineExpose({
     font-size: var(--app-font-20);
 }
 
-/* ── About ── */
+/* About */
 .about-card {
     display: flex;
     align-items: center;

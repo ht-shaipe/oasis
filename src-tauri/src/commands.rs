@@ -118,3 +118,150 @@ pub fn update_tray_locale(app: AppHandle, locale: TrayLocale) -> Result<(), Stri
     }
     Ok(())
 }
+
+// ─── 嵌入式 WebView 管理 ─────────────────────────────────────────
+
+/// 创建嵌入主窗口的子 WebView（参照 crawler 的 wry WebViewBuilder::build_as_child 模式）
+#[tauri::command]
+pub fn create_embedded_webview(
+    app: AppHandle,
+    url: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<String, String> {
+    use tauri::Manager;
+
+    let window = app
+        .get_window("main")
+        .ok_or("main window not found")?;
+
+    // 关闭已有的嵌入式 webview
+    if let Some(existing) = app.webviews().get("safari-embedded") {
+        existing.close().map_err(|e| e.to_string())?;
+    }
+
+    let parsed = url.parse().map_err(|e| format!("invalid url: {}", e))?;
+    window
+        .add_child(
+            tauri::webview::WebviewBuilder::new("safari-embedded", tauri::WebviewUrl::External(parsed)),
+            tauri::LogicalPosition::new(x, y),
+            tauri::LogicalSize::new(width, height),
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok("safari-embedded".to_string())
+}
+
+/// 关闭嵌入主窗口的子 WebView
+#[tauri::command]
+pub fn close_embedded_webview(app: AppHandle) -> Result<(), String> {
+    if let Some(webview) = app.webviews().get("safari-embedded") {
+        webview.close().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// 更新嵌入式 WebView 的位置和大小（窗口 resize 时调用）
+#[tauri::command]
+pub fn update_embedded_webview_bounds(
+    app: AppHandle,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    if let Some(webview) = app.webviews().get("safari-embedded") {
+        webview
+            .set_position(tauri::LogicalPosition::new(x, y))
+            .map_err(|e| e.to_string())?;
+        webview
+            .set_size(tauri::LogicalSize::new(width, height))
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+// ─── LLM 配置持久化 ─────────────────────────────────────────────
+
+const LLM_CONFIG_FILE: &str = "llm_config.json";
+
+fn llm_config_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(config_dir(app)?.join(LLM_CONFIG_FILE))
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LlmModel {
+    pub id: String,
+    pub name: String,
+    pub provider: String,
+    pub model_id: String,
+    pub base_url: String,
+    pub auth_type: String,        // "api_key" | "token_plan"
+    pub api_key: String,
+    pub token_plan: String,
+    pub temperature: f64,
+    pub max_tokens: u32,
+    pub description: String,
+    pub enabled: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LlmConfig {
+    pub models: Vec<LlmModel>,
+}
+
+fn load_llm_config(app: &AppHandle) -> Result<LlmConfig, String> {
+    let path = llm_config_path(app)?;
+    if path.exists() {
+        let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let config: LlmConfig = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+        Ok(config)
+    } else {
+        Ok(LlmConfig { models: Vec::new() })
+    }
+}
+
+fn save_llm_config(app: &AppHandle, config: &LlmConfig) -> Result<(), String> {
+    let path = llm_config_path(app)?;
+    let content = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
+    fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_llm_models(app: AppHandle) -> Result<Vec<LlmModel>, String> {
+    let config = load_llm_config(&app)?;
+    Ok(config.models)
+}
+
+#[tauri::command]
+pub fn save_llm_model(app: AppHandle, model: LlmModel) -> Result<LlmModel, String> {
+    let mut config = load_llm_config(&app)?;
+    if let Some(existing) = config.models.iter_mut().find(|m| m.id == model.id) {
+        *existing = model.clone();
+    } else {
+        config.models.push(model.clone());
+    }
+    save_llm_config(&app, &config)?;
+    Ok(model)
+}
+
+#[tauri::command]
+pub fn delete_llm_model(app: AppHandle, id: String) -> Result<(), String> {
+    let mut config = load_llm_config(&app)?;
+    config.models.retain(|m| m.id != id);
+    save_llm_config(&app, &config)
+}
+
+#[tauri::command]
+pub fn toggle_llm_model(app: AppHandle, id: String, enabled: bool) -> Result<(), String> {
+    let mut config = load_llm_config(&app)?;
+    if let Some(model) = config.models.iter_mut().find(|m| m.id == id) {
+        model.enabled = enabled;
+        save_llm_config(&app, &config)?;
+        Ok(())
+    } else {
+        Err(format!("model '{}' not found", id))
+    }
+}

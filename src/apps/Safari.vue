@@ -4,11 +4,14 @@
         title="Safari"
         :isMinimized="isMinimized"
         @close="closeApp"
+        :width="800"
+        :height="600"
         @minimize="toggleMinimize"
         :startMaximized="false">
-        <div class="preview-content">
-            <div class="safari-toolbar">
-                <div class="safari-arrow-buttons">
+        <div class="p-0 flex flex-col h-full">
+            <div
+                class="flex items-center bg-[var(--color-bg)] border-b border-[var(--color-window-titlebar-border)] px-2.5 py-2">
+                <div class="flex gap-2.5 mr-4">
                     <el-icon>
                         <ArrowLeft />
                     </el-icon>
@@ -16,39 +19,40 @@
                         <ArrowRight />
                     </el-icon>
                 </div>
-                <div class="safari-address-bar">
-                    <el-icon>
+                <div
+                    class="flex-1 flex items-center bg-[var(--color-input-bg)] rounded-1.5 px-2.5 h-7 mx-2.5 text-[var(--app-font-13)] text-[var(--color-text-primary)]">
+                    <el-icon class="mr-1.5 text-[var(--app-font-14)] text-[#00890a] shrink-0">
                         <Lock />
                     </el-icon>
                     <input
                         v-model="addressInput"
-                        class="safari-address-input"
+                        class="flex-1 min-w-0 border-none outline-none bg-transparent text-[var(--color-text-primary)] text-[var(--app-font-13)] h-full placeholder:text-[var(--color-text-tertiary)]"
                         @keyup.enter="navigateToUrl"
                         @focus="($event.target as HTMLInputElement).select()"
                         placeholder="输入网址或搜索" />
                 </div>
-                <div class="safari-buttons">
+                <div class="ml-2.5">
                     <el-button @click="toggleViewMode" size="small" type="primary" v-if="externalUrl">
                         {{ useIframe ? '原生WebView' : '内嵌Iframe' }}
                     </el-button>
-                    <el-icon @click="toggleViewMode" style="cursor: pointer" v-else>
+                    <el-icon @click="toggleViewMode" class="cursor-pointer" v-else>
                         <Share />
                     </el-icon>
                 </div>
             </div>
-            <div class="safari-content">
-                <iframe v-if="useIframe && externalUrl" :src="externalUrl" class="preview-frame"></iframe>
-                <iframe v-else-if="!externalUrl" :srcdoc="previewHtml" class="preview-frame"></iframe>
+            <div class="flex-1 h-[calc(100%-3.25rem)]">
+                <iframe v-if="useIframe && externalUrl" :src="externalUrl" class="w-full h-full border-0"></iframe>
+                <iframe v-else-if="!externalUrl" :srcdoc="previewHtml" class="w-full h-full border-0"></iframe>
             </div>
         </div>
     </MacWindow>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { ArrowLeft, ArrowRight, Lock, Share } from '@element-plus/icons-vue';
 import MacWindow from '@/components/common/MacWindow.vue';
-import { Webview } from '@tauri-apps/api/webview';
+import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // 定义属性
@@ -68,10 +72,10 @@ const emit = defineEmits(['close', 'minimize']);
 
 // 状态变量
 const externalUrl = ref('');
-const currentUrl = ref('localhost');
+const currentUrl = ref('https://www.htui.tech');
 const addressInput = ref('');
-const useIframe = ref(true); // 控制是否使用iframe
-const embeddedWebview = ref<Webview | null>(null);
+const useIframe = ref(true);
+const isNativeMode = ref(false); // 是否正在使用 Rust 端嵌入式 WebView
 
 // 导航到用户输入的 URL
 const navigateToUrl = () => {
@@ -81,7 +85,7 @@ const navigateToUrl = () => {
         raw = 'https://' + raw;
     }
     // 如果当前在原生 WebView 模式，直接用新的 WebView 替换
-    if (!useIframe.value && embeddedWebview.value) {
+    if (isNativeMode.value) {
         openExternalUrlInWebview(raw);
         return;
     }
@@ -99,40 +103,51 @@ const syncAddressInput = () => {
     }
 };
 
-// 组件挂载时检查是否有外部URL
-onMounted(() => {
-    const url = localStorage.getItem('safariUrl');
-    if (url) {
-        openExternalUrlInWebview(url);
-        localStorage.removeItem('safariUrl');
-    }
-    syncAddressInput();
-});
+// ── 嵌入式 WebView（Rust 端，参照 crawler wry build_as_child）───
 
-// 使用 Webview（子 webview 嵌入窗口内）替代 WebviewWindow（独立 OS 窗口）
+/// 获取 .safari-content 相对于主窗口的屏幕绝对坐标
+const getWebviewBounds = async (): Promise<{ x: number; y: number; width: number; height: number } | null> => {
+    const el = document.querySelector('.safari-content') as HTMLElement;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const window = getCurrentWindow();
+    const pos = await window.outerPosition();
+    const scale = await window.scaleFactor();
+    // outerPosition 是物理像素，getBoundingClientRect 是 CSS 像素，需要统一
+    return {
+        x: pos.x / scale + rect.x,
+        y: pos.y / scale + rect.y,
+        width: rect.width,
+        height: rect.height,
+    };
+};
+
+const syncWebviewBounds = async () => {
+    if (!isNativeMode.value) return;
+    const bounds = await getWebviewBounds();
+    if (!bounds) return;
+    invoke('update_embedded_webview_bounds', {
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+    }).catch(() => {});
+};
+
 const openExternalUrlInWebview = async (url: string) => {
     try {
-        // 关闭之前的嵌入式 webview
-        if (embeddedWebview.value) {
-            await embeddedWebview.value.close();
-            embeddedWebview.value = null;
-        }
+        const bounds = await getWebviewBounds();
+        if (!bounds) throw new Error('.safari-content not found');
 
-        const mainWindow = getCurrentWindow();
-        const mainSize = await mainWindow.innerSize();
-        const toolbarHeight = 50;
-
-        const label = `safari-embedded-${Date.now()}`;
-
-        const webview = new Webview(mainWindow, label, {
-            url: url,
-            x: 0,
-            y: toolbarHeight,
-            width: mainSize.width,
-            height: mainSize.height - toolbarHeight,
+        await invoke('create_embedded_webview', {
+            url,
+            x: bounds.x,
+            y: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
         });
 
-        embeddedWebview.value = webview;
+        isNativeMode.value = true;
         useIframe.value = false;
         currentUrl.value = new URL(url).hostname;
         syncAddressInput();
@@ -141,22 +156,55 @@ const openExternalUrlInWebview = async (url: string) => {
         externalUrl.value = url;
         currentUrl.value = new URL(url).hostname;
         useIframe.value = true;
+        isNativeMode.value = false;
         syncAddressInput();
     }
 };
+
+const closeNativeWebview = () => {
+    invoke('close_embedded_webview').catch(() => {});
+    isNativeMode.value = false;
+};
+
+let resizeObserver: ResizeObserver | null = null;
+let unlistenMove: (() => void) | null = null;
+
+onMounted(async () => {
+    const url = localStorage.getItem('safariUrl');
+    if (url) {
+        openExternalUrlInWebview(url);
+        localStorage.removeItem('safariUrl');
+    }
+    syncAddressInput();
+
+    // DOM 尺寸变化 → 同步 bounds
+    const contentEl = document.querySelector('.safari-content');
+    if (contentEl) {
+        resizeObserver = new ResizeObserver(() => syncWebviewBounds());
+        resizeObserver.observe(contentEl);
+    }
+
+    // 窗口拖动 → 同步 bounds（add_child 使用屏幕坐标，需手动跟随）
+    unlistenMove = await getCurrentWindow().onMoved(() => {
+        syncWebviewBounds();
+    });
+
+    navigateToUrl();
+});
+
+onUnmounted(() => {
+    closeNativeWebview();
+    resizeObserver?.disconnect();
+    unlistenMove?.();
+});
 
 // 切换视图模式
 const toggleViewMode = () => {
     if (externalUrl.value) {
         if (useIframe.value) {
-            // 从iframe切换到嵌入式webview
             openExternalUrlInWebview(externalUrl.value);
         } else {
-            // 关闭嵌入式webview，切换回iframe
-            if (embeddedWebview.value) {
-                embeddedWebview.value.close();
-                embeddedWebview.value = null;
-            }
+            closeNativeWebview();
             useIframe.value = true;
         }
     } else {
@@ -166,10 +214,7 @@ const toggleViewMode = () => {
 
 // 关闭应用
 const closeApp = () => {
-    if (embeddedWebview.value) {
-        embeddedWebview.value.close();
-        embeddedWebview.value = null;
-    }
+    closeNativeWebview();
     emit('close');
 };
 
@@ -285,75 +330,5 @@ const previewHtml = computed(() => {
 </script>
 
 <style scoped>
-.preview-content {
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-/* Safari风格预览窗口 */
-.safari-toolbar {
-    display: flex;
-    align-items: center;
-    background-color: var(--color-bg);
-    border-bottom: 1px solid var(--color-window-titlebar-border);
-    padding: 10px;
-}
-
-.safari-arrow-buttons {
-    display: flex;
-    gap: 10px;
-    margin-right: 15px;
-}
-
-.safari-address-bar {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    background-color: var(--color-input-bg);
-    border-radius: 6px;
-    padding: 0 10px;
-    height: 28px;
-    margin: 0 10px;
-    font-size: var(--app-font-13);
-    color: var(--color-text-primary);
-}
-
-.safari-address-bar .el-icon {
-    margin-right: 6px;
-    font-size: var(--app-font-14);
-    color: #00890a;
-    flex-shrink: 0;
-}
-
-.safari-address-input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--color-text-primary);
-    font-size: var(--app-font-13);
-    height: 100%;
-}
-
-.safari-address-input::placeholder {
-    color: var(--color-text-tertiary);
-}
-
-.safari-buttons {
-    margin-left: 10px;
-}
-
-.safari-content {
-    flex: 1;
-    height: calc(100% - 50px);
-}
-
-.preview-frame {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
+/* 预览HTML内部的样式保持不变，因为它是动态生成的HTML内容 */
 </style>

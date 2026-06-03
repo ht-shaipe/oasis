@@ -3,7 +3,7 @@ import Finder from '@/apps/Finder.vue';
 import Generator from '@/apps/Generator.vue';
 import CodeEditor from '@/apps/CodeEditor.vue';
 import Preview from '@/apps/Safari.vue';
-import Settings from '@/apps/Settings.vue';
+import Settings from '@/apps/Settings/index.vue';
 import ContinueDialog from '@/apps/ContinueDialog.vue';
 import Notes from '@/apps/Notes.vue';
 import Profile from '@/apps/Profile.vue';
@@ -11,7 +11,6 @@ import Credential from '@/apps/Credential/Index.vue';
 import Toolbox from '@/apps/Toolbox/Index.vue';
 import Browser from '@/apps/Browser.vue';
 import Knowledge from '@/apps/Knowledge/Index.vue';
-import Llm from '@/apps/Llm/Index.vue';
 
 export interface AppConfig {
     id: string;
@@ -121,14 +120,5 @@ export const apps: AppConfig[] = [
         showInDock: true,
         showOnDesktop: true,
         nameKey: 'knowledge.title',
-    },
-    {
-        id: 'llm',
-        name: 'LLM Models',
-        icon: '/assets/icons/Books.svg',
-        component: Llm,
-        showInDock: true,
-        showOnDesktop: true,
-        nameKey: 'llm.title',
     },
 ];
