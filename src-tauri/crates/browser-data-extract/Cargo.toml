@@ -1,0 +1,25 @@
+[package]
+edition = {workspace = true}
+name = "oasis-browser-data-extract"
+version = {workspace = true}
+
+[dependencies]
+aes = "0.8"
+aes-gcm = "0.10"
+base64 = "0.22"
+cbc = {version = "0.1", features = ["std"]}
+chrono = "0.4"
+des = "0.8"
+dirs = "6"
+glob = "0.3"
+hmac = "0.12"
+log = "0.4"
+md-5 = "0.10"
+pbkdf2 = {version = "0.12", features = ["simple"]}
+plist = "1"
+rusqlite = {version = "0.34", features = ["bundled"]}
+serde = {version = "1", features = ["derive"]}
+serde_json = "1"
+sha1 = "0.10"
+sha2 = "0.10"
+tauri = {version = "2"}
