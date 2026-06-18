@@ -1,3 +1,4 @@
+use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::Manager;
@@ -808,23 +809,38 @@ pub fn search_sites(app: AppHandle, query: String) -> Result<Vec<Site>, String> 
 // ── Merge / Tidy Credentials ──────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MergeResult {
-    pub groups_found: i64,      // URL相同的组数
-    pub credentials_merged: i64, // 被合并的credential数
-    pub duplicates_removed: i64, // 用户名+密码完全相同被去重数
-    pub sites_created: i64,     // 新建的site数
-    pub accounts_created: i64,  // 新建的account数
+pub struct MergeGroup {
+    pub hostname: String,
+    pub credential_count: i64,
+    pub usernames: Vec<String>,
+    pub is_intranet: bool,
+    pub sample_url: String,
 }
 
-/// 整理凭证：将URL相同的credential合并为Site+SiteAccount
-/// - URL相同、用户名/密码不同 → 合并到同一个Site下多条Account
-/// - URL相同、用户名密码完全相同 → 去重只保留一条
-/// - 无URL的credential不动
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MergePreview {
+    pub total_credentials: i64,
+    pub duplicates_count: i64,
+    pub merge_groups: Vec<MergeGroup>,
+    pub intranet_groups_count: i64,
+    pub intranet_credential_count: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MergeResult {
+    pub duplicates_removed: i64,
+    pub sites_created: i64,
+    pub accounts_created: i64,
+    pub credentials_remaining: i64,
+    pub intranet_skipped: i64,
+}
+
+/// 预览整理结果：返回分组信息，不做任何修改
 #[tauri::command]
-pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<MergeResult, String> {
+pub async fn preview_merge_by_url(app: AppHandle, dek_base64: String) -> Result<MergePreview, String> {
+    tauri::async_runtime::spawn_blocking(move || {
     let conn = get_conn(&app)?;
 
-    // Decode DEK
     let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &dek_base64)
         .map_err(|_| "Invalid DEK base64".to_string())?;
     let dek: [u8; 32] = dek_bytes
@@ -832,23 +848,19 @@ pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<Me
         .try_into()
         .map_err(|_| "DEK must be 32 bytes".to_string())?;
 
-    // 1. Fetch all credentials with non-empty URL
     let all_creds = db::list_raw_credentials(&conn).map_err(|e| e.to_string())?;
     let creds_with_url: Vec<_> = all_creds
         .iter()
         .filter(|c| c.url.is_some() && !c.url.as_ref().unwrap().is_empty())
         .collect();
 
-    // 2. Normalize URL: extract hostname for grouping
-    let normalize_url = |url: &str| -> String {
-        // Strip common prefixes and trailing slashes, keep hostname
+    let normalize_host = |url: &str| -> String {
         let url = url.trim();
         let stripped = url
             .strip_prefix("https://")
             .or_else(|| url.strip_prefix("http://"))
             .or_else(|| url.strip_prefix("www."))
             .unwrap_or(url);
-        // Remove trailing path/query for grouping — just keep host
         if let Some(slash_pos) = stripped.find('/') {
             stripped[..slash_pos].to_lowercase()
         } else {
@@ -856,34 +868,10 @@ pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<Me
         }
     };
 
-    // 3. Group by normalized URL
-    let mut url_groups: std::collections::HashMap<String, Vec<&crate::models::Credential>> =
-        std::collections::HashMap::new();
-    for cred in &creds_with_url {
-        let key = normalize_url(cred.url.as_deref().unwrap());
-        url_groups.entry(key).or_default().push(cred);
-    }
-
-    // 4. Only process groups with 2+ credentials
-    let multi_groups: Vec<_> = url_groups
-        .into_iter()
-        .filter(|(_, creds)| creds.len() >= 2)
-        .collect();
-
-    let mut result = MergeResult {
-        groups_found: multi_groups.len() as i64,
-        credentials_merged: 0,
-        duplicates_removed: 0,
-        sites_created: 0,
-        accounts_created: 0,
-    };
-
-    // Helper: decrypt credential and extract username + password
     let decrypt_cred = |cred: &crate::models::Credential| -> Option<(String, String)> {
         let nonce_arr: [u8; 12] = cred.nonce.as_slice().try_into().ok()?;
         let plaintext = crypto::decrypt(&dek, &cred.encrypted_data, &nonce_arr).ok()?;
         let sensitive: SensitiveData = serde_json::from_slice(&plaintext).ok()?;
-        // Try sensitive_sets first, then account_sets, then flat fields
         if let Some(sets) = &sensitive.sensitive_sets {
             if let Some(first) = sets.first() {
                 let username = first.username.clone()
@@ -903,14 +891,233 @@ pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<Me
         Some((username, password))
     };
 
-    // 5. For each multi-group, merge into Site + SiteAccounts
-    for (normalized_url, creds) in &multi_groups {
-        // Decrypt all and collect (username, password) pairs, deduplicating identical pairs
+    // Count duplicates
+    let mut seen: std::collections::HashMap<(String, String, String), i64> = std::collections::HashMap::new();
+    let mut dedup_count: i64 = 0;
+
+    for cred in &creds_with_url {
+        let url = cred.url.as_deref().unwrap();
+        if let Some((username, password)) = decrypt_cred(cred) {
+            let key = (url.to_lowercase(), username, password);
+            if seen.contains_key(&key) {
+                dedup_count += 1;
+            } else {
+                seen.insert(key, cred.id);
+            }
+        }
+    }
+
+    // Group by hostname
+    let mut host_groups: std::collections::HashMap<String, Vec<&crate::models::Credential>> =
+        std::collections::HashMap::new();
+    for cred in &creds_with_url {
+        let host = normalize_host(cred.url.as_deref().unwrap());
+        host_groups.entry(host).or_default().push(cred);
+    }
+
+    let mut merge_groups: Vec<MergeGroup> = Vec::new();
+    let mut intranet_groups_count: i64 = 0;
+    let mut intranet_credential_count: i64 = 0;
+
+    for (host, creds) in &host_groups {
+        let is_intranet = is_intranet_url(
+            creds.first().and_then(|c| c.url.as_deref()).unwrap_or(""),
+        );
+        if is_intranet {
+            intranet_groups_count += 1;
+            intranet_credential_count += creds.len() as i64;
+        }
+
+        let mut usernames = std::collections::HashSet::new();
+        for c in creds {
+            if let Some((u, _)) = decrypt_cred(c) {
+                if !u.is_empty() {
+                    usernames.insert(u);
+                }
+            }
+        }
+
+        if creds.len() >= 2 && usernames.len() >= 2 {
+            merge_groups.push(MergeGroup {
+                hostname: host.clone(),
+                credential_count: creds.len() as i64,
+                usernames: usernames.into_iter().collect(),
+                is_intranet,
+                sample_url: creds.first().and_then(|c| c.url.clone()).unwrap_or_default(),
+            });
+        }
+    }
+
+    merge_groups.sort_by(|a, b| {
+        b.credential_count.cmp(&a.credential_count)
+            .then(a.hostname.cmp(&b.hostname))
+    });
+
+    Ok(MergePreview {
+        total_credentials: all_creds.len() as i64,
+        duplicates_count: dedup_count,
+        merge_groups,
+        intranet_groups_count,
+        intranet_credential_count,
+    })
+    }).await.map_err(|e| format!("task join error: {}", e))?
+}
+
+/// 整理凭证：真正的去重 + 同域名多账号合并
+///
+/// 逻辑：
+/// 1. **去重**：URL + 用户名 + 密码完全相同的凭证，只保留最早创建的一条，删除其余
+/// 2. **合并**：同域名下有多个不同账号的凭证，合并为一个 Site + 多个 SiteAccount
+///    - 仅当同一域名下有 ≥2 条凭证且用户名不同时才合并
+///    - 合并后原 credential 全部删除
+/// 3. **不动**：域名下只有 1 条凭证的，保持原样
+#[tauri::command]
+pub async fn merge_credentials_by_url(app: AppHandle, dek_base64: String, filter_intranet: bool) -> Result<MergeResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+    let conn = get_conn(&app)?;
+
+    let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &dek_base64)
+        .map_err(|_| "Invalid DEK base64".to_string())?;
+    let dek: [u8; 32] = dek_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+    conn.execute_batch("BEGIN TRANSACTION").map_err(|e| format!("Failed to begin transaction: {}", e))?;
+
+    let result = (|| -> Result<MergeResult, String> {
+    let all_creds = db::list_raw_credentials(&conn).map_err(|e| format!("Failed to list credentials: {}", e))?;
+    let creds_with_url: Vec<_> = all_creds
+        .iter()
+        .filter(|c| c.url.is_some() && !c.url.as_ref().unwrap().is_empty())
+        .collect();
+
+    let normalize_host = |url: &str| -> String {
+        let url = url.trim();
+        let stripped = url
+            .strip_prefix("https://")
+            .or_else(|| url.strip_prefix("http://"))
+            .or_else(|| url.strip_prefix("www."))
+            .unwrap_or(url);
+        if let Some(slash_pos) = stripped.find('/') {
+            stripped[..slash_pos].to_lowercase()
+        } else {
+            stripped.to_lowercase()
+        }
+    };
+
+    let decrypt_cred = |cred: &crate::models::Credential| -> Option<(String, String)> {
+        let nonce_arr: [u8; 12] = cred.nonce.as_slice().try_into().ok()?;
+        let plaintext = crypto::decrypt(&dek, &cred.encrypted_data, &nonce_arr).ok()?;
+        let sensitive: SensitiveData = serde_json::from_slice(&plaintext).ok()?;
+        if let Some(sets) = &sensitive.sensitive_sets {
+            if let Some(first) = sets.first() {
+                let username = first.username.clone()
+                    .or_else(|| cred.username.clone())
+                    .unwrap_or_default();
+                let password = first.password.clone().unwrap_or_default();
+                return Some((username, password));
+            }
+        }
+        if let Some(sets) = &sensitive.account_sets {
+            if let Some(first) = sets.first() {
+                return Some((first.username.clone(), first.password.clone().unwrap_or_default()));
+            }
+        }
+        let username = cred.username.clone().unwrap_or_default();
+        let password = sensitive.password.unwrap_or_default();
+        Some((username, password))
+    };
+
+    // ── Phase 1: Deduplicate — same URL + username + password, keep earliest ──
+
+    let mut dedup_ids_to_delete: std::collections::HashSet<i64> = std::collections::HashSet::new();
+    let mut seen: std::collections::HashMap<(String, String, String), i64> = std::collections::HashMap::new();
+
+    for cred in &creds_with_url {
+        let url = cred.url.as_deref().unwrap();
+        if let Some((username, password)) = decrypt_cred(cred) {
+            let key = (url.to_lowercase(), username, password);
+            if let Some(&existing_id) = seen.get(&key) {
+                if cred.id > existing_id {
+                    dedup_ids_to_delete.insert(cred.id);
+                } else {
+                    dedup_ids_to_delete.insert(existing_id);
+                    seen.insert(key, cred.id);
+                }
+            } else {
+                seen.insert(key, cred.id);
+            }
+        }
+    }
+
+    for id in &dedup_ids_to_delete {
+        db::delete_credential(&conn, *id).map_err(|e| format!("Failed to delete duplicate credential {}: {}", id, e))?;
+    }
+
+    // ── Phase 2: Merge — same hostname, different usernames → Site + SiteAccounts ──
+
+    let remaining_creds: Vec<_> = creds_with_url
+        .iter()
+        .filter(|c| !dedup_ids_to_delete.contains(&c.id))
+        .collect();
+
+    let mut host_groups: std::collections::HashMap<String, Vec<&crate::models::Credential>> =
+        std::collections::HashMap::new();
+    for cred in &remaining_creds {
+        let host = normalize_host(cred.url.as_deref().unwrap());
+        host_groups.entry(host).or_default().push(cred);
+    }
+
+    // Collect valid category IDs to avoid foreign key violations
+    let valid_category_ids: std::collections::HashSet<i64> = db::list_categories(&conn)
+        .map_err(|e| format!("Failed to list categories: {}", e))?
+        .into_iter()
+        .map(|c| c.id)
+        .collect();
+    let fallback_category_id = *valid_category_ids.iter().next().ok_or_else(|| "No categories found".to_string())?;
+
+    let multi_account_groups: Vec<_> = host_groups
+        .into_iter()
+        .filter(|(_, creds)| {
+            if creds.len() < 2 {
+                return false;
+            }
+            let mut usernames = std::collections::HashSet::new();
+            for c in creds {
+                if let Some((u, _)) = decrypt_cred(c) {
+                    if !u.is_empty() {
+                        usernames.insert(u);
+                    }
+                }
+            }
+            usernames.len() >= 2
+        })
+        .collect();
+
+    let mut intranet_skipped: i64 = 0;
+
+    let mut result = MergeResult {
+        duplicates_removed: dedup_ids_to_delete.len() as i64,
+        sites_created: 0,
+        accounts_created: 0,
+        credentials_remaining: 0,
+        intranet_skipped: 0,
+    };
+
+    for (host, creds) in multi_account_groups {
+        if filter_intranet {
+            let sample_url = creds.first().and_then(|c| c.url.as_deref()).unwrap_or("");
+            if is_intranet_url(sample_url) {
+                intranet_skipped += creds.len() as i64;
+                continue;
+            }
+        }
         let mut seen_pairs: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
-        let mut unique_accounts: Vec<(String, String)> = Vec::new(); // (username, password)
+        let mut unique_accounts: Vec<(String, String)> = Vec::new();
         let mut cred_ids_to_delete: Vec<i64> = Vec::new();
 
-        for cred in creds {
+        for cred in &creds {
             cred_ids_to_delete.push(cred.id);
             if let Some((username, password)) = decrypt_cred(cred) {
                 if username.is_empty() && password.is_empty() {
@@ -918,7 +1125,6 @@ pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<Me
                 }
                 let pair = (username.clone(), password.clone());
                 if seen_pairs.contains(&pair) {
-                    result.duplicates_removed += 1;
                     continue;
                 }
                 seen_pairs.insert(pair);
@@ -926,27 +1132,28 @@ pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<Me
             }
         }
 
-        if unique_accounts.is_empty() {
+        if unique_accounts.len() < 2 {
             continue;
         }
 
-        // Use the original URL from the first credential
         let site_url = creds
             .first()
             .and_then(|c| c.url.clone())
             .unwrap_or_default();
 
-        // Use normalized_url as site name, or title of first credential
-        let site_name = if normalized_url.len() < creds.first().map(|c| c.title.len()).unwrap_or(0) {
-            creds.first().map(|c| c.title.clone()).unwrap_or_else(|| normalized_url.clone())
+        let site_name = if host.len() < creds.first().map(|c| c.title.len()).unwrap_or(0) {
+            creds.first().map(|c| c.title.clone()).unwrap_or_else(|| host.clone())
         } else {
-            normalized_url.clone()
+            host.clone()
         };
 
-        // Use the category of the first credential
-        let category_id = creds.first().map(|c| c.category_id).unwrap_or(1);
+        let raw_category_id = creds.first().map(|c| c.category_id).unwrap_or(fallback_category_id);
+        let category_id = if valid_category_ids.contains(&raw_category_id) {
+            raw_category_id
+        } else {
+            fallback_category_id
+        };
 
-        // Collect tags
         let all_tags: Vec<String> = creds
             .iter()
             .filter_map(|c| c.tags.clone())
@@ -957,22 +1164,20 @@ pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<Me
             .collect();
         let tags = if all_tags.is_empty() { None } else { Some(all_tags.join(",")) };
 
-        // Create site
         let site_id = db::create_site(
             &conn,
             &site_name,
             Some(&site_url),
             category_id,
             tags.as_deref(),
-            None, // notes
-            "",   // accounts_json placeholder
+            None,
+            "",
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to create site '{}': {}", site_name, e))?;
 
-        // Create encrypted accounts
         for (username, password) in &unique_accounts {
             let (pwd_enc, pwd_nonce) = crypto::encrypt(&dek, password.as_bytes())
-                .map_err(|e| format!("Failed to encrypt password: {:?}", e))?;
+                .map_err(|e| format!("Failed to encrypt password for '{}': {:?}", username, e))?;
 
             db::create_site_account(
                 &conn,
@@ -980,26 +1185,42 @@ pub fn merge_credentials_by_url(app: AppHandle, dek_base64: String) -> Result<Me
                 username,
                 &pwd_enc,
                 &pwd_nonce,
-                None, None, None, None, // no api_key, secret_key
+                None, None, None, None,
             )
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Failed to create site account for '{}': {}", username, e))?;
 
             result.accounts_created += 1;
         }
 
         result.sites_created += 1;
-        result.credentials_merged += cred_ids_to_delete.len() as i64;
 
-        // Delete original credentials
         for id in &cred_ids_to_delete {
-            db::delete_credential(&conn, *id).map_err(|e| e.to_string())?;
+            db::delete_credential(&conn, *id).map_err(|e| format!("Failed to delete credential {}: {}", id, e))?;
         }
     }
 
-    Ok(result)
-}
+    let total_remaining = db::list_raw_credentials(&conn).map_err(|e| format!("Failed to count remaining credentials: {}", e))?.len();
+    result.credentials_remaining = total_remaining as i64;
+    result.intranet_skipped = intranet_skipped;
 
-// ── Browser CSV Import Commands ───────────────────────────────────────────────────
+    Ok(result)
+    })();
+
+    match result {
+        Ok(r) => {
+            conn.execute_batch("COMMIT").map_err(|e| {
+                let _ = conn.execute_batch("ROLLBACK");
+                format!("Failed to commit merge transaction: {}", e)
+            })?;
+            Ok(r)
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
+    }).await.map_err(|e| format!("task join error: {}", e))?
+}
 
 use crate::browser_import::{self, BrowserCredential};
 
@@ -1009,17 +1230,188 @@ pub fn import_csv_passwords(
 ) -> Result<Vec<BrowserCredential>, String> {
     let mut creds = browser_import::parse_csv_passwords(&csv_path)?;
 
-    // 非空密码排到最前面，方便用户查看
     creds.sort_by_key(|c| if c.password.is_empty() { 1 } else { 0 });
 
-    let with_pw: Vec<_> = creds.iter().filter(|c| !c.password.is_empty()).collect();
-    let empty: Vec<_> = creds.iter().filter(|c| c.password.is_empty()).collect();
     eprintln!(
-        "[import_csv_passwords] total={} with_pw={} empty={}",
+        "[import_csv_passwords] total={} with_pw={}",
         creds.len(),
-        with_pw.len(),
-        empty.len()
+        creds.iter().filter(|c| !c.password.is_empty()).count()
     );
 
     Ok(creds)
+}
+
+// ── Batch Import ────────────────────────────────────────────────────────
+
+#[derive(Debug, serde::Deserialize)]
+pub struct BatchImportItem {
+    pub url: String,
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct BatchImportRequest {
+    pub items: Vec<BatchImportItem>,
+    pub category_id: i64,
+    pub dek_base64: String,
+    pub credential_type: String,
+    pub filter_intranet: bool,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct BatchImportResult {
+    pub imported: i64,
+    pub skipped_intranet: i64,
+    pub skipped_empty: i64,
+    pub failed: i64,
+}
+
+fn is_intranet_url(url: &str) -> bool {
+    let lower = url.to_lowercase();
+    let stripped = lower
+        .strip_prefix("https://")
+        .or_else(|| lower.strip_prefix("http://"))
+        .unwrap_or(&lower);
+
+    let host = if let Some(slash) = stripped.find('/') {
+        &stripped[..slash]
+    } else {
+        stripped
+    };
+
+    let host = host.trim_start_matches("www.");
+
+    if host.starts_with("localhost")
+        || host.starts_with("127.")
+        || host.starts_with("0.")
+        || host.starts_with("10.")
+        || host.starts_with("192.168.")
+        || host.ends_with(".local")
+        || host.ends_with(".internal")
+        || host.contains("::1")
+        || !host.contains('.')
+    {
+        return true;
+    }
+
+    if let Some(ip_part) = host.split(':').next() {
+        if ip_part.starts_with("10.")
+            || ip_part.starts_with("192.168.")
+            || ip_part.starts_with("127.")
+            || ip_part.starts_with("0.")
+        {
+            return true;
+        }
+        if ip_part.starts_with("172.") {
+            if let Some(second) = ip_part.strip_prefix("172.").and_then(|s| s.split('.').next()) {
+                if let Ok(n) = second.parse::<u8>() {
+                    if (16..=31).contains(&n) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    false
+}
+
+#[tauri::command]
+pub async fn batch_import_credentials(
+    app: AppHandle,
+    request: BatchImportRequest,
+) -> Result<BatchImportResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let conn = get_conn(&app)?;
+
+        let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &request.dek_base64)
+            .map_err(|_| "Invalid DEK base64".to_string())?;
+        let dek: [u8; 32] = dek_bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| "DEK must be 32 bytes".to_string())?;
+
+        let mut result = BatchImportResult {
+            imported: 0,
+            skipped_intranet: 0,
+            skipped_empty: 0,
+            failed: 0,
+        };
+
+        conn.execute_batch("BEGIN TRANSACTION").map_err(|e| e.to_string())?;
+
+        let now = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+        let mut stmt = conn.prepare(
+            "INSERT INTO credentials (category_id, title, username, url, encrypted_data, nonce, tags, notes, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)"
+        ).map_err(|e| e.to_string())?;
+
+        for item in &request.items {
+            if request.filter_intranet && is_intranet_url(&item.url) {
+                result.skipped_intranet += 1;
+                continue;
+            }
+
+            if item.password.is_empty() && item.username.is_empty() {
+                result.skipped_empty += 1;
+                continue;
+            }
+
+            let title = if !item.url.is_empty() {
+                item.url.clone()
+            } else if !item.username.is_empty() {
+                item.username.clone()
+            } else {
+                "未命名".to_string()
+            };
+
+            let sensitive_data = SensitiveData {
+                credential_type: Some(request.credential_type.clone()),
+                password: if item.password.is_empty() { None } else { Some(item.password.clone()) },
+                ..Default::default()
+            };
+
+            let plaintext = serde_json::to_vec(&sensitive_data)
+                .map_err(|e| format!("serialize failed: {}", e))?;
+
+            let (encrypted, nonce_bytes) = crypto::encrypt(&dek, &plaintext)
+                .map_err(|e| format!("Encryption failed: {:?}", e))?;
+
+            let username_opt = if item.username.is_empty() { None } else { Some(item.username.as_str()) };
+            let url_opt = if item.url.is_empty() { None } else { Some(item.url.as_str()) };
+
+            match stmt.execute(params![
+                request.category_id,
+                title,
+                username_opt,
+                url_opt,
+                encrypted,
+                nonce_bytes.as_ref(),
+                None as Option<&str>,
+                None as Option<&str>,
+                now,
+            ]) {
+                Ok(_) => result.imported += 1,
+                Err(e) => {
+                    eprintln!("[batch_import] insert failed for '{}': {}", title, e);
+                    result.failed += 1;
+                }
+            }
+        }
+
+        drop(stmt);
+
+        conn.execute_batch("COMMIT").map_err(|e| {
+            let _ = conn.execute_batch("ROLLBACK");
+            format!("commit failed: {}", e)
+        })?;
+
+        eprintln!(
+            "[batch_import] done: imported={} intranet_skipped={} empty_skipped={} failed={}",
+            result.imported, result.skipped_intranet, result.skipped_empty, result.failed
+        );
+
+        Ok(result)
+    }).await.map_err(|e| format!("task join error: {}", e))?
 }

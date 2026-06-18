@@ -24,6 +24,10 @@ fn main() {
             workspace_root.join("crates/ai/src/commands.rs"),
             "oasis_ai::commands::",
         ),
+        (
+            workspace_root.join("crates/browser-data-extract/src/commands.rs"),
+            "oasis_browser_data_extract::commands::",
+        ),
     ];
 
     for (path, _) in &sources {
@@ -75,7 +79,9 @@ fn extract_handlers(path: &Path, prefix: &str) -> Vec<String> {
 }
 
 fn parse_pub_fn_name(line: &str) -> Option<String> {
-    let line = line.strip_prefix("pub fn ")?;
+    let line = line
+        .strip_prefix("pub async fn ")
+        .or_else(|| line.strip_prefix("pub fn "))?;
     let name = line.split_once('(')?.0.trim();
     if name.is_empty() {
         None

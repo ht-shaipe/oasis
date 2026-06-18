@@ -41,17 +41,28 @@ impl ChromiumKey {
 pub fn retrieve_chromium_key(user_data_dir: &str, _keychain_label: &str) -> ChromiumKey {
     let local_state_path = std::path::Path::new(user_data_dir).join("Local State");
     if !local_state_path.exists() {
-        return ChromiumKey { v10: None };
+        eprintln!("[browser-data-extract] Local State not found, trying keychain directly");
+        let key = derive_macos_key_via_security(_keychain_label);
+        eprintln!("[browser-data-extract] keychain key: {} bytes", key.len());
+        return ChromiumKey { v10: Some(key) };
     }
 
     let content = match std::fs::read_to_string(&local_state_path) {
         Ok(c) => c,
-        Err(_) => return ChromiumKey { v10: None },
+        Err(e) => {
+            eprintln!("[browser-data-extract] read Local State failed: {}, trying keychain", e);
+            let key = derive_macos_key_via_security(_keychain_label);
+            return ChromiumKey { v10: Some(key) };
+        }
     };
 
     let ls: serde_json::Value = match serde_json::from_str(&content) {
         Ok(v) => v,
-        Err(_) => return ChromiumKey { v10: None },
+        Err(e) => {
+            eprintln!("[browser-data-extract] parse Local State failed: {}, trying keychain", e);
+            let key = derive_macos_key_via_security(_keychain_label);
+            return ChromiumKey { v10: Some(key) };
+        }
     };
 
     let encrypted_key_b64 = match ls
@@ -61,7 +72,9 @@ pub fn retrieve_chromium_key(user_data_dir: &str, _keychain_label: &str) -> Chro
     {
         Some(k) => k,
         None => {
+            eprintln!("[browser-data-extract] no os_crypt.encrypted_key, trying keychain for '{}'", _keychain_label);
             let key = derive_macos_key_via_security(_keychain_label);
+            eprintln!("[browser-data-extract] keychain key: {} bytes", key.len());
             return ChromiumKey { v10: Some(key) };
         }
     };
@@ -71,36 +84,29 @@ pub fn retrieve_chromium_key(user_data_dir: &str, _keychain_label: &str) -> Chro
         encrypted_key_b64,
     ) {
         Ok(k) => k,
-        Err(_) => return ChromiumKey { v10: None },
+        Err(e) => {
+            eprintln!("[browser-data-extract] base64 decode failed: {}, trying keychain", e);
+            let key = derive_macos_key_via_security(_keychain_label);
+            return ChromiumKey { v10: Some(key) };
+        }
     };
 
+    eprintln!("[browser-data-extract] encrypted_key: {} bytes, prefix: {:?}", 
+        encrypted_key.len(), &encrypted_key[..encrypted_key.len().min(5)]);
+
     if encrypted_key.len() < 5 || &encrypted_key[..5] != b"DPAPI" {
+        eprintln!("[browser-data-extract] no DPAPI prefix, trying keychain");
         let key = derive_macos_key_via_security(_keychain_label);
+        eprintln!("[browser-data-extract] keychain key: {} bytes", key.len());
         return ChromiumKey { v10: Some(key) };
     }
 
-    let dpapi_blob = &encrypted_key[5..];
-
-    let keychain_password = retrieve_keychain_password(_keychain_label);
-    let key = match keychain_password {
-        Some(pwd) => pbkdf2_key(&pwd, CHROMIUM_MACOS_ITERATIONS, 16),
-        None => pbkdf2_key(CHROMIUM_LINUX_PASSWORD, CHROMIUM_LINUX_ITERATIONS, 16),
-    };
-
-    match decrypt_dpapi_blob(dpapi_blob, &key) {
-        Some(decrypted) => {
-            if decrypted.len() == 32 || decrypted.len() == 16 {
-                ChromiumKey { v10: Some(decrypted) }
-            } else {
-                let fallback = derive_macos_key_via_security(_keychain_label);
-                ChromiumKey { v10: Some(fallback) }
-            }
-        }
-        None => {
-            let fallback = derive_macos_key_via_security(_keychain_label);
-            ChromiumKey { v10: Some(fallback) }
-        }
-    }
+    // macOS doesn't use DPAPI - the key in Local State is for Windows.
+    // On macOS, always derive from Keychain.
+    eprintln!("[browser-data-extract] DPAPI prefix found (Windows format), using keychain fallback for '{}'", _keychain_label);
+    let key = derive_macos_key_via_security(_keychain_label);
+    eprintln!("[browser-data-extract] final key: {} bytes", key.len());
+    ChromiumKey { v10: Some(key) }
 }
 
 /// 通过 macOS `security` CLI 获取 Keychain 中存储的浏览器安全密码
@@ -110,20 +116,40 @@ pub fn retrieve_chromium_key(user_data_dir: &str, _keychain_label: &str) -> Chro
 #[cfg(target_os = "macos")]
 fn retrieve_keychain_password(label: &str) -> Option<Vec<u8>> {
     use std::process::Command;
-    let output = Command::new("security")
-        .args([
-            "find-generic-password",
-            "-wa",
-            label,
-        ])
-        .output()
-        .ok()?;
+
+    let account_name = match label {
+        "Chrome Safe Storage" => "Chrome",
+        "Chromium Safe Storage" => "Chromium",
+        "Opera Safe Storage" => "Opera",
+        "Yandex Browser Safe Storage" => "Yandex Browser",
+        "Microsoft Edge Safe Storage" => "Microsoft Edge",
+        "Brave Safe Storage" => "Brave",
+        "Vivaldi Safe Storage" => "Vivaldi",
+        _ => "",
+    };
+
+    let output = if account_name.is_empty() {
+        Command::new("security")
+            .args(["find-generic-password", "-wa", label])
+            .output()
+            .ok()?
+    } else {
+        Command::new("security")
+            .args(["find-generic-password", "-a", account_name, "-s", label, "-w"])
+            .output()
+            .ok()?
+    };
 
     if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("[browser-data-extract] keychain access failed for '{}': {}", label, stderr.trim());
         return None;
     }
 
     let password = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if password.is_empty() {
+        return None;
+    }
     Some(password.into_bytes())
 }
 
@@ -138,13 +164,7 @@ fn derive_macos_key_via_security(label: &str) -> Vec<u8> {
     }
 }
 
-/// macOS 上的 DPAPI blob 解密（当前为 stub，macOS 不使用 DPAPI）
-#[cfg(target_os = "macos")]
-fn decrypt_dpapi_blob(_blob: &[u8], _key: &[u8]) -> Option<Vec<u8>> {
-    None
-}
-
-// ── Linux 密钥获取 ──────────────────────────────────────────────────────
+// ── Linux 密钥获取 ────
 
 /// Linux 上获取 Chromium 密钥
 ///
@@ -731,18 +751,24 @@ pub fn copy_to_temp(file_path: &str) -> Result<std::path::PathBuf, String> {
     let temp_dir = std::env::temp_dir().join("oasis-browser-extract");
     std::fs::create_dir_all(&temp_dir).map_err(|e| format!("create temp dir: {}", e))?;
 
-    let dest = temp_dir.join(src.file_name().unwrap_or_default());
+    let file_name = src.file_name().unwrap_or_default().to_string_lossy();
+    let unique_name = format!("{}-{}-{}", file_name, std::process::id(), {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    });
+    let dest = temp_dir.join(&unique_name);
 
     std::fs::copy(src, &dest).map_err(|e| format!("copy file: {}", e))?;
 
     for ext in &["-wal", "-shm"] {
-        let sidecar = src.with_extension(
-            src.extension()
-                .map(|e| format!("{}{}", e.to_string_lossy(), ext))
-                .unwrap_or_else(|| ext[1..].to_string()),
-        );
+        let sidecar = src.with_extension({
+            let base = src.extension().map(|e| format!("{}{}", e.to_string_lossy(), ext))
+                .unwrap_or_else(|| ext[1..].to_string());
+            base
+        });
         if sidecar.exists() {
-            let sidecar_dest = temp_dir.join(sidecar.file_name().unwrap_or_default());
+            let sidecar_dest = temp_dir.join(format!("{}{}", unique_name, ext));
             let _ = std::fs::copy(&sidecar, &sidecar_dest);
         }
     }

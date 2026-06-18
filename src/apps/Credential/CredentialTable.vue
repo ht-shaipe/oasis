@@ -4,9 +4,9 @@
         <el-table v-else v-loading="loading" :data="data" style="width: 100%" @row-dblclick="handleRowDblClick">
             <el-table-column :label="titleLabel" min-width="200">
                 <template #default="{ row }">
-                    <div class="cred-title">
-                        <el-icon><Key /></el-icon>
-                        <span>{{ row.title }}</span>
+                    <div class="cred-title min-w-0">
+                        <el-icon class="shrink-0"><Key /></el-icon>
+                        <span class="truncate flex-1" :title="row.title">{{ row.title }}</span>
                     </div>
                 </template>
             </el-table-column>

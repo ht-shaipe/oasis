@@ -269,19 +269,105 @@ export function useCredential() {
         return invoke('import_csv_passwords', { csvPath });
     };
 
+    // ── Browser Data Extract (Direct) ──
+
+    interface BrowserProfileInternal {
+        name: string;
+        path: string;
+    }
+
+    interface BrowserInfoInternal {
+        key: string;
+        name: string;
+        kind: string;
+        user_data_dir: string;
+        profiles: BrowserProfileInternal[];
+    }
+
+    interface LoginEntryInternal {
+        url: string;
+        username: string;
+        password: string;
+        created_at?: string;
+    }
+
+    const discoverBrowsers = async (): Promise<BrowserInfoInternal[]> => {
+        return invoke<BrowserInfoInternal[]>('discover_browsers');
+    };
+
+    const extractBrowserPasswords = async (browserKey: string): Promise<LoginEntryInternal[]> => {
+        return invoke<LoginEntryInternal[]>('extract_browser_passwords', { browserKey });
+    };
+
+    // ── Batch Import ──
+
+    interface BatchImportItemInternal {
+        url: string;
+        username: string;
+        password: string;
+    }
+
+    interface BatchImportResultInternal {
+        imported: number;
+        skipped_intranet: number;
+        skipped_empty: number;
+        failed: number;
+    }
+
+    const batchImportCredentials = async (
+        items: BatchImportItemInternal[],
+        categoryId: number,
+        credentialType: string,
+        filterIntranet: boolean,
+    ): Promise<BatchImportResultInternal> => {
+        if (!dek.value) throw new Error('Vault is locked');
+        return invoke<BatchImportResultInternal>('batch_import_credentials', {
+            request: {
+                items,
+                category_id: categoryId,
+                dek_base64: dek.value,
+                credential_type: credentialType,
+                filter_intranet: filterIntranet,
+            },
+        });
+    };
+
     // ── Merge / Tidy ──
 
+    interface MergeGroup {
+        hostname: string;
+        credential_count: number;
+        usernames: string[];
+        is_intranet: boolean;
+        sample_url: string;
+    }
+
+    interface MergePreview {
+        total_credentials: number;
+        duplicates_count: number;
+        merge_groups: MergeGroup[];
+        intranet_groups_count: number;
+        intranet_credential_count: number;
+    }
+
     interface MergeResult {
-        groups_found: number;
-        credentials_merged: number;
         duplicates_removed: number;
         sites_created: number;
         accounts_created: number;
+        credentials_remaining: number;
+        intranet_skipped: number;
     }
 
-    const mergeCredentialsByUrl = async (): Promise<MergeResult> => {
+    const previewMergeByUrl = async (dekBase64: string): Promise<MergePreview> => {
+        return invoke<MergePreview>('preview_merge_by_url', { dekBase64 });
+    };
+
+    const mergeCredentialsByUrl = async (filterIntranet: boolean = true): Promise<MergeResult> => {
         if (!dek.value) throw new Error('Vault is locked');
-        return invoke<MergeResult>('merge_credentials_by_url', { dekBase64: dek.value });
+        return invoke<MergeResult>('merge_credentials_by_url', {
+            dekBase64: dek.value,
+            filterIntranet,
+        });
     };
 
     return {
@@ -323,7 +409,15 @@ export function useCredential() {
         // browser import
         importCsvPasswords,
 
+        // browser data extract
+        discoverBrowsers,
+        extractBrowserPasswords,
+
+        // batch import
+        batchImportCredentials,
+
         // merge / tidy
+        previewMergeByUrl,
         mergeCredentialsByUrl,
     };
 }

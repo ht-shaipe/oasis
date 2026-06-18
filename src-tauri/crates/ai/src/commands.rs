@@ -174,7 +174,19 @@ pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> std::result::Resul
         "stream": false,
     });
 
-    let resp = client.chat(&body).await.map_err(|e| format!("Chat failed: {}", e))?;
+    // LlmService trait uses `#[async_trait(?Send)]`, so the returned future
+    // is not `Send`. Wrap it in a single-threaded runtime on a blocking thread
+    // to satisfy Tauri's `Send` requirement for async commands.
+    let resp = tauri::async_runtime::spawn_blocking(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| format!("Runtime error: {}", e))?;
+        rt.block_on(client.chat(&body))
+    })
+    .await
+    .map_err(|e| format!("Task error: {}", e))?
+    .map_err(|e| format!("Chat failed: {}", e))?;
 
     let content = resp
         .get("choices")
@@ -232,25 +244,35 @@ pub async fn ai_chat_stream(
         "stream": true,
     });
 
-    let callback: Arc<StreamCallback> = {
-        let channel = channel.clone();
-        Arc::new(move |content: String, is_over: bool| {
-            let channel = channel.clone();
-            Box::pin(async move {
-                let _ = channel.send(StreamChunk {
-                    content,
-                    is_over,
-                    usage: None,
-                });
-                Ok(Value::Null)
-            }) as Pin<Box<dyn Future<Output = TubeResult<Value>> + Send>>
-        })
-    };
+    // LlmService trait uses `#[async_trait(?Send)]`, so the returned future
+    // is not `Send`. Wrap it in a single-threaded runtime on a blocking thread
+    // to satisfy Tauri's `Send` requirement for async commands.
+    let channel_for_blocking = channel.clone();
+    let resp = tauri::async_runtime::spawn_blocking(move || {
+        let callback: Arc<StreamCallback> = {
+            let channel = channel_for_blocking.clone();
+            Arc::new(move |content: String, is_over: bool| {
+                let channel = channel.clone();
+                Box::pin(async move {
+                    let _ = channel.send(StreamChunk {
+                        content,
+                        is_over,
+                        usage: None,
+                    });
+                    Ok(Value::Null)
+                }) as Pin<Box<dyn Future<Output = TubeResult<Value>> + Send>>
+            })
+        };
 
-    let resp = client
-        .chat_stream(&body, callback)
-        .await
-        .map_err(|e| format!("Stream chat failed: {}", e))?;
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| format!("Runtime error: {}", e))?;
+        rt.block_on(client.chat_stream(&body, callback))
+    })
+    .await
+    .map_err(|e| format!("Task error: {}", e))?
+    .map_err(|e| format!("Stream chat failed: {}", e))?;
 
     // 流结束后将最终的 usage 信息作为最后一个消息发送
     if let Some(usage) = resp.get("usage") {

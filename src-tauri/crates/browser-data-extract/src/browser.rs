@@ -383,8 +383,8 @@ fn discover_firefox_profiles(user_data_dir: &std::path::Path) -> Vec<ProfileInfo
             for entry in entries.flatten() {
                 let p = entry.path();
                 if p.is_dir()
-                    && p.join("logins.json").exists()
-                    || p.join("places.sqlite").exists()
+                    && (p.join("logins.json").exists()
+                        || p.join("places.sqlite").exists())
                 {
                     let name = p
                         .file_name()

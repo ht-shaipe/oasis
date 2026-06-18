@@ -54,7 +54,7 @@ pub struct CredentialDetail {
     pub category_name: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SensitiveData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_type: Option<String>,

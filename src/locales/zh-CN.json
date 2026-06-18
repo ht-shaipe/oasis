@@ -544,10 +544,10 @@
       "delete": "删除",
       "deleteConfirm": "确定删除此凭证吗？此操作不可恢复。",
       "merge": "整理",
-      "mergeConfirm": "将自动整理相同网址的凭证：相同网址不同账号密码的合并为一个网站，用户名密码完全相同的去重只保留一条。原凭证将被转换为网站账号形式。确认整理？",
+      "mergeConfirm": "将自动整理凭证：\n1. 去重：网址+用户名+密码完全相同的只保留一条\n2. 合并：同一域名下有多个不同账号的，合并为一个网站\n其余凭证保持不变。确认整理？",
       "mergeNoDuplicates": "没有需要整理的重复凭证",
       "more": "更多操作",
-      "mergeResult": "整理完成：发现 {groups} 组相同网址，合并 {merged} 条凭证，去重 {duplicates} 条，新建 {sites} 个网站"
+      "mergeResult": "整理完成：去重 {duplicates} 条，合并为 {sites} 个网站（{accounts} 个账号），剩余 {remaining} 条凭证"
     },
     "detail": {
       "title": "凭证详情",

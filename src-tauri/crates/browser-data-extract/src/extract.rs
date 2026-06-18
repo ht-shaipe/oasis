@@ -5,16 +5,18 @@ use crate::crypto;
 use crate::models::*;
 
 impl BrowserKind {
-    /// 获取 Chromium 系浏览器在 macOS Keychain 中的标签名
-    ///
-    /// 用于 `security find-generic-password -wa <label>` 获取安全存储密码。
-    pub fn keychain_label(&self, _key: &str) -> String {
-        match self {
-            BrowserKind::Chromium => "Chrome Safe Storage".to_string(),
-            BrowserKind::ChromiumOpera => "Opera Safe Storage".to_string(),
-            BrowserKind::ChromiumYandex => "Yandex Browser Safe Storage".to_string(),
-            _ => String::new(),
-        }
+    pub fn keychain_label(&self, key: &str) -> String {
+        match key {
+            "chrome" | "chrome_beta" | "chromium" => "Chrome Safe Storage",
+            "edge" => "Microsoft Edge Safe Storage",
+            "brave" => "Brave Safe Storage",
+            "vivaldi" => "Vivaldi Safe Storage",
+            "arc" => "Arc Safe Storage",
+            "coccoc" => "CocCoc Safe Storage",
+            "opera" | "opera_gx" => "Opera Safe Storage",
+            "yandex" => "Yandex Browser Safe Storage",
+            _ => "Chrome Safe Storage",
+        }.to_string()
     }
 }
 
@@ -132,27 +134,42 @@ fn extract_chromium_passwords(
 ) -> Vec<LoginEntry> {
     let db_path = std::path::Path::new(profile_path).join("Login Data");
     if !db_path.exists() {
+        eprintln!("[browser-data-extract] Login Data not found: {:?}", db_path);
         return vec![];
     }
 
     let temp_path = match crypto::copy_to_temp(&db_path.to_string_lossy()) {
         Ok(p) => p,
-        Err(_) => return vec![],
+        Err(e) => {
+            eprintln!("[browser-data-extract] copy_to_temp failed: {}", e);
+            return vec![];
+        }
     };
 
     let conn = match rusqlite::Connection::open(&temp_path) {
         Ok(c) => c,
-        Err(_) => return vec![],
+        Err(e) => {
+            eprintln!("[browser-data-extract] open Login Data failed: {}", e);
+            return vec![];
+        }
     };
 
     let mut stmt = match conn.prepare(
         "SELECT origin_url, username_value, password_value, date_created FROM logins",
     ) {
         Ok(s) => s,
-        Err(_) => return vec![],
+        Err(e) => {
+            eprintln!("[browser-data-extract] prepare query failed: {}", e);
+            return vec![];
+        }
     };
 
+    if key.is_empty() {
+        eprintln!("[browser-data-extract] WARNING: Chromium key is empty, passwords will be blank");
+    }
+
     let mut logins = Vec::new();
+    let mut decrypt_fail_count = 0;
     let rows = stmt.query_map([], |row| {
         let url: String = row.get(0)?;
         let username: String = row.get(1)?;
@@ -167,9 +184,17 @@ fn extract_chromium_passwords(
             let password = if enc.is_empty() {
                 String::new()
             } else {
-                crypto::decrypt_chromium_value(enc, key)
-                    .map(|v| String::from_utf8_lossy(&v).to_string())
-                    .unwrap_or_default()
+                match crypto::decrypt_chromium_value(enc, key) {
+                    Ok(v) => String::from_utf8_lossy(&v).to_string(),
+                    Err(e) => {
+                        decrypt_fail_count += 1;
+                        if decrypt_fail_count <= 3 {
+                            eprintln!("[browser-data-extract] decrypt failed for {}: {} (enc_len={}, prefix={:?})",
+                                row.0, e, enc.len(), &enc[..enc.len().min(3)]);
+                        }
+                        String::new()
+                    }
+                }
             };
 
             logins.push(LoginEntry {
@@ -179,6 +204,11 @@ fn extract_chromium_passwords(
                 created_at: chromium_epoch_to_datetime(row.3),
             });
         }
+    }
+
+    if decrypt_fail_count > 0 {
+        eprintln!("[browser-data-extract] {} of {} passwords failed to decrypt",
+            decrypt_fail_count, logins.len());
     }
 
     let _ = std::fs::remove_file(&temp_path);

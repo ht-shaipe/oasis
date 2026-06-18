@@ -1,57 +1,121 @@
 <template>
     <AppDialog
         v-model="visible"
-        title="从浏览器导入网站密码（CSV）"
+        title="从浏览器导入网站密码"
         width="750px"
         append-to-body
         destroy-on-close
         @closed="handleClosed">
-        <!-- ═══ Step 1: CSV Upload ═══ -->
-        <template v-if="!importedItems.length">
-            <!-- 使用提示 -->
-            <el-collapse v-model="activeNames" class="usage-tips">
-                <el-collapse-item title="使用提示：如何从浏览器导出密码 CSV" name="1">
-                    <ul class="tip-list">
-                        <li>
-                            <strong>Chrome</strong>：打开 <code>chrome://password-manager/settings</code> &rarr;
-                            下载文件 &rarr; 选择导出的 CSV
-                        </li>
-                        <li>
-                            <strong>Edge</strong>：打开 <code>edge://wallet/passwords</code> &rarr; 设置 &rarr; 导出密码
-                            &rarr; 选择导出的 CSV
-                        </li>
-                        <li>
-                            <strong>Firefox</strong>：打开 <code>about:logins</code> &rarr; 三点菜单 &rarr; 导出登录信息
-                            &rarr; 选择导出的 CSV
-                        </li>
-                        <li>
-                            <strong>Brave</strong>：打开 <code>brave://password-manager/settings</code> &rarr; 下载文件
-                            &rarr; 选择导出的 CSV
-                        </li>
-                        <li>
-                            <strong>Safari</strong>：打开 Safari &rarr; 设置 &rarr; 密码 &rarr; 三点菜单 &rarr;
-                            导出所有密码 &rarr; 选择导出的 CSV
-                        </li>
-                    </ul>
-                </el-collapse-item>
-            </el-collapse>
-
-            <!-- 文件上传区域 -->
-            <div class="csv-upload-area" @click="handleClickUpload">
-                <el-icon class="upload-icon" :size="40"><UploadFilled /></el-icon>
-                <div class="upload-text">点击选择 CSV 文件</div>
-                <div class="upload-tip">支持 Chrome / Edge / Firefox / Brave / Safari 导出的 CSV 文件</div>
+        <!-- ═══ Step 1: Choose import method ═══ -->
+        <template v-if="!importedItems.length && !parsing">
+            <!-- Import method tabs -->
+            <div class="import-method-tabs">
+                <div
+                    class="method-tab"
+                    :class="{ active: importMethod === 'direct' }"
+                    @click="importMethod = 'direct'">
+                    <el-icon :size="20"><Monitor /></el-icon>
+                    <span>直接提取</span>
+                </div>
+                <div
+                    class="method-tab"
+                    :class="{ active: importMethod === 'csv' }"
+                    @click="importMethod = 'csv'">
+                    <el-icon :size="20"><Document /></el-icon>
+                    <span>CSV 文件</span>
+                </div>
             </div>
 
-            <div v-if="parsing" class="browser-loading">
-                <el-icon class="is-loading" :size="20"><Loading /></el-icon>
-                <span>正在解析 CSV 文件...</span>
-            </div>
+            <!-- ── Direct extraction ── -->
+            <template v-if="importMethod === 'direct'">
+                <div v-if="scanningBrowsers" class="browser-loading">
+                    <el-icon class="is-loading" :size="20"><Loading /></el-icon>
+                    <span>正在扫描浏览器...</span>
+                </div>
+
+                <div v-else-if="browsers.length === 0" class="no-browser-tip">
+                    <el-icon :size="32" color="#9ca3af"><WarningFilled /></el-icon>
+                    <p>未检测到已安装的浏览器</p>
+                </div>
+
+                <div v-else class="browser-list">
+                    <div
+                        v-for="browser in browsers"
+                        :key="browser.key"
+                        class="browser-card"
+                        :class="{ selected: selectedBrowserKey === browser.key, extracting: extractingKey === browser.key }"
+                        @click="handleSelectBrowser(browser)">
+                        <div class="browser-icon">
+                            <el-icon :size="28"><Monitor /></el-icon>
+                        </div>
+                        <div class="browser-info">
+                            <div class="browser-name">{{ browser.name }}</div>
+                            <div class="browser-profiles">
+                                {{ browser.profiles.length }} 个 Profile
+                            </div>
+                        </div>
+                        <div v-if="extractingKey === browser.key" class="browser-extracting">
+                            <el-icon class="is-loading" :size="16"><Loading /></el-icon>
+                        </div>
+                        <el-icon v-else-if="selectedBrowserKey === browser.key" :size="18" color="var(--el-color-primary)"><Check /></el-icon>
+                    </div>
+                </div>
+            </template>
+
+            <!-- ── CSV upload ── -->
+            <template v-if="importMethod === 'csv'">
+                <el-collapse v-model="activeNames" class="usage-tips">
+                    <el-collapse-item title="使用提示：如何从浏览器导出密码 CSV" name="1">
+                        <ul class="tip-list">
+                            <li>
+                                <strong>Chrome</strong>：打开 <code>chrome://password-manager/settings</code> &rarr;
+                                下载文件 &rarr; 选择导出的 CSV
+                            </li>
+                            <li>
+                                <strong>Edge</strong>：打开 <code>edge://wallet/passwords</code> &rarr; 设置 &rarr; 导出密码
+                                &rarr; 选择导出的 CSV
+                            </li>
+                            <li>
+                                <strong>Firefox</strong>：打开 <code>about:logins</code> &rarr; 三点菜单 &rarr; 导出登录信息
+                                &rarr; 选择导出的 CSV
+                            </li>
+                            <li>
+                                <strong>Brave</strong>：打开 <code>brave://password-manager/settings</code> &rarr; 下载文件
+                                &rarr; 选择导出的 CSV
+                            </li>
+                            <li>
+                                <strong>Safari</strong>：打开 Safari &rarr; 设置 &rarr; 密码 &rarr; 三点菜单 &rarr;
+                                导出所有密码 &rarr; 选择导出的 CSV
+                            </li>
+                        </ul>
+                    </el-collapse-item>
+                </el-collapse>
+
+                <div class="csv-upload-area" @click="handleClickUpload">
+                    <el-icon class="upload-icon" :size="40"><UploadFilled /></el-icon>
+                    <div class="upload-text">点击选择 CSV 文件</div>
+                    <div class="upload-tip">支持 Chrome / Edge / Firefox / Brave / Safari 导出的 CSV 文件</div>
+                </div>
+            </template>
         </template>
 
+        <!-- ═══ Parsing loading ═══ -->
+        <div v-if="parsing" class="browser-loading">
+            <el-icon class="is-loading" :size="20"><Loading /></el-icon>
+            <span>{{ parsingText }}</span>
+        </div>
+
         <!-- ═══ Step 2: Results ═══ -->
-        <template v-else>
-            <!-- 导入配置 -->
+        <template v-if="importedItems.length">
+            <div class="import-source-tag">
+                <el-tag size="small" type="info">
+                    来自 {{ sourceBrowserName || 'CSV' }} · 共 {{ importedItems.length }} 条
+                    <template v-if="filterIntranet && intranetCount > 0">
+                        · 已过滤内网 {{ intranetCount }} 条 · 显示 {{ filteredItems.length }} 条
+                    </template>
+                </el-tag>
+            </div>
+
             <div class="import-config">
                 <div class="config-row">
                     <div class="config-item">
@@ -88,7 +152,7 @@
                 </div>
             </div>
 
-            <el-table :data="importedItems" ref="tableRef" max-height="400" @selection-change="handleSelectionChange">
+            <el-table :data="filteredItems" ref="tableRef" max-height="400" @selection-change="handleSelectionChange">
                 <el-table-column type="selection" width="50" />
                 <el-table-column type="index" label="序号" width="60" />
                 <el-table-column prop="url" label="URL" min-width="200" show-overflow-tooltip />
@@ -115,9 +179,17 @@
             </el-table>
 
             <div class="import-controls">
-                <el-checkbox v-model="selectAll" :indeterminate="isIndeterminate" @change="handleSelectAllChange">
-                    全选 / 取消全选
-                </el-checkbox>
+                <div class="flex items-center gap-4">
+                    <el-checkbox v-model="selectAll" :indeterminate="isIndeterminate" @change="handleSelectAllChange">
+                        全选 / 取消全选
+                    </el-checkbox>
+                    <el-checkbox v-model="filterIntranet">
+                        过滤内网地址
+                        <template v-if="intranetCount > 0">
+                            ({{ intranetCount }} 条)
+                        </template>
+                    </el-checkbox>
+                </div>
                 <el-button
                     type="primary"
                     :disabled="selectedRows.length === 0"
@@ -139,11 +211,24 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { View, Hide, Loading, UploadFilled } from '@element-plus/icons-vue';
-import { Category, useCredential, type CreateCredentialRequest } from '@/composables/useCredential';
+import { View, Hide, Loading, UploadFilled, Monitor, Document, Check, WarningFilled } from '@element-plus/icons-vue';
+import { Category, useCredential } from '@/composables/useCredential';
 import { useFileDialog } from '@/composables/useFileDialog';
 import { credentialTemplateOptions, type CredentialTemplateKey } from './credentialForm';
 import AppDialog from '@/components/common/AppDialog.vue';
+
+interface BrowserProfile {
+    name: string;
+    path: string;
+}
+
+interface BrowserInfo {
+    key: string;
+    name: string;
+    kind: string;
+    user_data_dir: string;
+    profiles: BrowserProfile[];
+}
 
 const props = defineProps<{
     modelValue: boolean;
@@ -160,14 +245,78 @@ const visible = computed({
     set: (v) => emit('update:modelValue', v),
 });
 
-// ── Preload categories on mount ──
-
 onMounted(() => {
     fetchCategories();
+    scanBrowsers();
 });
 
-const { importCsvPasswords, createCredential, listCategories, listCredentials, createCategory } = useCredential();
+const {
+    importCsvPasswords,
+    batchImportCredentials,
+    listCategories,
+    listCredentials,
+    createCategory,
+    discoverBrowsers,
+    extractBrowserPasswords,
+} = useCredential();
 const { selectFile } = useFileDialog();
+
+// ── Import method ──
+
+const importMethod = ref<'direct' | 'csv'>('direct');
+
+// ── Browser scanning ──
+
+const scanningBrowsers = ref(false);
+const browsers = ref<BrowserInfo[]>([]);
+const selectedBrowserKey = ref<string | null>(null);
+const extractingKey = ref<string | null>(null);
+const sourceBrowserName = ref('');
+
+const scanBrowsers = async () => {
+    scanningBrowsers.value = true;
+    try {
+        browsers.value = await discoverBrowsers();
+    } catch (err) {
+        console.error('扫描浏览器失败:', err);
+        browsers.value = [];
+    } finally {
+        scanningBrowsers.value = false;
+    }
+};
+
+const handleSelectBrowser = async (browser: BrowserInfo) => {
+    if (extractingKey.value) return;
+    selectedBrowserKey.value = browser.key;
+    extractingKey.value = browser.key;
+    parsing.value = true;
+    parsingText.value = `正在从 ${browser.name} 提取密码...`;
+
+    try {
+        const logins = await extractBrowserPasswords(browser.key);
+        sourceBrowserName.value = browser.name;
+        importedItems.value = logins.map((item, index) => ({
+            id: index,
+            url: item.url,
+            username: item.username,
+            password: item.password,
+            browser: browser.key,
+        }));
+        passwordVisible.value = {};
+
+        if (importedItems.value.length === 0) {
+            ElMessage.info(`${browser.name} 中未找到保存的密码`);
+            importedItems.value = [];
+        }
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        ElMessage.error(`提取失败: ${msg}`);
+        selectedBrowserKey.value = null;
+    } finally {
+        extractingKey.value = null;
+        parsing.value = false;
+    }
+};
 
 // ── Usage tips collapse ──
 
@@ -175,7 +324,31 @@ const activeNames = ref(['1']);
 
 // ── CSV upload ──
 
+const handleClickUpload = async () => {
+    const filePath = await selectFile({
+        title: '选择浏览器导出的 CSV 文件',
+        extensions: ['csv'],
+    });
+    if (!filePath) return;
+
+    parsing.value = true;
+    parsingText.value = '正在解析 CSV 文件...';
+    try {
+        const items = await importCsvPasswords(filePath);
+        sourceBrowserName.value = '';
+        importedItems.value = items;
+        passwordVisible.value = {};
+    } catch (err: unknown) {
+        ElMessage.error(err instanceof Error ? err.message : '解析 CSV 失败');
+    } finally {
+        parsing.value = false;
+    }
+};
+
+// ── Loading state ──
+
 const parsing = ref(false);
+const parsingText = ref('');
 
 // ── Type & category selection ──
 
@@ -203,7 +376,6 @@ const fetchCategories = async () => {
 
         categoryTree.value = tree;
 
-        // 异步加载凭证数量统计（不阻塞树展示）
         loadCounts();
     } catch (err) {
         console.error('获取分类列表失败:', err);
@@ -220,7 +392,6 @@ const loadCounts = async () => {
             }
         });
 
-        // 递归重建节点名称（含数量），返回新数组触发响应式更新
         const attachCount = (nodes: Category[]): Category[] => {
             return nodes.map((n) => {
                 const cnt = countMap.get(n.id) || 0;
@@ -251,6 +422,31 @@ const importedItems = ref<BrowserCredential[]>([]);
 const passwordVisible = ref<Record<number, boolean>>({});
 const importedIds = ref<Set<number>>(new Set());
 const tableRef = ref();
+
+const isUrlIntranet = (url: string): boolean => {
+    const lower = url.toLowerCase();
+    const stripped = lower
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '');
+    const host = stripped.split('/')[0].split(':')[0];
+    return /^localhost/i.test(host)
+        || /^127\./.test(host)
+        || /^0\./.test(host)
+        || /^10\./.test(host)
+        || /^192\.168\./.test(host)
+        || /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+        || /\.local$/i.test(host)
+        || /\.internal$/i.test(host)
+        || /::1/.test(host)
+        || !host.includes('.');
+};
+
+const intranetCount = computed(() => importedItems.value.filter((item) => isUrlIntranet(item.url)).length);
+const filteredItems = computed(() =>
+    filterIntranet.value
+        ? importedItems.value.filter((item) => !isUrlIntranet(item.url))
+        : importedItems.value,
+);
 
 // ── Selection ──
 
@@ -286,27 +482,6 @@ const togglePassword = (index: number) => {
     passwordVisible.value[index] = !passwordVisible.value[index];
 };
 
-// ── File selection → parse CSV ──
-
-const handleClickUpload = async () => {
-    const filePath = await selectFile({
-        title: '选择浏览器导出的 CSV 文件',
-        extensions: ['csv'],
-    });
-    if (!filePath) return;
-
-    parsing.value = true;
-    try {
-        const items = await importCsvPasswords(filePath);
-        importedItems.value = items;
-        passwordVisible.value = {};
-    } catch (err: unknown) {
-        ElMessage.error(err instanceof Error ? err.message : '解析 CSV 失败');
-    } finally {
-        parsing.value = false;
-    }
-};
-
 // ── Dialog open → reset ──
 
 watch(
@@ -325,12 +500,18 @@ const resetState = () => {
     selectedRows.value = [];
     selectAll.value = false;
     parsing.value = false;
+    parsingText.value = '';
     importing.value = false;
     importProgress.value = 0;
     activeNames.value = ['1'];
     selectedCredentialType.value = 'account';
     selectedCategoryId.value = null;
+    importMethod.value = 'direct';
+    selectedBrowserKey.value = null;
+    extractingKey.value = null;
+    sourceBrowserName.value = '';
     fetchCategories();
+    scanBrowsers();
 };
 
 const handleClosed = () => {
@@ -341,12 +522,7 @@ const handleClosed = () => {
 
 const importing = ref(false);
 const importProgress = ref(0);
-
-const generateNonce = (): string => {
-    const nonce = new Uint8Array(12);
-    crypto.getRandomValues(nonce);
-    return btoa(String.fromCharCode(...nonce));
-};
+const filterIntranet = ref(true);
 
 const resolveDefaultCategory = async (): Promise<number> => {
     const categories = await listCategories();
@@ -384,49 +560,55 @@ const handleImportSelected = async () => {
         return;
     }
 
-    let successCount = 0;
-    let failCount = 0;
+    try {
+        const itemsToSend = filterIntranet.value
+            ? toImport.filter((item) => !isUrlIntranet(item.url))
+            : toImport;
 
-    for (let i = 0; i < toImport.length; i++) {
-        const item = toImport[i];
-        try {
-            const nonceBase64 = generateNonce();
-            const sensitiveDataJson = JSON.stringify({
-                credential_type: selectedCredentialType.value,
-                password: item.password,
-            });
-
-            const request: CreateCredentialRequest = {
-                category_id: categoryId,
-                title: item.url || item.username || '未命名',
-                username: item.username || undefined,
-                url: item.url || undefined,
-                sensitive_data_json: sensitiveDataJson,
-                dekBase64: props.dek,
-                nonceBase64,
-            };
-
-            await createCredential(request);
-            importedIds.value = new Set([...importedIds.value, item.id]);
-            successCount++;
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error(`导入失败 [${item.url || item.username}]:`, msg);
-            failCount++;
+        if (itemsToSend.length === 0) {
+            ElMessage.info('选中项均为内网地址，已过滤');
+            importing.value = false;
+            return;
         }
 
-        importProgress.value = Math.round(((i + 1) / toImport.length) * 100);
+        const result = await batchImportCredentials(
+            itemsToSend.map((item) => ({
+                url: item.url,
+                username: item.username,
+                password: item.password,
+            })),
+            categoryId,
+            selectedCredentialType.value,
+            false,
+        );
+
+        importProgress.value = 100;
+
+        const intranetFilteredCount = toImport.length - itemsToSend.length;
+        const parts: string[] = [];
+        if (result.imported > 0) parts.push(`成功 ${result.imported} 条`);
+        if (intranetFilteredCount > 0) parts.push(`内网跳过 ${intranetFilteredCount} 条`);
+        if (result.skipped_empty > 0) parts.push(`空数据跳过 ${result.skipped_empty} 条`);
+        if (result.failed > 0) parts.push(`失败 ${result.failed} 条`);
+
+        if (result.imported > 0) {
+            ElMessage.success(parts.join('，'));
+            toImport.forEach((item) => {
+                if (!filterIntranet.value || !isUrlIntranet(item.url)) {
+                    importedIds.value = new Set([...importedIds.value, item.id]);
+                }
+            });
+        } else if (intranetFilteredCount > 0 || result.skipped_empty > 0) {
+            ElMessage.info(parts.join('，'));
+        } else {
+            ElMessage.error(parts.join('，') || '导入失败');
+        }
+    } catch (err: unknown) {
+        ElMessage.error(err instanceof Error ? err.message : '批量导入失败');
+    } finally {
+        importing.value = false;
     }
 
-    importing.value = false;
-
-    if (successCount > 0) {
-        ElMessage.success(`成功导入 ${successCount} 条凭证${failCount > 0 ? `，${failCount} 条失败` : ''}`);
-    } else {
-        ElMessage.error(`导入失败，${failCount} 条均未成功。请查看控制台获取详细错误。`);
-    }
-
-    // Check if all unimported items are done
     const allDone = importedItems.value.every((item) => importedIds.value.has(item.id));
     if (allDone) {
         setTimeout(() => {
@@ -448,6 +630,111 @@ watch(
 </script>
 
 <style scoped>
+.import-method-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.method-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    font-size: var(--app-font-14);
+    color: #4b5563;
+}
+
+.method-tab:hover {
+    border-color: var(--el-color-primary-light-3, #79bbff);
+    background-color: rgba(64, 158, 255, 0.04);
+}
+
+.method-tab.active {
+    border-color: var(--el-color-primary, #409eff);
+    background-color: rgba(64, 158, 255, 0.06);
+    color: var(--el-color-primary, #409eff);
+}
+
+.browser-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.browser-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.browser-card:hover {
+    border-color: var(--el-color-primary-light-3, #79bbff);
+    background-color: rgba(64, 158, 255, 0.04);
+}
+
+.browser-card.selected {
+    border-color: var(--el-color-primary, #409eff);
+    background-color: rgba(64, 158, 255, 0.06);
+}
+
+.browser-card.extracting {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.browser-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    color: #6b7280;
+}
+
+.browser-info {
+    flex: 1;
+}
+
+.browser-name {
+    font-size: var(--app-font-14);
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.browser-profiles {
+    font-size: var(--app-font-12);
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+.browser-extracting {
+    color: var(--el-color-primary, #409eff);
+}
+
+.no-browser-tip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 32px 0;
+    color: #9ca3af;
+    font-size: var(--app-font-14);
+}
+
 .usage-tips {
     margin-bottom: 16px;
 }
@@ -502,6 +789,10 @@ watch(
 .upload-tip {
     font-size: var(--app-font-12);
     color: #9ca3af;
+}
+
+.import-source-tag {
+    margin-bottom: 12px;
 }
 
 .import-config {
