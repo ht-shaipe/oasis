@@ -28,6 +28,7 @@ export interface CredentialView {
     created_at: string;
     updated_at: string;
     category_name: string | null;
+    accounts_count?: number | null;
 }
 
 export interface SensitiveData {
@@ -175,7 +176,10 @@ export function useCredential() {
     // ── Credential ──
 
     const listCredentials = async (categoryId?: number): Promise<CredentialView[]> => {
-        return invoke<CredentialView[]>('list_credentials', { categoryId: categoryId ?? null });
+        return invoke<CredentialView[]>('list_credentials', {
+            categoryId: categoryId ?? null,
+            dekBase64: dek.value ?? null,
+        });
     };
 
     const getCredential = async (id: number): Promise<CredentialDetail> => {

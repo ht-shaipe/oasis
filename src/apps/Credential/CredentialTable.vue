@@ -17,6 +17,12 @@
                     </div>
                 </template>
             </el-table-column>
+            <el-table-column :label="accountsCountLabel" width="80" align="center">
+                <template #default="{ row }">
+                    <el-tag v-if="row.accounts_count && row.accounts_count > 1" size="small" round>{{ row.accounts_count }}</el-tag>
+                    <span v-else>1</span>
+                </template>
+            </el-table-column>
             <el-table-column :label="urlLabel" min-width="180">
                 <template #default="{ row }">
                     <div class="flex min-w-0 items-center gap-1">
@@ -82,6 +88,7 @@ interface Props {
     emptyDescription: string;
     titleLabel: string;
     usernameLabel: string;
+    accountsCountLabel: string;
     urlLabel: string;
     categoryLabel: string;
     updatedAtLabel: string;

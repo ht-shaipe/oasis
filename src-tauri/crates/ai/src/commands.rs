@@ -1,4 +1,4 @@
-use ai_llm_kit::{LlmClient, LlmService, StreamCallback};
+use ai_llm_kit::{LlmClient, LlmFactory, LlmProvider, LlmService, StreamCallback};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -38,6 +38,12 @@ pub struct LlmModel {
     pub max_tokens: u32,
     pub description: String,
     pub enabled: bool,
+    #[serde(default = "default_model_type")]
+    pub model_type: String,
+}
+
+fn default_model_type() -> String {
+    "chat".to_string()
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -182,7 +188,8 @@ pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> std::result::Resul
             .enable_all()
             .build()
             .map_err(|e| format!("Runtime error: {}", e))?;
-        rt.block_on(client.chat(&body))
+        let local = tokio::task::LocalSet::new();
+        local.block_on(&rt, client.chat(&body))
     })
     .await
     .map_err(|e| format!("Task error: {}", e))?
@@ -212,6 +219,8 @@ pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> std::result::Resul
 #[serde(rename_all = "camelCase")]
 pub struct StreamChunk {
     pub content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning_content: Option<String>,
     pub is_over: bool,
     pub usage: Option<ChatUsage>,
 }
@@ -254,8 +263,59 @@ pub async fn ai_chat_stream(
             Arc::new(move |content: String, is_over: bool| {
                 let channel = channel.clone();
                 Box::pin(async move {
+                    if content.is_empty() {
+                        let _ = channel.send(StreamChunk {
+                            content: String::new(),
+                            reasoning_content: None,
+                            is_over,
+                            usage: None,
+                        });
+                        return Ok(Value::Null);
+                    }
+
+                    let decoded = if content.starts_with("data: ") {
+                        &content[6..]
+                    } else {
+                        &content
+                    };
+
+                    if decoded.trim() == "[DONE]" {
+                        let _ = channel.send(StreamChunk {
+                            content: String::new(),
+                            reasoning_content: None,
+                            is_over: true,
+                            usage: None,
+                        });
+                        return Ok(Value::Null);
+                    }
+
+                    let (chunk_content, chunk_reasoning) = match serde_json::from_str::<serde_json::Value>(decoded) {
+                        Ok(json) => {
+                            let delta = json
+                                .get("choices")
+                                .and_then(|c| c.as_array())
+                                .and_then(|arr| arr.get(0))
+                                .and_then(|choice| choice.get("delta"));
+
+                            let text = delta
+                                .and_then(|d| d.get("content"))
+                                .and_then(|c| c.as_str())
+                                .map(|s| s.to_string())
+                                .unwrap_or_default();
+
+                            let reasoning = delta
+                                .and_then(|d| d.get("reasoning_content"))
+                                .and_then(|r| r.as_str())
+                                .map(|s| s.to_string());
+
+                            (text, reasoning)
+                        }
+                        Err(_) => (content.clone(), None),
+                    };
+
                     let _ = channel.send(StreamChunk {
-                        content,
+                        content: chunk_content,
+                        reasoning_content: chunk_reasoning,
                         is_over,
                         usage: None,
                     });
@@ -268,7 +328,8 @@ pub async fn ai_chat_stream(
             .enable_all()
             .build()
             .map_err(|e| format!("Runtime error: {}", e))?;
-        rt.block_on(client.chat_stream(&body, callback))
+        let local = tokio::task::LocalSet::new();
+        local.block_on(&rt, client.chat_stream(&body, callback))
     })
     .await
     .map_err(|e| format!("Task error: {}", e))?
@@ -278,6 +339,7 @@ pub async fn ai_chat_stream(
     if let Some(usage) = resp.get("usage") {
         let _ = channel.send(StreamChunk {
             content: String::new(),
+            reasoning_content: None,
             is_over: true,
             usage: Some(ChatUsage {
                 prompt_tokens: usage
@@ -297,4 +359,96 @@ pub async fn ai_chat_stream(
     }
 
     Ok(())
+}
+
+// ── Tauri Commands: 平商列表 & 远程模型拉取 ─────────────────────────
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ProviderOption {
+    pub code: String,
+    pub name: String,
+    pub base_url: String,
+}
+
+const PROVIDER_INFO: &[(&str, &str, &str)] = &[
+    ("deepseek", "DeepSeek", "https://api.deepseek.com"),
+    ("chatgpt", "ChatGPT", "https://api.openai.com/v1"),
+    ("ollama", "Ollama", "http://localhost:11434"),
+    ("kimi", "Kimi", "https://api.moonshot.cn/v1"),
+    ("hunyuan", "腾讯混元", "https://api.hunyuan.cloud.tencent.com/v1"),
+    ("doubao", "豆包", "https://ark.cn-beijing.volces.com/api/v3"),
+    ("mimo", "小米MiMo", "https://xiaomi.com/api/v1"),
+    ("qwen", "阿里千问", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+    ("zhipu", "智谱", "https://open.bigmodel.cn/api/paas/v4"),
+    ("wenxin", "文心一言", "https://qianfan.baidubce.com/v2"),
+    ("xunfei", "讯飞", "https://spark-api-open.xf-yun.com/v1"),
+];
+
+#[tauri::command]
+pub fn get_llm_providers() -> Vec<ProviderOption> {
+    PROVIDER_INFO
+        .iter()
+        .map(|(code, name, base_url)| ProviderOption {
+            code: code.to_string(),
+            name: name.to_string(),
+            base_url: base_url.to_string(),
+        })
+        .collect()
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RemoteModel {
+    pub id: String,
+    pub name: String,
+    pub owned_by: String,
+}
+
+#[tauri::command]
+pub async fn fetch_provider_models(
+    provider: String,
+    base_url: String,
+    api_key: String,
+) -> std::result::Result<Vec<RemoteModel>, String> {
+    let access_token = format!("Bearer {}", api_key);
+
+    let client = LlmClient::new(&base_url, "", &access_token);
+
+    let resp = tauri::async_runtime::spawn_blocking(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| format!("Runtime error: {}", e))?;
+        let local = tokio::task::LocalSet::new();
+        local.block_on(&rt, client.models())
+    })
+    .await
+    .map_err(|e| format!("Task error: {}", e))?
+    .map_err(|e| format!("Fetch models failed: {}", e))?;
+
+    let model_list: Vec<Value> = resp
+        .get("data")
+        .and_then(|d| d.as_array())
+        .map(|arr| arr.to_vec())
+        .unwrap_or_default();
+
+    let remote_models: Vec<RemoteModel> = model_list
+        .iter()
+        .filter_map(|m| {
+            let id = m.get("id").and_then(|v| v.as_str()).map(|s| s.to_string()).unwrap_or_default();
+            if id.is_empty() {
+                return None;
+            }
+            let name = m.get("name")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| id.clone());
+            let owned_by = m.get("owned_by")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| provider.clone());
+            Some(RemoteModel { id, name, owned_by })
+        })
+        .collect();
+
+    Ok(remote_models)
 }

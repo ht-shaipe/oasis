@@ -75,6 +75,8 @@
   --color-input-border: #ddd;
   --color-card-bg: rgba(255, 255, 255, 0.6);
   --color-card-border: rgba(0, 0, 0, 0.06);
+  --color-provider-tag-text: #42b883;
+  --color-provider-tag-bg: rgba(66, 184, 131, 0.1);
 
   /* 链接 */
   --color-link: #337ab7;
@@ -183,6 +185,8 @@
   --color-input-border: #555;
   --color-card-bg: rgba(50, 50, 54, 0.6);
   --color-card-border: rgba(255, 255, 255, 0.08);
+  --color-provider-tag-text: #6dd5a0;
+  --color-provider-tag-bg: rgba(66, 184, 131, 0.18);
 
   /* 链接 */
   --color-link: #4da3ff;

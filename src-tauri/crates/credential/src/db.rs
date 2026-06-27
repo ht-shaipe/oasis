@@ -230,6 +230,7 @@ fn to_credential_view(row: &rusqlite::Row) -> rusqlite::Result<CredentialView> {
         created_at: row.get(7)?,
         updated_at: row.get(8)?,
         category_name: row.get(9)?,
+        accounts_count: None,
     })
 }
 

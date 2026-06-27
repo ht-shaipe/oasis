@@ -132,6 +132,7 @@
                             :empty-description="t('credential.list.empty')"
                             :title-label="t('credential.list.title')"
                             :username-label="t('credential.list.username')"
+                            :accounts-count-label="t('credential.list.accountsCount')"
                             :url-label="t('credential.list.url')"
                             :category-label="t('credential.list.category')"
                             :updated-at-label="t('credential.list.updatedAt')"
@@ -190,17 +191,18 @@
             :title="t('credential.detail.title')"
             width="600"
             append-to-body
-            destroy-on-close>
+            destroy-on-close
+            class="credential-detail-dialog">
             <template v-if="credentialDetail">
                 <h4
                     class="mb-2.5 mt-0 pb-1.5 text-sm font-600 text-[var(--color-text-secondary)] border-b border-solid border-0 border-[var(--color-window-titlebar-border)]">
                     {{ t('credential.detail.basicInfo') }}
                 </h4>
-                <el-descriptions :column="1" border size="small" :label-style="{ width: '100px', minWidth: '100px' }">
+                <el-descriptions :column="1" border :label-style="{ width: '100px', minWidth: '100px' }">
                     <el-descriptions-item :label="t('credential.list.title')">
                         <div class="flex min-w-0 items-center gap-1">
                             <span class="truncate flex-1">{{ credentialDetail.title }}</span>
-                            <el-button link size="small" @click="copyToClipboard(credentialDetail.title)">
+                            <el-button link @click="copyToClipboard(credentialDetail.title)">
                                 <el-icon><CopyDocument /></el-icon>
                             </el-button>
                         </div>
@@ -210,7 +212,6 @@
                             <span class="truncate flex-1">{{ credentialDetail.username }}</span>
                             <el-button
                                 link
-                                size="small"
                                 @click="copyToClipboard(credentialDetail.username ?? undefined)">
                                 <el-icon><CopyDocument /></el-icon>
                             </el-button>
@@ -223,12 +224,11 @@
                             }}</span>
                             <el-button
                                 link
-                                size="small"
                                 @click="openUrlInBrowser(credentialDetail.url)">
                                 <el-icon><Link /></el-icon>
                                 {{ t('app.open') }}
                             </el-button>
-                            <el-button link size="small" @click="copyToClipboard(credentialDetail.url ?? undefined)">
+                            <el-button link @click="copyToClipboard(credentialDetail.url ?? undefined)">
                                 <el-icon><CopyDocument /></el-icon>
                             </el-button>
                         </div>
@@ -246,7 +246,7 @@
                     <el-descriptions-item v-if="credentialDetail.tags" :label="t('credential.detail.tags')">
                         <div class="flex min-w-0 items-center gap-1">
                             <span class="truncate flex-1">{{ credentialDetail.tags }}</span>
-                            <el-button link size="small" @click="copyToClipboard(credentialDetail.tags ?? undefined)">
+                            <el-button link @click="copyToClipboard(credentialDetail.tags ?? undefined)">
                                 <el-icon><CopyDocument /></el-icon>
                             </el-button>
                         </div>
@@ -254,7 +254,7 @@
                     <el-descriptions-item v-if="credentialDetail.notes" :label="t('credential.detail.notes')">
                         <div class="flex min-w-0 items-center gap-1">
                             <span class="truncate flex-1">{{ credentialDetail.notes }}</span>
-                            <el-button link size="small" @click="copyToClipboard(credentialDetail.notes ?? undefined)">
+                            <el-button link @click="copyToClipboard(credentialDetail.notes ?? undefined)">
                                 <el-icon><CopyDocument /></el-icon>
                             </el-button>
                         </div>
@@ -266,7 +266,6 @@
                             <span class="truncate flex-1">{{ credentialDetail.sensitive_data.api_url }}</span>
                             <el-button
                                 link
-                                size="small"
                                 @click="copyToClipboard(credentialDetail.sensitive_data.api_url)">
                                 <el-icon><CopyDocument /></el-icon>
                             </el-button>
@@ -279,7 +278,6 @@
                             <span class="truncate flex-1">{{ credentialDetail.sensitive_data.doc_url }}</span>
                             <el-button
                                 link
-                                size="small"
                                 @click="copyToClipboard(credentialDetail.sensitive_data.doc_url)">
                                 <el-icon><CopyDocument /></el-icon>
                             </el-button>
@@ -287,7 +285,7 @@
                     </el-descriptions-item>
                 </el-descriptions>
 
-                <template v-if="credentialDetail.sensitive_data?.sensitive_sets?.length && !credentialDetail.sensitive_data?.account_sets?.length">
+                <template v-if="credentialDetail.sensitive_data?.sensitive_sets?.length">
                     <h4
                         class="mb-2.5 mt-4 pb-1.5 text-sm font-600 text-[var(--color-text-secondary)] border-b border-solid border-0 border-[var(--color-window-titlebar-border)]">
                         {{ t('credential.detail.sensitiveSets') }}
@@ -302,11 +300,11 @@
                                     >{{ t('credential.detail.information') }} {{ index + 1 }}</span
                                 >
                             </div>
-                            <el-descriptions :column="1" border size="small" :label-style="{ width: '100px', minWidth: '100px' }">
+                            <el-descriptions :column="1" border :label-style="{ width: '100px', minWidth: '100px' }">
                                 <el-descriptions-item v-if="set.username" :label="t('credential.list.username')">
                                     <div class="flex min-w-0 items-center gap-1">
                                         <span class="truncate flex-1">{{ set.username }}</span>
-                                        <el-button link size="small" @click="copyToClipboard(set.username)">
+                                        <el-button link @click="copyToClipboard(set.username)">
                                             <el-icon><CopyDocument /></el-icon>
                                         </el-button>
                                     </div>
@@ -321,7 +319,6 @@
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
-                                            size="small"
                                             @click="
                                                 detailAccountVisible[`sensitive-${index}-password`] = !(
                                                     detailAccountVisible[`sensitive-${index}-password`] === true
@@ -334,7 +331,7 @@
                                                     " /><Hide v-else
                                             /></el-icon>
                                         </el-button>
-                                        <el-button link size="small" @click="copyToClipboard(set.password)">
+                                        <el-button link @click="copyToClipboard(set.password)">
                                             <el-icon><CopyDocument /></el-icon>
                                         </el-button>
                                     </div>
@@ -349,7 +346,6 @@
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
-                                            size="small"
                                             @click="
                                                 detailAccountVisible[`sensitive-${index}-api_key`] = !(
                                                     detailAccountVisible[`sensitive-${index}-api_key`] === true
@@ -362,7 +358,7 @@
                                                     " /><Hide v-else
                                             /></el-icon>
                                         </el-button>
-                                        <el-button link size="small" @click="copyToClipboard(set.api_key)">
+                                        <el-button link @click="copyToClipboard(set.api_key)">
                                             <el-icon><CopyDocument /></el-icon>
                                         </el-button>
                                     </div>
@@ -377,7 +373,6 @@
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
-                                            size="small"
                                             @click="
                                                 detailAccountVisible[`sensitive-${index}-secret_key`] = !(
                                                     detailAccountVisible[`sensitive-${index}-secret_key`] === true
@@ -393,7 +388,7 @@
                                                     " /><Hide v-else
                                             /></el-icon>
                                         </el-button>
-                                        <el-button link size="small" @click="copyToClipboard(set.secret_key)">
+                                        <el-button link @click="copyToClipboard(set.secret_key)">
                                             <el-icon><CopyDocument /></el-icon>
                                         </el-button>
                                     </div>
@@ -410,7 +405,6 @@
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
-                                            size="small"
                                             @click="
                                                 detailAccountVisible[`sensitive-${index}-access_token`] = !(
                                                     detailAccountVisible[`sensitive-${index}-access_token`] === true
@@ -426,7 +420,7 @@
                                                     " /><Hide v-else
                                             /></el-icon>
                                         </el-button>
-                                        <el-button link size="small" @click="copyToClipboard(set.access_token)">
+                                        <el-button link @click="copyToClipboard(set.access_token)">
                                             <el-icon><CopyDocument /></el-icon>
                                         </el-button>
                                     </div>
@@ -443,7 +437,6 @@
                                         <span v-else class="text-gray-400 truncate flex-1">••••••••</span>
                                         <el-button
                                             link
-                                            size="small"
                                             @click="
                                                 detailAccountVisible[`sensitive-${index}-refresh_token`] = !(
                                                     detailAccountVisible[`sensitive-${index}-refresh_token`] === true
@@ -459,7 +452,7 @@
                                                     " /><Hide v-else
                                             /></el-icon>
                                         </el-button>
-                                        <el-button link size="small" @click="copyToClipboard(set.refresh_token)">
+                                        <el-button link @click="copyToClipboard(set.refresh_token)">
                                             <el-icon><CopyDocument /></el-icon>
                                         </el-button>
                                     </div>
@@ -469,7 +462,7 @@
                                     :label="t('credential.form.expiresAtLabel')">
                                     <div class="flex min-w-0 items-center gap-1">
                                         <span class="truncate flex-1">{{ set.expires_at }}</span>
-                                        <el-button link size="small" @click="copyToClipboard(set.expires_at)">
+                                        <el-button link @click="copyToClipboard(set.expires_at)">
                                             <el-icon><CopyDocument /></el-icon>
                                         </el-button>
                                     </div>
@@ -477,7 +470,7 @@
                                 <el-descriptions-item v-if="set.notes" :label="t('credential.detail.notes')">
                                     <div class="flex min-w-0 items-center gap-1">
                                         <span class="truncate flex-1">{{ set.notes }}</span>
-                                        <el-button link size="small" @click="copyToClipboard(set.notes)">
+                                        <el-button link @click="copyToClipboard(set.notes)">
                                             <el-icon><CopyDocument /></el-icon>
                                         </el-button>
                                     </div>
@@ -503,10 +496,10 @@
                                     >{{ t('credential.detail.account') }} {{ index + 1 }}</span
                                 >
                             </div>
-                            <el-descriptions :column="1" border size="small" :label-style="{ width: '100px', minWidth: '100px' }">
+                            <el-descriptions :column="1" border :label-style="{ width: '100px', minWidth: '100px' }">
                                 <el-descriptions-item v-if="account.username" :label="t('credential.list.username')">
                                     <span class="truncate">{{ account.username }}</span>
-                                    <el-button link size="small" @click="copyToClipboard(account.username)">
+                                    <el-button link @click="copyToClipboard(account.username)">
                                         <el-icon><CopyDocument /></el-icon>
                                     </el-button>
                                 </el-descriptions-item>
@@ -519,7 +512,6 @@
                                         }}</span>
                                         <el-button
                                             link
-                                            size="small"
                                             @click="
                                                 detailAccountVisible[`account-${index}-password`] =
                                                     !detailAccountVisible[`account-${index}-password`]
@@ -529,14 +521,14 @@
                                                     v-else
                                             /></el-icon>
                                         </el-button>
-                                        <el-button link size="small" @click="copyToClipboard(account.password)">
+                                        <el-button link @click="copyToClipboard(account.password)">
                                             <el-icon><CopyDocument /></el-icon>
                                         </el-button>
                                     </div>
                                 </el-descriptions-item>
                                 <el-descriptions-item v-if="account.notes" :label="t('credential.detail.notes')">
                                     <span class="truncate">{{ account.notes }}</span>
-                                    <el-button link size="small" @click="copyToClipboard(account.notes)">
+                                    <el-button link @click="copyToClipboard(account.notes)">
                                         <el-icon><CopyDocument /></el-icon>
                                     </el-button>
                                 </el-descriptions-item>
@@ -554,7 +546,7 @@
                         class="mb-2.5 mt-4 pb-1.5 text-sm font-600 text-[var(--color-text-secondary)] border-b border-solid border-0 border-[var(--color-window-titlebar-border)]">
                         {{ t('credential.detail.sensitiveInfo') }}
                     </h4>
-                    <el-descriptions :column="1" border size="small" :label-style="{ width: '100px', minWidth: '100px' }">
+                    <el-descriptions :column="1" border :label-style="{ width: '100px', minWidth: '100px' }">
                         <el-descriptions-item v-if="credentialDetail.sensitive_data?.password" :label="t('credential.detail.password')">
                             <div class="flex items-center gap-1">
                                 <span class="flex-1 break-all">{{
@@ -562,12 +554,11 @@
                                         ? credentialDetail.sensitive_data?.password || '-'
                                         : '••••••••'
                                 }}</span>
-                                <el-button link size="small" @click="detailVisible.password = !detailVisible.password">
+                                <el-button link @click="detailVisible.password = !detailVisible.password">
                                     <el-icon><component :is="detailVisible.password ? Hide : View" /></el-icon>
                                 </el-button>
                                 <el-button
                                     link
-                                    size="small"
                                     @click="copyToClipboard(credentialDetail.sensitive_data?.password)">
                                     <el-icon><CopyDocument /></el-icon>
                                 </el-button>
@@ -578,12 +569,11 @@
                                 <span class="flex-1 break-all">{{
                                     detailVisible.apiKey ? credentialDetail.sensitive_data?.api_key || '-' : '••••••••'
                                 }}</span>
-                                <el-button link size="small" @click="detailVisible.apiKey = !detailVisible.apiKey">
+                                <el-button link @click="detailVisible.apiKey = !detailVisible.apiKey">
                                     <el-icon><component :is="detailVisible.apiKey ? Hide : View" /></el-icon>
                                 </el-button>
                                 <el-button
                                     link
-                                    size="small"
                                     @click="copyToClipboard(credentialDetail.sensitive_data?.api_key)">
                                     <el-icon><CopyDocument /></el-icon>
                                 </el-button>
@@ -598,13 +588,11 @@
                                 }}</span>
                                 <el-button
                                     link
-                                    size="small"
                                     @click="detailVisible.secretKey = !detailVisible.secretKey">
                                     <el-icon><component :is="detailVisible.secretKey ? Hide : View" /></el-icon>
                                 </el-button>
                                 <el-button
                                     link
-                                    size="small"
                                     @click="copyToClipboard(credentialDetail.sensitive_data?.secret_key)">
                                     <el-icon><CopyDocument /></el-icon>
                                 </el-button>
@@ -619,13 +607,11 @@
                                 }}</span>
                                 <el-button
                                     link
-                                    size="small"
                                     @click="detailVisible.accessToken = !detailVisible.accessToken">
                                     <el-icon><component :is="detailVisible.accessToken ? Hide : View" /></el-icon>
                                 </el-button>
                                 <el-button
                                     link
-                                    size="small"
                                     @click="copyToClipboard(credentialDetail.sensitive_data?.access_token)">
                                     <el-icon><CopyDocument /></el-icon>
                                 </el-button>
@@ -640,13 +626,11 @@
                                 }}</span>
                                 <el-button
                                     link
-                                    size="small"
                                     @click="detailVisible.refreshToken = !detailVisible.refreshToken">
                                     <el-icon><component :is="detailVisible.refreshToken ? Hide : View" /></el-icon>
                                 </el-button>
                                 <el-button
                                     link
-                                    size="small"
                                     @click="copyToClipboard(credentialDetail.sensitive_data?.refresh_token)">
                                     <el-icon><CopyDocument /></el-icon>
                                 </el-button>
@@ -670,7 +654,7 @@
                         class="mb-2.5 mt-4 pb-1.5 text-sm font-600 text-[var(--color-text-secondary)] border-b border-solid border-0 border-[var(--color-window-titlebar-border)]">
                         {{ t('credential.detail.customFields') }}
                     </h4>
-                    <el-descriptions :column="1" border size="small" :label-style="{ width: '100px', minWidth: '100px' }">
+                    <el-descriptions :column="1" border :label-style="{ width: '100px', minWidth: '100px' }">
                         <el-descriptions-item
                             v-for="(val, key) in credentialDetail.sensitive_data.custom_fields"
                             :key="key"
@@ -681,13 +665,12 @@
                                 }}</span>
                                 <el-button
                                     link
-                                    size="small"
                                     @click="detailCustomVisible[String(key)] = !detailCustomVisible[String(key)]">
                                     <el-icon
                                         ><component :is="detailCustomVisible[String(key)] ? Hide : View"
                                     /></el-icon>
                                 </el-button>
-                                <el-button link size="small" @click="copyToClipboard(val)">
+                                <el-button link @click="copyToClipboard(val)">
                                     <el-icon><CopyDocument /></el-icon>
                                 </el-button>
                             </div>
@@ -1436,5 +1419,10 @@ onUnmounted(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.credential-detail-dialog :deep(.el-descriptions__label),
+.credential-detail-dialog :deep(.el-descriptions__content) {
+    font-size: var(--app-font-13) !important;
 }
 </style>

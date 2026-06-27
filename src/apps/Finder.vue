@@ -5,28 +5,46 @@
         :isMinimized="isMinimized"
         @close="closeApp"
         @minimize="toggleMinimize"
-        width="800"
-        height="600"
+        :width="1000"
+        :height="600"
     >
         <div class="finder-container">
-            <!-- 侧边栏 -->
             <div class="finder-sidebar">
                 <div class="sidebar-section">
                     <div class="section-title">{{ t('finder.favorites') }}</div>
-                    <div class="sidebar-item active" @click="showAllProjects">
-                        <el-icon><Folder /></el-icon>
-                        <span>{{ t('finder.projects') }}</span>
+                    <div
+                        v-for="item in sidebarItems"
+                        :key="item.key"
+                        :class="['sidebar-item', { active: activeSidebar === item.key }]"
+                        @click="navigateToSidebar(item)"
+                    >
+                        <el-icon><component :is="item.icon" /></el-icon>
+                        <span>{{ item.label }}</span>
                     </div>
-                    <div class="sidebar-item" @click="filterRecentProjects">
-                        <el-icon><Clock /></el-icon>
-                        <span>{{ t('finder.recent') }}</span>
+                </div>
+                <div class="sidebar-section">
+                    <div class="section-title">{{ t('knowledge.title') }}</div>
+                    <div
+                        :class="['sidebar-item', { active: activeSidebar === 'knowledge' }]"
+                        @click="activeSidebar = 'knowledge'"
+                    >
+                        <el-icon><Collection /></el-icon>
+                        <span>{{ t('knowledge.indexStatus') }}</span>
+                    </div>
+                    <div
+                        :class="['sidebar-item', { active: activeSidebar === 'semantic-search' }]"
+                        @click="activeSidebar = 'semantic-search'"
+                    >
+                        <el-icon><Search /></el-icon>
+                        <span>{{ t('knowledge.semanticSearch') }}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 主内容区 -->
             <div class="finder-content">
-                <!-- 顶部操作栏 -->
+                <KnowledgePanel v-if="activeSidebar === 'knowledge' || activeSidebar === 'semantic-search'" />
+
+                <template v-else>
                 <div class="finder-toolbar">
                     <div class="view-controls">
                         <el-radio-group v-model="viewMode" size="small">
@@ -38,18 +56,14 @@
                             </el-radio-button>
                         </el-radio-group>
                     </div>
-                    
+
                     <div class="path-navigator">
-                        <template v-if="selectedProject">
-                            <el-button link @click="showAllProjects">{{ t('finder.projects') }}</el-button>
-                            <span class="path-separator">/</span>
-                            <span class="current-path">{{ selectedProject.title }}</span>
-                        </template>
-                        <template v-else>
-                            <span class="current-path">{{ t('finder.projects') }}</span>
+                        <template v-for="(seg, idx) in pathSegments" :key="idx">
+                            <el-button link size="small" @click="navigateToIndex(idx)">{{ seg.name }}</el-button>
+                            <span v-if="idx < pathSegments.length - 1" class="path-separator">/</span>
                         </template>
                     </div>
-                    
+
                     <div class="search-box">
                         <el-input
                             v-model="searchQuery"
@@ -61,359 +75,280 @@
                     </div>
                 </div>
 
-                <!-- 项目列表视图 -->
-                <div v-if="!selectedProject" :class="['projects-container', viewMode]">
-                    <div v-if="loading" class="loading-container">
-                        <el-icon class="loading-icon"><Loading /></el-icon>
-                        <p>{{ t('finder.loading') }}</p>
-                    </div>
-
-                    <el-empty v-else-if="filteredProjects.length === 0" :description="t('finder.noProjects')" />
-
-                    <template v-else>
-                        <!-- 网格视图 -->
-                        <template v-if="viewMode === 'grid'">
-                            <div 
-                                v-for="project in filteredProjects" 
-                                :key="project.id"
-                                class="project-item"
-                                @click="openProject(project)"
-                                @dblclick="openProject(project)"
-                            >
-                                <div class="project-icon">
-                                    <el-icon><Folder /></el-icon>
-                                </div>
-                                <div class="project-name">{{ project.projectName }}</div>
-                                <div class="project-meta">
-                                    {{ project.versionsCount || 0 }} {{ t('finder.versions') }}
-                                    <span v-if="project.updateTime" class="project-update">
-                                        · {{ formatDate(project.updateTime * 1000) }}
-                                    </span>
-                                </div>
-                            </div>
-                        </template>
-
-                        <!-- 列表视图 -->
-                        <el-table
-                            v-else
-                            :data="filteredProjects"
-                            style="width: 100%"
-                            @row-click="openProject"
-                            @row-dblclick="openProject"
-                        >
-                            <el-table-column :label="t('finder.name')" min-width="200">
-                                <template #default="{ row }">
-                                    <div class="list-item-name">
-                                        <el-icon><Folder /></el-icon>
-                                        <span>{{ row.projectName }}</span>
-                                    </div>
-                                </template>
-                            </el-table-column>
-                            <el-table-column prop="versionsCount" :label="t('finder.versionCountCol')" width="100" />
-                            <el-table-column :label="t('finder.latestVersion')" min-width="150">
-                                <template #default="{ row }">
-                                    {{ row.lastVersion ? row.lastVersion.substring(0, 8) + '...' : '-' }}
-                                </template>
-                            </el-table-column>
-                            <el-table-column :label="t('finder.lastUpdated')" width="180">
-                                <template #default="{ row }">
-                                    {{ formatDate(row.updateTime * 1000) }}
-                                </template>
-                            </el-table-column>
-                        </el-table>
-                    </template>
+                <div v-if="loading" class="loading-container">
+                    <el-icon class="loading-icon"><Loading /></el-icon>
+                    <p>{{ t('finder.loading') }}</p>
                 </div>
 
-                <!-- 项目详情视图 (显示版本列表) -->
-                <div v-else :class="['versions-container', viewMode]">
-                    <div v-if="projectLoading" class="loading-container">
-                        <el-icon class="loading-icon"><Loading /></el-icon>
-                        <p>{{ t('finder.loading') }}</p>
+                <el-empty v-else-if="filteredEntries.length === 0 && !searchQuery" :description="t('finder.emptyFolder')" />
+
+                <el-scrollbar v-else-if="viewMode === 'grid'" class="files-container grid">
+                    <div
+                        v-if="canGoBack"
+                        class="file-item back-item"
+                        @click="goBack"
+                    >
+                        <div class="file-icon back-icon">
+                            <el-icon><Back /></el-icon>
+                        </div>
+                        <div class="file-name">..</div>
                     </div>
+                    <div
+                        v-for="entry in filteredEntries"
+                        :key="entry.path"
+                        class="file-item"
+                        @click="handleClick(entry)"
+                        @dblclick="handleDblClick(entry)"
+                    >
+                        <div :class="['file-icon', entry.is_dir ? 'folder-icon' : 'doc-icon']">
+                            <el-icon><component :is="entry.is_dir ? Folder : Document" /></el-icon>
+                        </div>
+                        <div class="file-name">{{ entry.name }}</div>
+                        <div v-if="!entry.is_dir" class="file-meta">{{ formatFileSize(entry.size) }}</div>
+                    </div>
+                </el-scrollbar>
 
-                    <el-empty v-else-if="projectVersions.length === 0" :description="t('finder.noVersions')" />
-
-                    <template v-else>
-                        <!-- 网格视图 -->
-                        <template v-if="viewMode === 'grid'">
-                            <div 
-                                v-for="version in projectVersions" 
-                                :key="version.id"
-                                class="version-item"
-                                @click="selectVersion(version)"
-                                @dblclick="openVersionPreview(version)"
-                            >
-                                <div class="version-icon">
-                                    <el-icon><Document /></el-icon>
+                <el-scrollbar v-else class="files-container list">
+                    <el-table
+                        :data="filteredEntries"
+                        style="width: 100%"
+                        @row-click="handleClick"
+                        @row-dblclick="handleDblClick"
+                        @sort-change="handleSortChange"
+                    >
+                        <el-table-column :label="t('finder.name')" min-width="260" prop="name" sortable="custom">
+                            <template #default="{ row }">
+                                <div class="list-item-name">
+                                    <el-icon :class="row.is_dir ? 'folder-color' : 'doc-color'">
+                                        <component :is="row.is_dir ? Folder : Document" />
+                                    </el-icon>
+                                    <span>{{ row.name }}</span>
                                 </div>
-                                <div class="version-name">{{ version.title || `${t('finder.versions')} ${formatDate(version.timestamp * 1000)}` }}</div>
-                                <div class="version-meta">
-                                    {{ formatDate(version.timestamp * 1000) }}
-                                </div>
-                                <div class="version-prompt" v-if="version.prompt">
-                                    <el-tooltip :content="version.prompt" placement="top" effect="dark">
-                                        <el-icon><InfoFilled /></el-icon>
-                                    </el-tooltip>
-                                </div>
-                            </div>
-                        </template>
+                            </template>
+                        </el-table-column>
+                        <el-table-column :label="t('finder.modified')" width="180" prop="modified" sortable="custom">
+                            <template #default="{ row }">
+                                {{ formatDate(row.modified) }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column :label="t('finder.kind')" width="120" prop="kind" sortable="custom">
+                            <template #default="{ row }">
+                                {{ row.is_dir ? t('finder.folderKind') : (row.extension || t('finder.fileKind')) }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column :label="t('finder.size')" width="120" prop="size" sortable="custom">
+                            <template #default="{ row }">
+                                {{ row.is_dir ? '--' : formatFileSize(row.size) }}
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </el-scrollbar>
 
-                        <!-- 列表视图 -->
-                        <el-table
-                            v-else
-                            :data="projectVersions"
-                            style="width: 100%"
-                            @row-click="selectVersion"
-                            @row-dblclick="openVersionPreview"
-                        >
-                            <el-table-column :label="t('finder.name')" min-width="200">
-                                <template #default="{ row }">
-                                    <div class="list-item-name">
-                                        <el-icon><Document /></el-icon>
-                                        <span>{{ row.title || `${t('finder.versions')} ${formatDate(row.timestamp * 1000)}` }}</span>
-                                    </div>
-                                </template>
-                            </el-table-column>
-                            <el-table-column :label="t('finder.prompt')" min-width="200">
-                                <template #default="{ row }">
-                                    <el-tooltip :content="row.prompt" placement="top" effect="dark" v-if="row.prompt">
-                                        <span class="prompt-preview">{{ row.prompt.substring(0, 30) }}{{ row.prompt.length > 30 ? '...' : '' }}</span>
-                                    </el-tooltip>
-                                </template>
-                            </el-table-column>
-                            <el-table-column :label="t('finder.createdAt')" width="180">
-                                <template #default="{ row }">
-                                    {{ formatDate(row.timestamp * 1000) }}
-                                </template>
-                            </el-table-column>
-                        </el-table>
-                    </template>
-                </div>
-
-                <!-- 底部状态栏 -->
                 <div class="finder-statusbar">
-                    <div v-if="selectedProject">
-                        {{ projectVersions.length }} {{ t('finder.versionCount') }}, {{ formatFileSize(getTotalSize()) }}
-                    </div>
-                    <div v-else>
-                        {{ filteredProjects.length }} {{ t('finder.projectCount') }}
-                    </div>
+                    {{ filteredEntries.length }} {{ t('finder.itemCount') }}
+                    <span v-if="currentDir"> — {{ currentDir }}</span>
                 </div>
+                </template>
             </div>
         </div>
     </MacWindow>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useI18n } from 'vue-i18n';
-import MacWindow from '@/components/common/MacWindow.vue';
-import { ElMessage } from 'element-plus';
-import { Folder, Document, Loading, Grid, List, Clock, Search, InfoFilled } from '@element-plus/icons-vue';
-import { getUserProjects, getProjectById } from '@/utils/apiService';
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { invoke } from '@tauri-apps/api/core'
+import { ElMessage } from 'element-plus'
+import MacWindow from '@/components/common/MacWindow.vue'
+import KnowledgePanel from './Finder/components/KnowledgePanel.vue'
+import {
+    Folder, Document, Loading, Grid, List, Search,
+    HomeFilled, Download, Files, Back, Collection,
+} from '@element-plus/icons-vue'
 
-const { t } = useI18n();
+const { t } = useI18n()
 
-// 定义类型接口
-interface Project {
-    id: string;
-    projectId: string;
-    projectName: string;
-    description?: string;
-    prompt?: string;
-    versionsCount?: number;
-    lastVersion?: string;
-    updateTime?: number;
-    title?: string;
+interface DirEntry {
+    name: string
+    path: string
+    is_dir: boolean
+    size: number
+    modified: number
+    extension: string
 }
 
-interface Version {
-    id: string;
-    versionId: string;
-    title?: string;
-    timestamp: number;
-    prompt?: string;
-}
-
-// 定义属性
 const props = defineProps({
-    isMinimized: {
-        type: Boolean,
-        default: false
-    },
-    browserFingerprint: {
-        type: String,
-        default: ''
+    isMinimized: { type: Boolean, default: false },
+    browserFingerprint: { type: String, default: '' },
+})
+
+const emit = defineEmits(['close', 'minimize', 'openApp', 'openEditor'])
+
+const loading = ref(false)
+const entries = ref<DirEntry[]>([])
+const currentDir = ref('')
+const workspaceDir = ref('')
+const searchQuery = ref('')
+const viewMode = ref('grid')
+const activeSidebar = ref('workspace')
+const historyStack = ref<string[]>([])
+const sortKey = ref<'name' | 'modified' | 'kind' | 'size' | ''>('')
+const sortOrder = ref<'ascending' | 'descending' | ''>('')
+
+const sidebarItems = computed(() => [
+    { key: 'workspace', label: t('finder.workspace'), icon: Files, path: workspaceDir.value },
+    { key: 'home', label: t('finder.home'), icon: HomeFilled, path: '' },
+    { key: 'desktop', label: t('finder.desktop'), icon: Folder, path: '' },
+    { key: 'documents', label: t('finder.documents'), icon: Folder, path: '' },
+    { key: 'downloads', label: t('finder.downloads'), icon: Download, path: '' },
+])
+
+const canGoBack = computed(() => {
+    if (!currentDir.value || !workspaceDir.value) return false
+    return currentDir.value !== workspaceDir.value
+})
+
+const pathSegments = computed(() => {
+    if (!currentDir.value) return []
+    const parts = currentDir.value.split('/').filter(Boolean)
+    let accumulated = ''
+    return parts.map((name, _idx) => {
+        accumulated += '/' + name
+        return { name, path: accumulated }
+    })
+})
+
+const filteredEntries = computed(() => {
+    let result = searchQuery.value
+        ? entries.value.filter((e) => e.name.toLowerCase().includes(searchQuery.value.toLowerCase()))
+        : entries.value
+
+    if (sortKey.value && sortOrder.value) {
+        const dir = sortOrder.value === 'ascending' ? 1 : -1
+        result = [...result].sort((a, b) => {
+            let va: string | number = ''
+            let vb: string | number = ''
+            switch (sortKey.value) {
+                case 'name': va = a.name.toLowerCase(); vb = b.name.toLowerCase(); break
+                case 'modified': va = a.modified; vb = b.modified; break
+                case 'kind': va = a.is_dir ? '' : (a.extension || ''); vb = b.is_dir ? '' : (b.extension || ''); break
+                case 'size': va = a.is_dir ? -1 : a.size; vb = b.is_dir ? -1 : b.size; break
+            }
+            if (va < vb) return -1 * dir
+            if (va > vb) return 1 * dir
+            return 0
+        })
     }
-});
 
-// 事件发射
-const emit = defineEmits(['close', 'minimize', 'openApp', 'openEditor']);
+    return result
+})
 
-// 状态变量
-const loading = ref(false);
-const projectLoading = ref(false);
-const projects = ref<Project[]>([]);
-const searchQuery = ref('');
-const viewMode = ref('grid');
-const selectedProject = ref<Project | null>(null);
-const projectVersions = ref<Version[]>([]);
-const selectedVersion = ref<Version | null>(null);
+function handleSortChange({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }) {
+    sortKey.value = (prop as 'name' | 'modified' | 'kind' | 'size' | '') || ''
+    sortOrder.value = order || ''
+}
 
-// 关闭应用
-const closeApp = () => {
-    emit('close');
-};
+const closeApp = () => emit('close')
+const toggleMinimize = () => emit('minimize')
 
-// 切换最小化状态
-const toggleMinimize = () => {
-    emit('minimize');
-};
-
-// 过滤项目
-const filteredProjects = computed(() => {
-    if (!searchQuery.value) {
-        return projects.value;
-    }
-
-    const query = searchQuery.value.toLowerCase();
-    return projects.value.filter((project: Project) =>
-        (project.projectName && project.projectName.toLowerCase().includes(query)) ||
-        (project.description && project.description.toLowerCase().includes(query)) ||
-        (project.prompt && project.prompt.toLowerCase().includes(query))
-    );
-});
-
-// 显示所有项目
-const showAllProjects = () => {
-    selectedProject.value = null;
-    selectedVersion.value = null;
-    loadProjects();
-};
-
-// 过滤最近项目
-const filterRecentProjects = () => {
-    // 显示最近7天内更新的项目
-    const oneWeekAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60); // 一周前的时间戳（秒）
-    
-    selectedProject.value = null;
-    selectedVersion.value = null;
-    
-    // 过滤并保留最近7天更新的项目
-    const filteredList = projects.value.filter(project => 
-        project.updateTime && project.updateTime >= oneWeekAgo
-    );
-    
-    // 如果过滤后没有项目，显示提示信息
-    if (filteredList.length === 0) {
-        ElMessage.info(t('finder.noRecentProjects'));
-        // 保持原始项目列表不变，但显示提示
-        return;
-    }
-    
-    // 更新项目列表为过滤后的列表
-    projects.value = filteredList;
-};
-
-// 打开项目
-const openProject = (project: Project) => {
-    selectedProject.value = {
-        ...project,
-        title: project.projectName // 使用projectName作为title，保持UI一致性
-    };
-    loadProjectVersions(project.projectId);
-};
-
-// 选择版本
-const selectVersion = (version: Version) => {
-    selectedVersion.value = version;
-};
-
-// 打开版本预览
-const openVersionPreview = (version: Version) => {
-    if (!selectedProject.value || !version) return;
-
-    // 构建预览URL
-    const previewUrl = `/api/projects/${selectedProject.value.projectId}/versions/${version.versionId}/html`;
-    // 在新窗口打开预览
-    window.open(previewUrl, '_blank');
-};
-
-// 格式化日期
-const formatDate = (dateStr: string | number) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-};
-
-// 计算总大小
-const getTotalSize = () => {
-    // 这里应该是实际文件大小的总和，但由于没有此信息，暂时返回一个估计值
-    return 1024 * 1024 * projectVersions.value.length; // 假设每个版本平均1MB
-};
-
-// 格式化文件大小
-const formatFileSize = (size: number) => {
-    if (size < 1024) {
-        return size + ' B';
-    } else if (size < 1024 * 1024) {
-        return (size / 1024).toFixed(2) + ' KB';
-    } else if (size < 1024 * 1024 * 1024) {
-        return (size / (1024 * 1024)).toFixed(2) + ' MB';
-    } else {
-        return (size / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
-    }
-};
-
-// 加载项目列表
-const loadProjects = async () => {
+async function loadDir(dirPath: string) {
+    loading.value = true
     try {
-        loading.value = true;
-        const data = await getUserProjects();
-        projects.value = (data as any).projects || [];
-    } catch (error: unknown) {
-        console.error(t('finder.loadProjectsError') + ':', error);
-        const errorMessage = error instanceof Error ? error.message : t('app.unknownError');
-        ElMessage.error(`${t('finder.loadProjectsFailed')}: ${errorMessage}`);
+        const list = await invoke<DirEntry[]>('read_dir_entries', { dirPath })
+        entries.value = list
+        currentDir.value = dirPath
+    } catch (e: unknown) {
+        ElMessage.error(`${t('finder.readDirFailed')}: ${e}`)
     } finally {
-        loading.value = false;
+        loading.value = false
     }
-};
+}
 
-// 加载项目版本
-const loadProjectVersions = async (projectId: string) => {
-    if (!projectId) return;
-
-    try {
-        projectLoading.value = true;
-        const data = await getProjectById(projectId);
-        console.log(data);
-        if ((data as any).success) {
-            projectVersions.value = (data as any).project.versions || [];
-        } else {
-            ElMessage.error(t('finder.loadVersionsFailed'));
+async function navigateToSidebar(item: { key: string; path: string }) {
+    activeSidebar.value = item.key
+    let path = item.path
+    if (!path) {
+        try {
+            const home = await invoke<string>('get_workspace_dir')
+            const homeBase = home.split('/').slice(0, -1).join('/')
+            switch (item.key) {
+                case 'home': path = homeBase || home; break
+                case 'desktop': path = homeBase + '/Desktop'; break
+                case 'documents': path = homeBase + '/Documents'; break
+                case 'downloads': path = homeBase + '/Downloads'; break
+            }
+        } catch {
+            return
         }
-    } catch (error: unknown) {
-        console.error(t('finder.loadVersionsError') + ':', error);
-        const errorMessage = error instanceof Error ? error.message : t('app.unknownError');
-        ElMessage.error(`${t('finder.loadVersionsFailed')}: ${errorMessage}`);
-    } finally {
-        projectLoading.value = false;
     }
-};
+    if (path) {
+        historyStack.value = []
+        await loadDir(path)
+    }
+}
 
-// 组件挂载后
-onMounted(() => {
-    loadProjects();
-});
+function navigateToIndex(idx: number) {
+    const target = pathSegments.value[idx]?.path
+    if (target) {
+        const current = currentDir.value
+        historyStack.value.push(current)
+        loadDir(target)
+    }
+}
 
-// MacWindow 组件引用
-const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null);
+function goBack() {
+    if (historyStack.value.length > 0) {
+        const prev = historyStack.value.pop()!
+        loadDir(prev)
+    } else {
+        const parts = currentDir.value.split('/').filter(Boolean)
+        if (parts.length > 1) {
+            const parent = '/' + parts.slice(0, -1).join('/')
+            loadDir(parent)
+        }
+    }
+}
 
-// 暴露 bringToFront 方法
+function handleClick(_entry: DirEntry) {
+    // single click: select (no-op for now)
+}
+
+function handleDblClick(entry: DirEntry) {
+    if (entry.is_dir) {
+        historyStack.value.push(currentDir.value)
+        loadDir(entry.path)
+    } else {
+        invoke('plugin:opener|open_path', { path: entry.path }).catch(() => {})
+    }
+}
+
+function formatDate(timestamp: number): string {
+    if (!timestamp) return ''
+    const d = new Date(timestamp * 1000)
+    return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`
+}
+
+function formatFileSize(size: number): string {
+    if (size < 1024) return size + ' B'
+    if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
+    if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)).toFixed(1) + ' MB'
+    return (size / (1024 * 1024 * 1024)).toFixed(1) + ' GB'
+}
+
+onMounted(async () => {
+    try {
+        workspaceDir.value = await invoke<string>('get_workspace_dir')
+        activeSidebar.value = 'workspace'
+        await loadDir(workspaceDir.value)
+    } catch (e: unknown) {
+        ElMessage.error(`${t('finder.readDirFailed')}: ${e}`)
+    }
+})
+
+const macWindowRef = ref<InstanceType<typeof MacWindow> | null>(null)
 defineExpose({
-    bringToFront: () => macWindowRef.value?.bringToFront()
-});
+    bringToFront: () => macWindowRef.value?.bringToFront(),
+})
 </script>
 
 <style scoped>
@@ -421,11 +356,10 @@ defineExpose({
     display: flex;
     height: 100%;
     background-color: var(--color-sidebar-bg);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 .finder-sidebar {
-    width: 200px;
+    width: 180px;
     background-color: var(--color-sidebar-bg);
     border-right: 1px solid var(--color-window-titlebar-border);
     padding: 10px 0;
@@ -438,8 +372,8 @@ defineExpose({
 
 .section-title {
     padding: 0 16px;
-    font-size: var(--app-font-12);
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--color-text-tertiary);
     margin-bottom: 5px;
     text-transform: uppercase;
@@ -448,15 +382,16 @@ defineExpose({
 .sidebar-item {
     display: flex;
     align-items: center;
-    padding: 8px 16px;
+    padding: 7px 16px;
     cursor: pointer;
-    border-radius: 5px;
-    margin: 0 4px;
+    border-radius: 6px;
+    margin: 1px 6px;
+    font-size: 13px;
 }
 
 .sidebar-item .el-icon {
     margin-right: 8px;
-    font-size: var(--app-font-16);
+    font-size: 16px;
     color: var(--color-text-secondary);
 }
 
@@ -486,7 +421,7 @@ defineExpose({
     padding: 8px 16px;
     background-color: var(--color-sidebar-bg);
     border-bottom: 1px solid var(--color-window-titlebar-border);
-    height: 50px;
+    height: 46px;
 }
 
 .view-controls {
@@ -495,73 +430,97 @@ defineExpose({
 }
 
 .path-navigator {
-    margin: 0 20px;
+    margin: 0 16px;
     flex: 1;
     display: flex;
     align-items: center;
+    font-size: 13px;
+    overflow: hidden;
 }
 
 .path-separator {
-    margin: 0 8px;
+    margin: 0 4px;
     color: var(--color-text-tertiary);
 }
 
-.current-path {
-    font-weight: 500;
-}
-
 .search-box {
-    width: 200px;
+    width: 180px;
+    flex-shrink: 0;
 }
 
-.projects-container,
-.versions-container {
+.files-container {
     flex: 1;
-    overflow-y: auto;
+    background-color: #fff;
+}
+
+.files-container.grid :deep(.el-scrollbar__wrap) {
+    padding: 0;
+}
+
+.files-container.grid :deep(.el-scrollbar__view) {
     padding: 16px;
-    background-color: var(--color-input-bg);
-}
-
-.projects-container.grid,
-.versions-container.grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    grid-gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-gap: 8px;
+    align-content: start;
 }
 
-.project-item,
-.version-item {
+.files-container.list :deep(.el-scrollbar__wrap) {
+    padding: 0;
+}
+
+.files-container.list :deep(.el-table__body-wrapper) {
+    overflow: hidden;
+}
+
+.files-container.list :deep(.el-table__inner-wrapper) {
+    overflow: hidden;
+}
+
+.file-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
     cursor: pointer;
-    padding: 10px;
+    padding: 10px 6px;
     border-radius: 8px;
-    transition: background-color 0.2s;
-    height: 118px;
+    transition: background-color 0.15s;
+    user-select: none;
 }
 
-.project-item:hover,
-.version-item:hover {
-    background-color: rgba(0, 0, 0, 0.03);
+.file-item:hover {
+    background-color: rgba(0, 0, 0, 0.04);
 }
 
-.project-icon,
-.version-icon {
-    font-size: var(--app-font-40);
-    margin-bottom: 8px;
-    color: #007bff;
+.file-icon {
+    font-size: 40px;
+    margin-bottom: 6px;
 }
 
-.version-icon {
-    color: #28a745;
+.folder-icon {
+    color: #54aeff;
 }
 
-.project-name,
-.version-name {
-    font-size: var(--app-font-13);
-    margin-bottom: 4px;
+.doc-icon {
+    color: #8b949e;
+}
+
+.back-icon {
+    color: var(--color-text-tertiary);
+    font-size: 32px;
+}
+
+.back-item {
+    opacity: 0.7;
+}
+
+.back-item:hover {
+    opacity: 1;
+}
+
+.file-name {
+    font-size: 12px;
     word-break: break-word;
     max-width: 100%;
     overflow: hidden;
@@ -569,34 +528,39 @@ defineExpose({
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    line-height: 1.3;
 }
 
-.project-meta,
-.version-meta {
-    font-size: var(--app-font-11);
+.file-meta {
+    font-size: 11px;
     color: var(--color-text-tertiary);
+    margin-top: 2px;
 }
 
 .list-item-name {
     display: flex;
     align-items: center;
+    gap: 8px;
+    font-size: 13px;
 }
 
 .list-item-name .el-icon {
-    margin-right: 8px;
-    font-size: var(--app-font-18);
-    color: #007bff;
+    font-size: 18px;
 }
 
-.versions-container .list-item-name .el-icon {
-    color: #28a745;
+.folder-color {
+    color: #54aeff;
+}
+
+.doc-color {
+    color: #8b949e;
 }
 
 .finder-statusbar {
     height: 24px;
     background-color: var(--color-sidebar-bg);
     border-top: 1px solid var(--color-window-titlebar-border);
-    font-size: var(--app-font-12);
+    font-size: 12px;
     color: var(--color-text-tertiary);
     padding: 0 16px;
     display: flex;
@@ -612,64 +576,24 @@ defineExpose({
     width: 100%;
 }
 
-/* 添加空状态居中样式 */
-.projects-container :deep(.el-empty),
-.versions-container :deep(.el-empty) {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    margin: 0;
-}
-
-/* 确保容器有相对定位以便正确定位空状态提示 */
-.projects-container,
-.versions-container {
-    position: relative;
-}
-
 .loading-icon {
-    font-size: var(--app-font-32);
+    font-size: 32px;
     color: #409eff;
     animation: spin 2s linear infinite;
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
 }
 
-.project-update {
+.files-container :deep(.el-table) {
+    --el-table-bg-color: #fff;
+    --el-table-tr-bg-color: #fff;
+}
+
+.files-container :deep(.el-table th.el-table__cell) {
+    background-color: #fafafa;
+    font-size: 12px;
     color: var(--color-text-tertiary);
-    font-size: 0.9em;
-}
-
-.version-prompt {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    color: #409eff;
-}
-
-.version-item {
-    position: relative;
-}
-
-.prompt-preview {
-    color: var(--color-text-secondary);
-    font-size: var(--app-font-12);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    cursor: pointer;
-}
-
-.version-item:hover .version-prompt {
-    opacity: 1;
-}
-
-.version-prompt .el-icon {
-    font-size: var(--app-font-16);
 }
 </style>

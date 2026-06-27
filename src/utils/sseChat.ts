@@ -1,12 +1,8 @@
-/**
- * 流式聊天工具
- * 优先通过 Tauri Channel 调用后端 ai_chat_stream，实现真正的 SSE 流式传输
- */
-
 import { invoke, Channel } from '@tauri-apps/api/core'
 
 export interface StreamChunk {
   content: string
+  reasoningContent?: string
   isOver: boolean
   usage?: {
     promptTokens: number
@@ -24,20 +20,17 @@ export interface ChatRequest {
 
 export interface StreamOptions {
   onToken: (token: string) => void
+  onReasoning: (token: string) => void
   onComplete: (fullContent: string) => void
   onError: (error: string) => void
   onUsage?: (usage: StreamChunk['usage']) => void
 }
 
-/**
- * 通过 Tauri Channel 发起流式聊天
- * 后端 ai_chat_stream 命令逐块推送 token
- */
 export async function streamChat(
   request: ChatRequest,
   options: StreamOptions,
 ): Promise<void> {
-  const { onToken, onComplete, onError, onUsage } = options
+  const { onToken, onReasoning, onComplete, onError, onUsage } = options
 
   let fullContent = ''
   let streamEnded = false
@@ -45,6 +38,9 @@ export async function streamChat(
   const channel = new Channel<StreamChunk>()
 
   channel.onmessage = (chunk: StreamChunk) => {
+    if (chunk.reasoningContent) {
+      onReasoning(chunk.reasoningContent)
+    }
     if (chunk.content) {
       fullContent += chunk.content
       onToken(chunk.content)
@@ -70,7 +66,6 @@ export async function streamChat(
       channel,
     })
 
-    // 如果 invoke 正常返回但流没有正常结束标记（防止极端情况）
     if (!streamEnded) {
       onComplete(fullContent)
     }

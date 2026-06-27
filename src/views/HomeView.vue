@@ -9,7 +9,7 @@
         @contextmenu.prevent="handleContextMenu"
         @mousedown="handleDesktopMouseDown">
         <!-- Mac顶部导航栏 -->
-        <MenuBar />
+        <MenuBar @checkUpdate="handleManualCheckUpdate" />
 
         <!-- Mac桌面背景和图标 -->
         <DesktopIcons
@@ -46,12 +46,25 @@
                 @continueVersion="handleContinueVersion"
                 @codeGenerated="handleContinueCodeGenerated" />
         </Teleport>
+
+        <!-- 更新弹窗 -->
+        <UpdateDialog
+            v-model:visible="showUpdateDialog"
+            :currentVersion="currentAppVersion"
+            :latestVersion="latestAppVersion"
+            :updateInfo="updateData"
+            :downloadProgress="downloadProgress"
+            :downloadStatus="downloadStatus"
+            @download="startDownload"
+            @openDownloadPage="openDownloadPage" />
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, reactive, nextTick } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { ElMessage } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import { apps } from '@/config/apps';
 
 // 导入系统组件
@@ -60,6 +73,10 @@ import MenuBar from '@/components/system/MenuBar.vue';
 import Dock from '@/components/system/Dock.vue';
 import DesktopIcons from '@/components/system/DesktopIcons.vue';
 import ContextMenu from '@/components/system/ContextMenu.vue';
+import UpdateDialog from '@/components/system/UpdateDialog.vue';
+import { useAppUpdate } from '@/composables/useAppUpdate';
+
+const { t } = useI18n();
 
 // 加载状态
 const isLoading = ref(true);
@@ -329,6 +346,42 @@ const handleLoginComplete = () => {
     isLoading.value = false;
 };
 
+// ─── 应用更新检查 ───
+const {
+    currentVersion: currentAppVersion,
+    latestVersion: latestAppVersion,
+    updateInfo: updateData,
+    downloadProgress,
+    downloadStatus,
+    checkForUpdate,
+    startDownload,
+    openDownloadPage,
+} = useAppUpdate();
+
+const showUpdateDialog = ref(false);
+
+const autoCheckUpdate = async () => {
+    const lastCheck = localStorage.getItem('last_update_check');
+    const now = Date.now();
+    if (lastCheck && now - parseInt(lastCheck) < 24 * 60 * 60 * 1000) {
+        return;
+    }
+    const result = await checkForUpdate();
+    if (result?.has_update) {
+        showUpdateDialog.value = true;
+    }
+    localStorage.setItem('last_update_check', String(now));
+};
+
+const handleManualCheckUpdate = async () => {
+    const result = await checkForUpdate();
+    if (result?.has_update) {
+        showUpdateDialog.value = true;
+    } else {
+        ElMessage.success(t('update.upToDate'));
+    }
+};
+
 // 检查资源加载
 const checkResourcesLoaded = () => {
     return new Promise((resolve) => {
@@ -362,6 +415,11 @@ onMounted(async () => {
             el.style.transition = 'background-image 1s ease-in-out';
         };
     }
+
+    // 延迟检查更新（登录完成后）
+    setTimeout(() => {
+        autoCheckUpdate();
+    }, 5000);
 });
 </script>
 

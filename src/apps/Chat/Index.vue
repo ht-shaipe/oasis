@@ -5,8 +5,8 @@
     :isMinimized="isMinimized"
     @close="emit('close')"
     @minimize="emit('minimize')"
-    width="900"
-    height="600"
+    :width="1000"
+    :height="600"
   >
     <ChatView />
   </MacWindow>

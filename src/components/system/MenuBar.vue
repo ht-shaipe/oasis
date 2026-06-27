@@ -11,9 +11,10 @@
                 <img src="/assets/logo.png" alt="Logo" />
                 <!-- Apple Menu -->
                 <div class="apple-menu" v-if="showAppleMenu">
-                    <div class="menu-item">{{ t('menu.about') }}</div>
-                    <div class="menu-divider"></div>
-                    <div class="menu-item">{{ t('menu.preferences') }}...</div>
+                     <div class="menu-item" @click="handleAboutClick">{{ t('menu.about') }}</div>
+                     <div class="menu-item" @click="handleCheckUpdate">{{ t('update.title') }}...</div>
+                     <div class="menu-divider"></div>
+                     <div class="menu-item">{{ t('menu.preferences') }}...</div>
                     <div class="menu-item">App Store...</div>
                     <div class="menu-divider"></div>
                     <div class="menu-item">{{ t('menu.forceQuit') }}...</div>
@@ -124,12 +125,23 @@ const showNotificationCenter = ref(false);
 const showCalendar = ref(false);
 
 // 事件发射
-const emit = defineEmits(['toggleNotificationCenter', 'toggleCalendar', 'updateCredits']);
+const emit = defineEmits(['toggleNotificationCenter', 'toggleCalendar', 'updateCredits', 'checkUpdate']);
 
 // 切换Apple菜单
 const toggleAppleMenu = () => {
     showAppleMenu.value = !showAppleMenu.value;
     showFileMenu.value = false;
+};
+
+// 关于
+const handleAboutClick = () => {
+    showAppleMenu.value = false;
+};
+
+// 检查更新
+const handleCheckUpdate = () => {
+    showAppleMenu.value = false;
+    emit('checkUpdate');
 };
 
 // 切换文件菜单

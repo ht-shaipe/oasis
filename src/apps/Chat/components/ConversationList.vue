@@ -9,7 +9,7 @@
         </svg>
       </button>
     </div>
-    <div class="conversation-list">
+    <el-scrollbar class="conversation-list">
       <div
         v-for="conv in conversations"
         :key="conv.id"
@@ -25,7 +25,7 @@
         <div class="conv-content">
           <div class="conv-title">{{ conv.title }}</div>
           <div class="conv-meta">
-            {{ conv.messages.length }} 条消息 · {{ formatDate(conv.updatedAt) }}
+            {{ (conv.messageCount ?? conv.messages.length) }} 条消息 · {{ formatDate(conv.updatedAt) }}
           </div>
         </div>
         <button
@@ -42,7 +42,7 @@
       <div v-if="conversations.length === 0" class="conv-empty">
         暂无对话，点击 + 开始
       </div>
-    </div>
+    </el-scrollbar>
   </div>
 </template>
 
@@ -116,7 +116,9 @@ function formatDate(ts: number): string {
 
 .conversation-list {
   flex: 1;
-  overflow-y: auto;
+}
+
+.conversation-list :deep(.el-scrollbar__wrap) {
   padding: 0 8px 8px;
 }
 

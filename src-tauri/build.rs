@@ -25,8 +25,16 @@ fn main() {
             "oasis_ai::commands::",
         ),
         (
+            workspace_root.join("crates/chat/src/commands.rs"),
+            "oasis_chat::commands::",
+        ),
+        (
             workspace_root.join("crates/browser-data-extract/src/commands.rs"),
             "oasis_browser_data_extract::commands::",
+        ),
+        (
+            workspace_root.join("crates/knowledge/src/commands.rs"),
+            "oasis_knowledge::commands::",
         ),
     ];
 

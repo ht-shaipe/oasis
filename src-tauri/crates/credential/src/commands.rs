@@ -121,6 +121,7 @@ pub fn delete_category(app: AppHandle, id: i64) -> Result<(), String> {
 fn credential_to_view(
     cred: &crate::models::Credential,
     category_name: Option<String>,
+    accounts_count: Option<i64>,
 ) -> CredentialView {
     CredentialView {
         id: cred.id,
@@ -133,6 +134,7 @@ fn credential_to_view(
         created_at: cred.created_at.clone(),
         updated_at: cred.updated_at.clone(),
         category_name,
+        accounts_count,
     }
 }
 
@@ -140,9 +142,58 @@ fn credential_to_view(
 pub fn list_credentials(
     app: AppHandle,
     category_id: Option<i64>,
+    dek_base64: Option<String>,
 ) -> Result<Vec<CredentialView>, String> {
     let conn = get_conn(&app)?;
-    db::list_credentials(&conn, category_id).map_err(|e| e.to_string())
+    let raw_creds = db::list_raw_credentials(&conn).map_err(|e| e.to_string())?;
+
+    let dek_opt: Option<[u8; 32]> = if let Some(ref dek_b64) = dek_base64 {
+        let dek_bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, dek_b64)
+            .map_err(|_| "Invalid DEK base64".to_string())?;
+        Some(dek_bytes.as_slice().try_into().map_err(|_| "DEK must be 32 bytes".to_string())?)
+    } else {
+        None
+    };
+
+    let mut views = Vec::new();
+    for cred in &raw_creds {
+        if category_id.is_some() && cred.category_id != category_id.unwrap() {
+            continue;
+        }
+
+        let cat_name: Option<String> = conn
+            .query_row(
+                "SELECT name FROM categories WHERE id = ?1",
+                rusqlite::params![cred.category_id],
+                |row| row.get(0),
+            )
+            .ok();
+
+        let accounts_count = if let Some(dek) = dek_opt {
+            count_accounts(&cred, dek)
+        } else {
+            None
+        };
+
+        views.push(credential_to_view(cred, cat_name, accounts_count));
+    }
+
+    Ok(views)
+}
+
+fn count_accounts(cred: &crate::models::Credential, dek: [u8; 32]) -> Option<i64> {
+    let nonce_arr: [u8; 12] = cred.nonce.as_slice().try_into().ok()?;
+    let plaintext = crypto::decrypt(&dek, &cred.encrypted_data, &nonce_arr).ok()?;
+    let sensitive: SensitiveData = serde_json::from_slice(&plaintext).ok()?;
+    let set_count = sensitive.sensitive_sets.as_ref().map_or(0, |s| s.len()) as i64;
+    let account_count = sensitive.account_sets.as_ref().map_or(0, |s| s.len()) as i64;
+    let standalone = if sensitive.password.is_some() || sensitive.api_key.is_some() {
+        1
+    } else {
+        0
+    };
+    let total = set_count.max(account_count).max(standalone);
+    if total > 0 { Some(total) } else { None }
 }
 
 #[tauri::command]
@@ -325,7 +376,7 @@ pub fn create_credential(
         )
         .ok();
 
-    Ok(credential_to_view(&created, cat_name))
+    Ok(credential_to_view(&created, cat_name, None))
 }
 
 #[tauri::command]
@@ -371,7 +422,7 @@ pub fn update_credential(
         )
         .ok();
 
-    Ok(credential_to_view(&result, cat_name))
+    Ok(credential_to_view(&result, cat_name, None))
 }
 
 #[tauri::command]

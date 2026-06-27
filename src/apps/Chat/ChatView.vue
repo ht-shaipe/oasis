@@ -6,6 +6,7 @@
       @select="store.selectConversation"
       @delete="handleDeleteConversation"
       @new="handleNewConversation"
+      
     />
 
     <div class="chat-main">
@@ -16,44 +17,65 @@
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
         </div>
-        <h3>开始新对话</h3>
-        <p>选择一个已配置的 LLM 模型后开始聊天</p>
-        <el-button type="primary" @click="handleNewConversation">新建对话</el-button>
+        <h3>{{ t('chat.emptyHint') }}</h3>
+        <p>{{ t('chat.emptyDesc') }}</p>
+        <el-button type="primary" @click="handleNewConversation">{{ t('chat.newChat') }}</el-button>
       </div>
 
       <!-- 聊天区 -->
       <template v-else>
         <div class="chat-header">
           <span class="chat-title">{{ store.activeConversation.title }}</span>
-          <el-select
-            v-model="currentModelId"
-            size="small"
-            placeholder="选择模型"
-            style="width: 200px"
-            @change="onModelChange"
-          >
-            <el-option
-              v-for="m in enabledModels"
-              :key="m.id"
-              :label="m.name"
-              :value="m.id"
-            />
-          </el-select>
-        </div>
-
-        <div class="chat-messages" ref="messagesRef">
-          <ChatMessage
-            v-for="msg in store.activeConversation.messages"
-            :key="msg.id"
-            :role="msg.role"
-            :content="msg.content"
-            :streaming="msg.streaming"
-            :error="msg.error"
-          />
-          <div v-if="store.isStreaming && !streamingMessage" class="chat-loading">
-            <span class="loading-dot">思考中</span>
+          <div class="chat-header-actions">
+            <el-tooltip :content="ragEnabled ? t('chat.ragEnabled') : t('chat.ragDisabled')" placement="bottom">
+              <el-button
+                :type="ragEnabled ? 'primary' : 'default'"
+                size="small"
+                :icon="Reading"
+                @click="ragEnabled = !ragEnabled"
+                plain
+              />
+            </el-tooltip>
+            <el-select
+              v-model="currentModelId"
+              size="small"
+              :placeholder="t('chat.selectModel')"
+              style="width: 220px"
+              @change="onModelChange"
+            >
+              <el-option-group
+                v-for="group in modelGroups"
+                :key="group.provider"
+                :label="group.label"
+              >
+                <el-option
+                  v-for="m in group.models"
+                  :key="m.id"
+                  :label="m.name"
+                  :value="m.id"
+                >
+                  <span class="model-option-name">{{ m.name }}</span>
+                  <span class="model-option-id">{{ m.model_id }}</span>
+                </el-option>
+              </el-option-group>
+            </el-select>
           </div>
         </div>
+
+        <el-scrollbar class="chat-messages" ref="messagesScrollbarRef">
+          <ChatMessage
+              v-for="msg in store.activeConversation.messages"
+              :key="msg.id"
+              :role="msg.role"
+              :content="msg.content"
+              :reasoningContent="msg.reasoningContent"
+              :streaming="msg.streaming"
+              :error="msg.error"
+            />
+            <div v-if="store.isStreaming && !streamingMessage" class="chat-loading">
+              <span class="loading-dot">{{ t('chat.thinking') }}</span>
+            </div>
+        </el-scrollbar>
 
         <ChatInput
           ref="inputRef"
@@ -69,20 +91,23 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Reading } from '@element-plus/icons-vue'
 import { invoke } from '@tauri-apps/api/core'
+import { useI18n } from 'vue-i18n'
 import { useChatStore } from '@/store/chat'
 import { streamChat } from '@/utils/sseChat'
 import ConversationList from './components/ConversationList.vue'
 import ChatMessage from './components/ChatMessage.vue'
 import ChatInput from './components/ChatInput.vue'
 
+const { t } = useI18n()
 const store = useChatStore()
 
-const messagesRef = ref<HTMLElement | null>(null)
+const messagesScrollbarRef = ref<InstanceType<typeof import('element-plus')['ElScrollbar']> | null>(null)
 const inputRef = ref<InstanceType<typeof ChatInput> | null>(null)
 const currentModelId = ref('')
+const ragEnabled = ref(false)
 
-// 从 Rust 后端加载的模型列表
 interface LLMModel {
   id: string
   name: string
@@ -92,35 +117,82 @@ interface LLMModel {
   api_key: string
   auth_type: string
   enabled: boolean
+  model_type: string
 }
 
 const models = ref<LLMModel[]>([])
 
-const enabledModels = computed(() => models.value.filter((m) => m.enabled))
+const enabledModels = computed(() => models.value.filter((m) => m.enabled && m.model_type !== 'embedding'))
+
+const providerLabels: Record<string, string> = {
+  deepseek: 'DeepSeek',
+  chatgpt: 'ChatGPT',
+  ollama: 'Ollama',
+  kimi: 'Kimi',
+  hunyuan: '腾讯混元',
+  doubao: '豆包',
+  mimo: 'MiMo',
+  qwen: '阿里千问',
+  zhipu: '智谱',
+  wenxin: '文心一言',
+  xunfei: '讯飞',
+}
+
+const modelGroups = computed(() => {
+  const groups: Record<string, { provider: string; label: string; models: LLMModel[] }> = {}
+  for (const m of enabledModels.value) {
+    const key = m.provider || 'other'
+    if (!groups[key]) {
+      groups[key] = {
+        provider: key,
+        label: providerLabels[key] || key,
+        models: [],
+      }
+    }
+    groups[key].models.push(m)
+  }
+  return Object.values(groups)
+})
 
 onMounted(async () => {
+  await store.loadConversations()
+  if (store.sortedConversations.length > 0 && !store.activeConversationId) {
+    store.selectConversation(store.sortedConversations[0].id)
+  }
   try {
     models.value = await invoke<LLMModel[]>('get_llm_models')
   } catch (e) {
     console.error('加载 LLM 模型列表失败:', e)
   }
+  syncCurrentModelId()
 })
 
-// 当前正在流式输出的 AI 消息
+function syncCurrentModelId() {
+  const conv = store.activeConversation
+  if (conv && conv.modelId) {
+    currentModelId.value = conv.modelId
+  } else {
+    currentModelId.value = enabledModels.value[0]?.id || ''
+  }
+}
+
+watch(() => store.activeConversationId, () => {
+  syncCurrentModelId()
+})
+
 const streamingMessage = computed(() =>
   store.activeConversation?.messages.find((m) => m.streaming)
 )
 
-// 滚动到底部
 function scrollToBottom() {
   nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+    const scrollbar = messagesScrollbarRef.value
+    if (scrollbar) {
+      scrollbar.setScrollTop(scrollbar.wrapRef?.scrollHeight ?? 99999)
     }
   })
 }
 
-// 监听消息变化自动滚动
 watch(
   () => store.activeConversation?.messages.length,
   () => scrollToBottom()
@@ -131,16 +203,17 @@ watch(
   () => scrollToBottom()
 )
 
-function handleNewConversation() {
-  store.createConversation()
-  currentModelId.value = enabledModels.value[0]?.id || ''
+async function handleNewConversation() {
+  const modelId = currentModelId.value || enabledModels.value[0]?.id || ''
+  await store.createConversation(modelId)
+  currentModelId.value = modelId
   nextTick(() => inputRef.value?.focus())
 }
 
 async function handleDeleteConversation(id: string) {
   try {
-    await ElMessageBox.confirm('确定要删除此对话吗？', '删除对话', { type: 'warning' })
-    store.deleteConversation(id)
+    await ElMessageBox.confirm(t('chat.deleteConfirm'), t('chat.deleteChat'), { type: 'warning' })
+    await store.deleteConversation(id)
   } catch {
     // 取消
   }
@@ -155,34 +228,31 @@ function onModelChange() {
 async function handleSend(text: string) {
   const conv = store.activeConversation
   if (!conv) {
-    handleNewConversation()
-    // 等待新对话创建后再发送
-    await nextTick()
+    await handleNewConversation()
     return handleSend(text)
   }
 
   if (!currentModelId.value) {
-    ElMessage.warning('请先选择一个模型')
+    ElMessage.warning(t('chat.modelRequired'))
     return
   }
 
   const model = enabledModels.value.find((m) => m.id === currentModelId.value)
   if (!model) {
-    ElMessage.warning('所选模型不可用')
+    ElMessage.warning(t('chat.modelUnavailable'))
     return
   }
 
-  // 添加用户消息
-  store.addMessage(conv.id, {
+  const aiMsgId = crypto.randomUUID()
+
+  await store.addMessage(conv.id, {
     id: crypto.randomUUID(),
     role: 'user',
     content: text,
     timestamp: Date.now(),
   })
 
-  // 创建 AI 消息占位
-  const aiMsgId = crypto.randomUUID()
-  store.addMessage(conv.id, {
+  await store.addMessage(conv.id, {
     id: aiMsgId,
     role: 'assistant',
     content: '',
@@ -193,10 +263,30 @@ async function handleSend(text: string) {
   store.isStreaming = true
   scrollToBottom()
 
-  // 构建消息历史
-  const history = conv.messages
-    .filter((m) => m.role !== 'system' && m.id !== aiMsgId)
+  let history: Array<{ role: string; content: string }> = conv.messages
+    .filter((m) => m.id !== aiMsgId)
     .map((m) => ({ role: m.role, content: m.content }))
+
+  if (ragEnabled.value) {
+    try {
+      const results = await invoke<Array<{
+        filePath: string
+        relPath: string
+        chunkContent: string
+        chunkIndex: number
+        score: number
+      }>>('semantic_search', { query: text, topK: 5 })
+      if (results.length > 0) {
+        const contextParts = results
+          .map((r) => `[${r.relPath}]\n${r.chunkContent}`)
+          .join('\n\n')
+        const systemContent = `${t('chat.ragSystemPrompt')}\n\n${contextParts}`
+        history.unshift({ role: 'system' as const, content: systemContent })
+      }
+    } catch (e) {
+      console.error('RAG search failed:', e)
+    }
+  }
 
   await streamChat(
     {
@@ -209,6 +299,9 @@ async function handleSend(text: string) {
         if (current) {
           store.updateMessageContent(conv.id, aiMsgId, current.content + token)
         }
+      },
+      onReasoning(token: string) {
+        store.updateMessageReasoning(conv.id, aiMsgId, token)
       },
       onComplete() {
         store.setMessageStreaming(conv.id, aiMsgId, false)
@@ -247,6 +340,12 @@ async function handleSend(text: string) {
   flex-shrink: 0;
 }
 
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .chat-title {
   font-size: var(--app-font-13);
   font-weight: 600;
@@ -258,7 +357,9 @@ async function handleSend(text: string) {
 
 .chat-messages {
   flex: 1;
-  overflow-y: auto;
+}
+
+.chat-messages :deep(.el-scrollbar__wrap) {
   padding: 8px 0;
 }
 
@@ -301,5 +402,16 @@ async function handleSend(text: string) {
 @keyframes pulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
+}
+
+.model-option-name {
+  font-size: var(--app-font-13);
+  color: var(--color-text-primary);
+}
+
+.model-option-id {
+  font-size: var(--app-font-12);
+  color: var(--color-text-tertiary);
+  margin-left: 8px;
 }
 </style>
