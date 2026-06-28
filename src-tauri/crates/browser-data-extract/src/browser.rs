@@ -485,7 +485,7 @@ pub fn discover_browsers() -> Vec<BrowserInfo> {
     let mut browsers = Vec::new();
 
     for tmpl in platform::chromium_browsers() {
-        if tmpl.user_data_dir.exists() {
+        if can_read_dir(&tmpl.user_data_dir) {
             let profiles = discover_chromium_profiles(&tmpl.user_data_dir);
             if !profiles.is_empty() {
                 browsers.push(BrowserInfo {
@@ -500,7 +500,7 @@ pub fn discover_browsers() -> Vec<BrowserInfo> {
     }
 
     for tmpl in platform::firefox_browsers() {
-        if tmpl.user_data_dir.exists() {
+        if can_read_dir(&tmpl.user_data_dir) {
             let profiles = discover_firefox_profiles(&tmpl.user_data_dir);
             if !profiles.is_empty() {
                 browsers.push(BrowserInfo {
@@ -515,7 +515,7 @@ pub fn discover_browsers() -> Vec<BrowserInfo> {
     }
 
     for tmpl in platform::safari_browsers() {
-        if tmpl.user_data_dir.exists() {
+        if can_read_dir(&tmpl.user_data_dir) {
             let profiles = discover_safari_profiles(&tmpl.user_data_dir);
             if !profiles.is_empty() {
                 browsers.push(BrowserInfo {
@@ -530,6 +530,60 @@ pub fn discover_browsers() -> Vec<BrowserInfo> {
     }
 
     browsers
+}
+
+fn can_read_dir(path: &std::path::Path) -> bool {
+    match std::fs::read_dir(path) {
+        Ok(_) => true,
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => false,
+        Err(_) => path.exists(),
+    }
+}
+
+/// macOS Full Disk Access 检查结果
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct FdaStatus {
+    pub has_access: bool,
+    pub message: String,
+}
+
+/// 检查当前进程是否拥有 macOS Full Disk Access 权限
+///
+/// macOS 对浏览器数据目录有单独的 FDA 保护，即使 `Application Support` 本身
+/// 可读，浏览器子目录（如 Google/Chrome）仍可能返回 PermissionDenied。
+/// 因此直接检测一个常见的浏览器目录是否可读。
+pub fn check_fda_status() -> FdaStatus {
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
+    let app_support = home.join("Library/Application Support");
+    let chrome_dir = app_support.join("Google/Chrome");
+
+    let has_access = if chrome_dir.exists() {
+        can_read_dir(&chrome_dir)
+    } else {
+        let edge_dir = app_support.join("Microsoft Edge");
+        if edge_dir.exists() {
+            can_read_dir(&edge_dir)
+        } else {
+            let firefox_dir = app_support.join("Firefox");
+            if firefox_dir.exists() {
+                can_read_dir(&firefox_dir)
+            } else {
+                true
+            }
+        }
+    };
+
+    if has_access {
+        FdaStatus {
+            has_access: true,
+            message: String::new(),
+        }
+    } else {
+        FdaStatus {
+            has_access: false,
+            message: "Oasis needs Full Disk Access to read browser data. Please grant it in System Settings > Privacy & Security > Full Disk Access.".into(),
+        }
+    }
 }
 
 /// 按浏览器标识键查找已安装浏览器

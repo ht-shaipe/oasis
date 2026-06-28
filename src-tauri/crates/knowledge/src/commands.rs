@@ -2,6 +2,7 @@ use crate::db;
 use crate::indexer;
 use crate::search;
 use ai_llm_kit::LlmService;
+use oasis_embed;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -51,6 +52,8 @@ pub struct KnowledgeStatusResponse {
     pub is_indexing: bool,
     pub embedding_model: Option<String>,
     pub embedding_dim: Option<i32>,
+    pub embedding_mode: Option<String>,
+    pub local_model_id: Option<String>,
 }
 
 #[tauri::command]
@@ -58,6 +61,25 @@ pub fn get_knowledge_status(app: AppHandle) -> Result<KnowledgeStatusResponse, S
     let conn = get_conn(&app)?;
     let ws = workspace_dir(&app)?;
     let status = indexer::get_status(&conn, &ws);
+
+    let embed_config = oasis_embed::commands::load_config(&app)?;
+    let embedding_mode = match embed_config.mode {
+        oasis_embed::commands::EmbedMode::Local => {
+            if embed_config.active_local_model_id.is_some() {
+                Some("local".to_string())
+            } else {
+                None
+            }
+        }
+        oasis_embed::commands::EmbedMode::Remote => {
+            if db::get_meta(&conn, "embedding_model").ok().flatten().is_some() {
+                Some("remote".to_string())
+            } else {
+                None
+            }
+        }
+    };
+
     Ok(KnowledgeStatusResponse {
         workspace_dir: status.workspace_dir,
         total_files: status.total_files,
@@ -67,6 +89,8 @@ pub fn get_knowledge_status(app: AppHandle) -> Result<KnowledgeStatusResponse, S
         is_indexing: status.is_indexing,
         embedding_model: status.embedding_model,
         embedding_dim: status.embedding_dim,
+        embedding_mode,
+        local_model_id: embed_config.active_local_model_id,
     })
 }
 
@@ -80,10 +104,17 @@ pub struct IndexResultResponse {
     pub elapsed_secs: f64,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct StartIndexingParams {
+    pub mode: String,
+    pub model_id: String,
+}
+
 #[tauri::command]
 pub async fn start_indexing(
     app: AppHandle,
-    embedding_model_id: String,
+    params: StartIndexingParams,
 ) -> Result<IndexResultResponse, String> {
     let ws = workspace_dir(&app)?;
     let ws_path = PathBuf::from(&ws);
@@ -100,21 +131,40 @@ pub async fn start_indexing(
     .await
     .map_err(|e| format!("Index task error: {}", e))??;
 
-    let embedding_config = get_embedding_model_config(&app, &embedding_model_id)?;
+    let app_data_dir_for_embed = db_path(&app)?;
+    let mode = params.mode.clone();
+    let model_id = params.model_id.clone();
 
-    let app_for_embed = app.clone();
-    let _embed_result = tauri::async_runtime::spawn_blocking(move || {
-        let mut conn = get_conn(&app_for_embed)?;
-        indexer::generate_embeddings_blocking(
-            &mut conn,
-            &embedding_model_id,
-            &embedding_config.base_url,
-            &embedding_config.api_key,
-            20,
-        )
-    })
-    .await
-    .map_err(|e| format!("Embed task error: {}", e))??;
+    if mode == "local" {
+        let app_for_embed = app.clone();
+        let _embed_result = tauri::async_runtime::spawn_blocking(move || {
+            let mut conn = get_conn(&app_for_embed)?;
+            indexer::generate_embeddings_local(
+                &mut conn,
+                &model_id,
+                &app_data_dir_for_embed,
+            )
+        })
+        .await
+        .map_err(|e| format!("Local embed task error: {}", e))??;
+    } else {
+        let embedding_config = get_embedding_model_config(&app, &model_id)?;
+
+        let app_for_embed = app.clone();
+        let _embed_result = tauri::async_runtime::spawn_blocking(move || {
+            let mut conn = get_conn(&app_for_embed)?;
+            indexer::generate_embeddings_blocking(
+                &mut conn,
+                &model_id,
+                &embedding_config.base_url,
+                &embedding_config.api_key,
+                20,
+                &app_data_dir_for_embed,
+            )
+        })
+        .await
+        .map_err(|e| format!("Embed task error: {}", e))??;
+    }
 
     Ok(IndexResultResponse {
         indexed_files: index_result.indexed_files,
@@ -147,17 +197,31 @@ pub async fn semantic_search(
     query: String,
     top_k: Option<u32>,
 ) -> Result<Vec<SearchResultResponse>, String> {
-    let embedding_model_id = {
-        let conn = get_conn(&app)?;
-        db::get_meta(&conn, "embedding_model")
-            .ok()
-            .flatten()
-            .ok_or("No embedding model configured. Run start_indexing first.")?
-    };
+    let app_data_dir = db_path(&app)?;
 
-    let config = get_embedding_model_config(&app, &embedding_model_id)?;
+    let embed_config = oasis_embed::commands::load_config(&app)?;
+    let use_local = embed_config.mode == oasis_embed::commands::EmbedMode::Local
+        && embed_config.active_local_model_id.is_some();
 
-    let query_embedding = {
+    let query_embedding = if use_local {
+        let local_model_id = embed_config.active_local_model_id.unwrap();
+        let app_for_embed = app.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            generate_local_query_embedding(&app_for_embed, &local_model_id, &query)
+        })
+        .await
+        .map_err(|e| format!("Local embedding error: {}", e))??
+    } else {
+        let embedding_model_id = {
+            let conn = get_conn(&app)?;
+            db::get_meta(&conn, "embedding_model")
+                .ok()
+                .flatten()
+                .ok_or("No embedding model configured. Run start_indexing first.")?
+        };
+
+        let config = get_embedding_model_config(&app, &embedding_model_id)?;
+
         let model_id = embedding_model_id.clone();
         let base_url = config.base_url.clone();
         let api_key = config.api_key.clone();
@@ -171,7 +235,7 @@ pub async fn semantic_search(
 
     let conn = get_conn(&app)?;
     let top_k = top_k.unwrap_or(5) as usize;
-    let results = search::search_by_query_embedding(&conn, &query_embedding, top_k)?;
+    let results = search::search_by_query_embedding(&conn, &query_embedding, top_k, &app_data_dir)?;
 
     Ok(results
         .into_iter()
@@ -188,7 +252,15 @@ pub async fn semantic_search(
 #[tauri::command]
 pub fn delete_knowledge_index(app: AppHandle) -> Result<(), String> {
     let conn = get_conn(&app)?;
-    db::clear_all(&conn).map_err(|e| e.to_string())
+    db::clear_all(&conn).map_err(|e| e.to_string())?;
+
+    let dir = db_path(&app)?;
+    let index_path = crate::vector_index::get_index_path(&dir);
+    let meta_path = crate::vector_index::get_chunk_meta_path(&dir);
+    let _ = fs::remove_file(&index_path);
+    let _ = fs::remove_file(&meta_path);
+
+    Ok(())
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -321,4 +393,33 @@ fn generate_query_embedding_blocking(
     }
 
     Ok(embedding)
+}
+
+fn generate_local_query_embedding(
+    app: &AppHandle,
+    model_id: &str,
+    query: &str,
+) -> Result<Vec<f32>, String> {
+    let texts = vec![query.to_string()];
+    let app_data_dir = db_path(app)?;
+    let cache_dir = app_data_dir.join("embed_models");
+    fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+
+    let key = oasis_embed::commands::find_catalog_key(model_id)
+        .ok_or(format!("Unknown local model: {}", model_id))?;
+
+    use fastembed::{TextEmbedding, TextInitOptions};
+    let mut model = TextEmbedding::try_new(
+        TextInitOptions::new(key).with_cache_dir(cache_dir),
+    )
+    .map_err(|e| format!("Failed to load local model '{}': {}", model_id, e))?;
+
+    let embeddings = model
+        .embed(texts, None)
+        .map_err(|e| format!("Local embedding inference failed: {}", e))?;
+
+    embeddings
+        .into_iter()
+        .next()
+        .ok_or("No embedding returned from local model".to_string())
 }

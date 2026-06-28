@@ -20,6 +20,7 @@ oasis-credential = {path = "crates/credential"}
 oasis-toolbox = {path = "crates/toolbox"}
 oasis-ai = {path = "crates/ai"}
 oasis-chat = {path = "crates/chat"}
+oasis-embed = {path = "crates/embed"}
 oasis-knowledge = {path = "crates/knowledge"}
 rand = "0.9"
 reqwest = {version = "0.12", features = ["json", "stream"] }

@@ -1,5 +1,6 @@
 use rusqlite::{params, Connection, Result as SqlResult};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
 
 pub fn init_db(app_data_dir: &Path) -> SqlResult<Connection> {
@@ -235,6 +236,46 @@ pub fn update_chunk_embedding(conn: &Connection, chunk_id: &str, embedding: &[f3
         params![blob, chunk_id],
     )?;
     Ok(())
+}
+
+pub struct ChunkMeta {
+    pub content: String,
+    pub rel_path: String,
+    pub chunk_index: i32,
+    pub line_start: Option<i32>,
+    pub line_end: Option<i32>,
+}
+
+pub fn get_chunks_by_ids(conn: &Connection, chunk_ids: &[&str]) -> SqlResult<HashMap<String, ChunkMeta>> {
+    if chunk_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let mut map = HashMap::new();
+    for &cid in chunk_ids {
+        let mut stmt = conn.prepare(
+            "SELECT c.content, f.rel_path, c.chunk_index, c.line_start, c.line_end
+             FROM chunks c
+             JOIN indexed_files f ON c.file_id = f.id
+             WHERE c.id = ?1",
+        )?;
+
+        let result = stmt.query_row(params![cid], |row| {
+            Ok(ChunkMeta {
+                content: row.get(0)?,
+                rel_path: row.get(1)?,
+                chunk_index: row.get(2)?,
+                line_start: row.get(3)?,
+                line_end: row.get(4)?,
+            })
+        });
+
+        if let Ok(meta) = result {
+            map.insert(cid.to_string(), meta);
+        }
+    }
+
+    Ok(map)
 }
 
 pub fn get_chunks_without_embedding(conn: &Connection) -> SqlResult<Vec<Chunk>> {

@@ -27,6 +27,11 @@ pub fn discover_browsers() -> Result<Vec<BrowserInfo>, String> {
     Ok(browser::discover_browsers())
 }
 
+#[tauri::command]
+pub fn check_fda_status() -> Result<browser::FdaStatus, String> {
+    Ok(browser::check_fda_status())
+}
+
 /// 从指定浏览器提取多种类型的数据
 ///
 /// # 参数

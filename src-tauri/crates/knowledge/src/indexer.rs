@@ -1,6 +1,7 @@
 use crate::chunker;
 use crate::db;
 use crate::parser;
+use crate::vector_index::{ChunkMeta as VectorChunkMeta, VectorIndex, get_chunk_meta_path, get_index_path};
 use ai_llm_kit::LlmService;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -229,6 +230,7 @@ pub fn generate_embeddings_blocking(
     base_url: &str,
     api_key: &str,
     batch_size: usize,
+    app_data_dir: &Path,
 ) -> Result<i32, String> {
     if INDEXING_IN_PROGRESS.swap(true, Ordering::Relaxed) {
         return Err("Indexing already in progress".to_string());
@@ -324,6 +326,91 @@ pub fn generate_embeddings_blocking(
     let _embedded_total = db::count_embedded_chunks(conn).map_err(|e| e.to_string())?;
     db::set_meta(conn, "last_index_time", &now_iso()).map_err(|e| e.to_string())?;
 
+    rebuild_vector_index(conn, app_data_dir)?;
+
+    INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
+
+    Ok(embedded_count)
+}
+
+pub fn generate_embeddings_local(
+    conn: &mut Connection,
+    model_id: &str,
+    app_data_dir: &Path,
+) -> Result<i32, String> {
+    if INDEXING_IN_PROGRESS.swap(true, Ordering::Relaxed) {
+        return Err("Indexing already in progress".to_string());
+    }
+
+    let mut embedded_count = 0i32;
+
+    let chunks = db::get_chunks_without_embedding(conn).map_err(|e| e.to_string())?;
+    if chunks.is_empty() {
+        INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
+        return Ok(0);
+    }
+
+    let cache_dir = app_data_dir.join("embed_models");
+    std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+
+    let key = oasis_embed::commands::find_catalog_key(model_id)
+        .ok_or(format!("Unknown local model: {}", model_id))?;
+
+    let mut model = fastembed::TextEmbedding::try_new(
+        fastembed::TextInitOptions::new(key).with_cache_dir(cache_dir),
+    )
+    .map_err(|e| format!("Failed to load local model '{}': {}", model_id, e))?;
+
+    db::set_meta(conn, "embedding_model", model_id).map_err(|e| e.to_string())?;
+
+    let batch_size = 20;
+    for batch in chunks.chunks(batch_size) {
+        if !INDEXING_IN_PROGRESS.load(Ordering::Relaxed) {
+            break;
+        }
+
+        let texts: Vec<String> = batch.iter().map(|c| c.content.clone()).collect();
+
+        let embeddings = model
+            .embed(texts, None)
+            .map_err(|e| format!("Local embedding inference failed: {}", e))?;
+
+        if embeddings.len() != batch.len() {
+            INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
+            return Err(format!(
+                "Embedding count mismatch: expected {}, got {}",
+                batch.len(),
+                embeddings.len()
+            ));
+        }
+
+        let mut dim: Option<i32> = None;
+
+        for (i, chunk) in batch.iter().enumerate() {
+            let embedding = &embeddings[i];
+
+            if embedding.is_empty() {
+                continue;
+            }
+
+            if dim.is_none() {
+                dim = Some(embedding.len() as i32);
+            }
+
+            db::update_chunk_embedding(conn, &chunk.id, embedding)
+                .map_err(|e| e.to_string())?;
+            embedded_count += 1;
+        }
+
+        if let Some(d) = dim {
+            db::set_meta(conn, "embedding_dim", &d.to_string()).map_err(|e| e.to_string())?;
+        }
+    }
+
+    db::set_meta(conn, "last_index_time", &now_iso()).map_err(|e| e.to_string())?;
+
+    rebuild_vector_index(conn, app_data_dir)?;
+
     INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
 
     Ok(embedded_count)
@@ -338,4 +425,27 @@ fn now_iso() -> String {
     chrono::DateTime::from_timestamp(secs as i64, 0)
         .map(|d| d.format("%Y-%m-%dT%H:%M:%SZ").to_string())
         .unwrap_or_else(|| format!("{}", secs))
+}
+
+pub fn rebuild_vector_index(conn: &Connection, app_data_dir: &Path) -> Result<(), String> {
+    let dim_str = db::get_meta(conn, "embedding_dim")
+        .ok()
+        .flatten()
+        .ok_or("Embedding dimension not set")?;
+    let dimensions = dim_str.parse::<usize>().map_err(|e| e.to_string())?;
+
+    let index_path = get_index_path(app_data_dir);
+    let meta_path = get_chunk_meta_path(app_data_dir);
+
+    let mut vi = VectorIndex::rebuild_from_db(conn, dimensions, index_path)?;
+
+    let meta = VectorChunkMeta {
+        key_to_chunk_id: vi.key_to_chunk_id.clone(),
+        chunk_id_to_key: vi.chunk_id_to_key.clone(),
+        next_key: vi.next_key,
+        dimensions: vi.dimensions(),
+    };
+    meta.save(&meta_path)?;
+
+    Ok(())
 }

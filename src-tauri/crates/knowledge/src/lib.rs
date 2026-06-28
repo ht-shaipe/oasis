@@ -4,3 +4,4 @@ pub mod db;
 pub mod indexer;
 pub mod parser;
 pub mod search;
+pub mod vector_index;

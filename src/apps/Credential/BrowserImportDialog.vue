@@ -33,9 +33,15 @@
                     <span>正在扫描浏览器...</span>
                 </div>
 
+                <div v-else-if="fdaStatus && !fdaStatus.has_access" class="no-browser-tip fda-tip">
+                    <el-icon :size="32" color="#f59e0b"><WarningFilled /></el-icon>
+                    <p class="fda-title">{{ $t('browserImport.fdaRequired') }}</p>
+                    <p class="fda-desc">{{ $t('browserImport.fdaDescription') }}</p>
+                </div>
+
                 <div v-else-if="browsers.length === 0" class="no-browser-tip">
                     <el-icon :size="32" color="#9ca3af"><WarningFilled /></el-icon>
-                    <p>未检测到已安装的浏览器</p>
+                    <p>{{ $t('browserImport.noBrowser') }}</p>
                 </div>
 
                 <div v-else class="browser-list">
@@ -272,10 +278,12 @@ const browsers = ref<BrowserInfo[]>([]);
 const selectedBrowserKey = ref<string | null>(null);
 const extractingKey = ref<string | null>(null);
 const sourceBrowserName = ref('');
+const fdaStatus = ref<{ has_access: boolean; message: string } | null>(null);
 
 const scanBrowsers = async () => {
     scanningBrowsers.value = true;
     try {
+        fdaStatus.value = await (window as any).__TAURI__.core.invoke('check_fda_status');
         browsers.value = await discoverBrowsers();
     } catch (err) {
         console.error('扫描浏览器失败:', err);
@@ -733,6 +741,26 @@ watch(
     padding: 32px 0;
     color: #9ca3af;
     font-size: var(--app-font-14);
+}
+
+.fda-tip {
+    gap: 12px;
+}
+
+.fda-title {
+    font-size: var(--app-font-15);
+    font-weight: 500;
+    color: #f59e0b;
+    margin: 0;
+}
+
+.fda-desc {
+    font-size: var(--app-font-13);
+    color: #6b7280;
+    text-align: center;
+    max-width: 400px;
+    line-height: 1.6;
+    margin: 0;
 }
 
 .usage-tips {

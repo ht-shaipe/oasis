@@ -36,6 +36,10 @@ fn main() {
             workspace_root.join("crates/knowledge/src/commands.rs"),
             "oasis_knowledge::commands::",
         ),
+        (
+            workspace_root.join("crates/embed/src/commands.rs"),
+            "oasis_embed::commands::",
+        ),
     ];
 
     for (path, _) in &sources {

@@ -25,6 +25,7 @@
                 <GeneralPanel v-if="activeSection === 'general'" />
                 <AppearancePanel v-if="activeSection === 'appearance'" />
                 <LlmPanel v-if="activeSection === 'llm'" />
+                <EmbeddingModelPanel v-if="activeSection === 'embedding'" />
                 <AboutPanel v-if="activeSection === 'about'" />
             </div>
         </div>
@@ -38,6 +39,7 @@ import { ref, computed } from 'vue';
 import GeneralPanel from './panels/GeneralPanel.vue';
 import AppearancePanel from './panels/AppearancePanel.vue';
 import LlmPanel from './panels/LlmPanel.vue';
+import EmbeddingModelPanel from './panels/EmbeddingModelPanel.vue';
 import AboutPanel from './panels/AboutPanel.vue';
 
 const { t } = useI18n();
@@ -57,6 +59,7 @@ const sidebarItems = computed(() => [
     { id: 'general', icon: '/assets/icons/Settings.svg', label: t('settings.general.title') },
     { id: 'appearance', icon: '/assets/icons/Features.svg', label: t('settings.appearance.title') },
     { id: 'llm', icon: '/assets/icons/Books.svg', label: t('settings.llm.title') },
+    { id: 'embedding', icon: '/assets/icons/Features.svg', label: t('settings.embedding.title') },
     { id: 'about', icon: '/assets/icons/AppStore.svg', label: t('settings.about.title') },
 ]);
 
