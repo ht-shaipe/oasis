@@ -831,7 +831,15 @@
       "downloadedModels": "Downloaded Models",
       "downloading": "Downloading",
       "myModels": "My Models",
-      "running": "Running"
+      "running": "Running",
+      "downloaded": "Downloaded",
+      "pendingDownload": "Not Downloaded",
+      "hiddenModels": "Hidden Models",
+      "hiddenModelsHint": "These models are hidden from your model list. Click Restore to show them again.",
+      "hidden": "Hidden",
+      "restore": "Restore",
+      "hideSuccess": "Model hidden from list",
+      "restoreSuccess": "Model restored to list"
     }
   },
   "update": {

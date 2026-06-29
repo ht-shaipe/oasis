@@ -148,7 +148,15 @@
       "downloadedModels": "已下载模型",
       "downloading": "下载中",
       "myModels": "我的模型",
-      "running": "运行中"
+      "running": "运行中",
+      "downloaded": "已下载",
+      "pendingDownload": "待下载",
+      "hiddenModels": "已隐藏的模型",
+      "hiddenModelsHint": "这些模型已从模型列表中隐藏，点击恢复可重新显示。",
+      "hidden": "已隐藏",
+      "restore": "恢复",
+      "hideSuccess": "模型已从列表隐藏",
+      "restoreSuccess": "模型已恢复到列表"
     }
   },
   "finder": {

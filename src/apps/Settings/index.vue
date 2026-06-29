@@ -21,19 +21,22 @@
                 </div>
             </div>
 
-            <div class="settings-content">
-                <GeneralPanel v-if="activeSection === 'general'" />
-                <AppearancePanel v-if="activeSection === 'appearance'" />
-                <LlmPanel v-if="activeSection === 'llm'" />
-                <EmbeddingModelPanel v-if="activeSection === 'embedding'" />
-                <AboutPanel v-if="activeSection === 'about'" />
-            </div>
+            <el-scrollbar class="settings-content">
+                <div class="settings-content-inner">
+                    <GeneralPanel v-if="activeSection === 'general'" />
+                    <AppearancePanel v-if="activeSection === 'appearance'" />
+                    <LlmPanel v-if="activeSection === 'llm'" />
+                    <EmbeddingModelPanel v-if="activeSection === 'embedding'" />
+                    <AboutPanel v-if="activeSection === 'about'" />
+                </div>
+            </el-scrollbar>
         </div>
     </MacWindow>
 </template>
 
 <script setup lang="ts">
 import MacWindow from '@/components/common/MacWindow.vue';
+import { ElScrollbar } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { ref, computed } from 'vue';
 import GeneralPanel from './panels/GeneralPanel.vue';
@@ -123,8 +126,11 @@ defineExpose({
 
 .settings-content {
     flex: 1;
+    overflow: hidden;
+}
+
+.settings-content-inner {
     padding: 24px 28px;
-    overflow-y: auto;
 }
 </style>
 

@@ -1,15 +1,15 @@
 <template>
     <div class="section-panel">
-        <div class="llm-header">
-            <h2 class="section-heading">{{ t('settings.embedding.title') }}</h2>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="section-heading mb-0">{{ t('settings.embedding.title') }}</h2>
         </div>
 
-        <div class="embed-desc">
+        <div class="text-[13px] text-[var(--color-text-secondary)] mb-4 leading-7">
             {{ t('settings.embedding.description') }}
         </div>
 
-        <div class="mode-switch-row">
-            <span class="mode-label">{{ t('settings.embedding.mode') }}</span>
+        <div class="flex items-center gap-3 mb-4 px-3 py-2 bg-[var(--color-card-bg)] rounded-2 border border-solid border-[var(--color-card-border)]">
+            <span class="text-[13px] text-[var(--color-text-secondary)] shrink-0">{{ t('settings.embedding.mode') }}</span>
             <el-radio-group v-model="embedMode" size="small" @change="handleModeChange">
                 <el-radio-button value="local">{{ t('settings.embedding.localMode') }}</el-radio-button>
                 <el-radio-button value="remote">{{ t('settings.embedding.remoteMode') }}</el-radio-button>
@@ -19,12 +19,12 @@
                 size="small"
                 :active-text="t('settings.embedding.autoActivate')"
                 @change="handleAutoActivateChange"
-                style="margin-left: auto"
+                class="ml-auto"
             />
         </div>
 
-        <div class="hf-search-section">
-            <div class="hf-search-bar">
+        <div class="mb-4">
+            <div class="mb-2">
                 <el-input
                     v-model="hfSearchQuery"
                     :placeholder="t('settings.embedding.hfSearchPlaceholder')"
@@ -43,32 +43,32 @@
                 </el-input>
             </div>
 
-            <div v-if="hfSearchResults.length > 0" class="hf-results">
-                <div class="hf-results-header">
+            <div v-if="hfSearchResults.length > 0" class="border border-solid border-[var(--color-card-border)] rounded-2 bg-[var(--color-card-bg)]">
+                <div class="flex items-center justify-between px-3 py-2 text-[13px] text-[var(--color-text-secondary)] border-b border-solid border-[var(--color-card-border)]">
                     <span>{{ t('settings.embedding.hfResultsCount', { count: hfSearchResults.length }) }}</span>
                     <el-button size="small" link type="primary" @click="hfSearchResults = []">
                         {{ t('common.close') }}
                     </el-button>
                 </div>
-                <el-scrollbar class="hf-results-scroll" max-height="300px">
+                <el-scrollbar class="max-h-300px">
                     <div
                         v-for="m in hfSearchResults"
                         :key="m.modelId"
                         class="hf-result-item"
                     >
-                        <div class="hf-result-info">
-                            <div class="hf-result-name">
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[13px] text-[var(--color-text-primary)] font-500 flex items-center gap-1.5 flex-wrap">
                                 <span>{{ m.modelId }}</span>
                                 <span v-if="m.pipelineTag" class="hf-tag">{{ m.pipelineTag }}</span>
                                 <span v-if="m.libraryName" class="hf-tag lib">{{ m.libraryName }}</span>
                             </div>
-                            <div class="hf-result-meta">
+                            <div class="flex gap-2 text-[11px] text-[var(--color-text-tertiary)] mt-0.5">
                                 <span v-if="m.downloads">{{ formatNumber(m.downloads) }} downloads</span>
                                 <span v-if="m.likes">{{ formatNumber(m.likes) }} likes</span>
-                                <span v-if="m.tags.includes('onnx')" class="onnx-badge">ONNX</span>
+                                <span v-if="m.tags.includes('onnx')" class="text-primary font-600">ONNX</span>
                             </div>
                         </div>
-                        <div class="hf-result-action">
+                        <div class="shrink-0">
                             <template v-if="!isModelKnown(m.modelId)">
                                 <el-button
                                     type="primary"
@@ -80,7 +80,7 @@
                                 </el-button>
                             </template>
                             <template v-else-if="isModelDownloaded(m.modelId)">
-                                <span class="downloaded-label">{{ t('settings.embedding.hfDownloaded') }}</span>
+                                <span class="text-[12px] font-500 text-primary">{{ t('settings.embedding.hfDownloaded') }}</span>
                                 <el-button
                                     type="danger"
                                     size="small"
@@ -91,7 +91,7 @@
                                 </el-button>
                             </template>
                             <template v-else>
-                                <span class="already-label">{{ t('settings.embedding.hfAlreadyAdded') }}</span>
+                                <span class="text-[12px] text-[var(--color-text-tertiary)]">{{ t('settings.embedding.hfAlreadyAdded') }}</span>
                                 <el-button
                                     v-if="isModelCustom(m.modelId)"
                                     type="danger"
@@ -112,31 +112,39 @@
             <span>{{ t('settings.embedding.myModels') }}</span>
         </div>
 
-        <div v-if="embedMode === 'local' && models.length > 0" class="model-grid">
+        <div v-if="embedMode === 'local' && models.length > 0" class="grid grid-cols-1 gap-3">
             <div
                 v-for="model in models"
                 :key="model.id"
                 class="model-card"
                 :class="{
-                    active: activeModelId === model.id,
+                    active: activeModelId === model.id && model.downloaded,
+                    downloaded: model.downloaded && activeModelId !== model.id,
+                    pending: !model.downloaded,
                     downloading: !model.downloaded && downloadingId === model.id,
                 }"
             >
-                <div class="card-header">
-                    <span class="model-name">{{ model.name }}</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-[14px] text-[var(--color-text-primary)] font-600">{{ model.name }}</span>
                     <span v-if="model.quantized" class="quant-tag">Q</span>
                     <span v-if="model.isCustom" class="custom-tag">Custom</span>
-                    <span v-if="activeModelId === model.id && model.downloaded" class="running-tag">
+                    <span v-if="activeModelId === model.id && model.downloaded" class="status-tag status-active">
                         <span class="running-dot"></span>
                         {{ t('settings.embedding.running') }}
                     </span>
+                    <span v-else-if="model.downloaded" class="status-tag status-downloaded">
+                        {{ t('settings.embedding.downloaded') }}
+                    </span>
+                    <span v-else class="status-tag status-pending">
+                        {{ t('settings.embedding.pendingDownload') }}
+                    </span>
                 </div>
-                <div class="card-meta">
-                    <span class="meta-item">{{ model.dimensions }}D</span>
-                    <span class="meta-item">~{{ model.sizeMb }}MB</span>
-                    <span class="meta-item">{{ model.license }}</span>
+                <div class="flex gap-2.5 text-[12px] text-[var(--color-text-tertiary)]">
+                    <span class="whitespace-nowrap">{{ model.dimensions }}D</span>
+                    <span class="whitespace-nowrap">~{{ model.sizeMb }}MB</span>
+                    <span class="whitespace-nowrap">{{ model.license }}</span>
                 </div>
-                <div class="card-desc">{{ model.description }}</div>
+                <div class="text-[12px] text-[var(--color-text-secondary)] leading-5">{{ model.description }}</div>
 
                 <el-progress
                     v-if="downloadProgress[model.id] && downloadProgress[model.id].status === 'downloading'"
@@ -144,14 +152,14 @@
                     :stroke-width="4"
                     :show-text="true"
                     :format="(p: number) => `${p}%`"
-                    style="margin: 4px 0"
+                    class="my-1"
                 />
 
-                <div v-if="downloadProgress[model.id]?.status === 'cancelled'" class="cancelled-hint">
+                <div v-if="downloadProgress[model.id]?.status === 'cancelled'" class="text-[12px] text-[#e6a23c]">
                     {{ t('settings.embedding.downloadCancelled') }}
                 </div>
 
-                <div class="card-actions">
+                <div class="flex items-center gap-2 mt-0.5">
                     <template v-if="!model.downloaded">
                         <el-button
                             type="primary"
@@ -169,6 +177,14 @@
                             @click="handleCancelDownload"
                         >
                             {{ t('settings.embedding.cancel') }}
+                        </el-button>
+                        <el-button
+                            type="danger"
+                            size="small"
+                            link
+                            @click="model.isCustom ? handleRemoveCustom(model.id) : handleHideModel(model.id)"
+                        >
+                            <el-icon><Delete /></el-icon>
                         </el-button>
                     </template>
                     <template v-else>
@@ -200,6 +216,42 @@
                             <el-icon><Delete /></el-icon>
                         </el-button>
                     </template>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="embedMode === 'local' && hiddenModels.length > 0" class="section-divider">
+            <span>{{ t('settings.embedding.hiddenModels') }}</span>
+        </div>
+
+        <div v-if="embedMode === 'local' && hiddenModels.length > 0" class="text-[12px] text-[var(--color-text-tertiary)] mb-3">
+            {{ t('settings.embedding.hiddenModelsHint') }}
+        </div>
+
+        <div v-if="embedMode === 'local' && hiddenModels.length > 0" class="grid grid-cols-2 gap-3">
+            <div
+                v-for="model in hiddenModels"
+                :key="model.id"
+                class="model-card hidden"
+            >
+                <div class="flex items-center gap-2">
+                    <span class="text-[14px] text-[var(--color-text-primary)] font-600">{{ model.name }}</span>
+                    <span class="hidden-tag">{{ t('settings.embedding.hidden') }}</span>
+                </div>
+                <div class="flex gap-2.5 text-[12px] text-[var(--color-text-tertiary)]">
+                    <span class="whitespace-nowrap">{{ model.dimensions }}D</span>
+                    <span class="whitespace-nowrap">~{{ model.sizeMb }}MB</span>
+                    <span class="whitespace-nowrap">{{ model.license }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <el-button
+                        type="primary"
+                        size="small"
+                        plain
+                        @click="handleRestoreModel(model.id)"
+                    >
+                        {{ t('settings.embedding.restore') }}
+                    </el-button>
                 </div>
             </div>
         </div>
@@ -274,6 +326,7 @@ interface EmbedConfig {
     activeRemoteModelId: string | null
     customModels: CustomModelEntry[]
     autoActivate: boolean
+    hiddenBuiltinIds: string[]
 }
 
 interface CustomModelEntry {
@@ -346,6 +399,7 @@ const hfSearchQuery = ref('')
 const hfSearching = ref(false)
 const hfSearchResults = ref<HfModelSearchResult[]>([])
 const addingFromHf = ref<string | null>(null)
+const hiddenModels = ref<LocalEmbeddingModel[]>([])
 
 const downloadedModels = computed(() => models.value.filter((m) => m.downloaded))
 
@@ -383,6 +437,14 @@ async function loadConfig() {
         autoActivate.value = config.autoActivate
     } catch (e) {
         console.error('Failed to load embed config:', e)
+    }
+}
+
+async function loadHiddenModels() {
+    try {
+        hiddenModels.value = await invoke<LocalEmbeddingModel[]>('list_hidden_embedding_models')
+    } catch (e) {
+        console.error('Failed to load hidden models:', e)
     }
 }
 
@@ -459,9 +521,29 @@ async function handleRemoveCustom(modelId: string) {
         )
         await invoke('remove_custom_embedding_model', { modelId })
         ElMessage.success(t('settings.embedding.removeCustomSuccess'))
-        await Promise.all([loadModels(), loadConfig()])
+        await Promise.all([loadModels(), loadConfig(), loadHiddenModels()])
     } catch {
         // cancelled
+    }
+}
+
+async function handleHideModel(modelId: string) {
+    try {
+        await invoke('hide_embedding_model', { modelId })
+        ElMessage.success(t('settings.embedding.hideSuccess'))
+        await Promise.all([loadModels(), loadConfig(), loadHiddenModels()])
+    } catch (e: unknown) {
+        ElMessage.error(`${e}`)
+    }
+}
+
+async function handleRestoreModel(modelId: string) {
+    try {
+        await invoke('restore_embedding_model', { modelId })
+        ElMessage.success(t('settings.embedding.restoreSuccess'))
+        await Promise.all([loadModels(), loadConfig(), loadHiddenModels()])
+    } catch (e: unknown) {
+        ElMessage.error(`${e}`)
     }
 }
 
@@ -627,7 +709,7 @@ function handleProgressEvent(event: { payload: DownloadProgressPayload }) {
 
 onMounted(async () => {
     unlistenProgress = await listen<DownloadProgressPayload>('embed-download-progress', handleProgressEvent)
-    await Promise.all([loadModels(), loadConfig()])
+    await Promise.all([loadModels(), loadConfig(), loadHiddenModels()])
 })
 
 onUnmounted(() => {
@@ -636,54 +718,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.embed-desc {
-    font-size: var(--app-font-13);
-    color: var(--color-text-secondary);
-    margin-bottom: 16px;
-    line-height: 1.5;
-}
-
-.mode-switch-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 8px 12px;
-    background: var(--color-card-bg);
-    border-radius: 8px;
-    border: 1px solid var(--color-card-border);
-}
-
-.mode-label {
-    font-size: 13px;
-    color: var(--color-text-secondary);
-    flex-shrink: 0;
-}
-
-.hf-search-section {
-    margin-bottom: 16px;
-}
-
-.hf-search-bar {
-    margin-bottom: 8px;
-}
-
-.hf-results {
-    border: 1px solid var(--color-card-border);
-    border-radius: 8px;
-    background: var(--color-card-bg);
-}
-
-.hf-results-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    font-size: 13px;
-    color: var(--color-text-secondary);
-    border-bottom: 1px solid var(--color-card-border);
-}
-
 .hf-result-item {
     display: flex;
     align-items: center;
@@ -702,21 +736,6 @@ onUnmounted(() => {
     background: rgba(0, 0, 0, 0.02);
 }
 
-.hf-result-info {
-    min-width: 0;
-    flex: 1;
-}
-
-.hf-result-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-
 .hf-tag {
     font-size: 10px;
     padding: 1px 5px;
@@ -729,34 +748,6 @@ onUnmounted(() => {
 .hf-tag.lib {
     background: rgba(103, 194, 58, 0.08);
     color: #67c23a;
-}
-
-.hf-result-meta {
-    display: flex;
-    gap: 8px;
-    font-size: 11px;
-    color: var(--color-text-tertiary);
-    margin-top: 2px;
-}
-
-.onnx-badge {
-    color: #42b883;
-    font-weight: 600;
-}
-
-.hf-result-action {
-    flex-shrink: 0;
-}
-
-.already-label {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-}
-
-.downloaded-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: #42b883;
 }
 
 .section-divider {
@@ -774,12 +765,6 @@ onUnmounted(() => {
     flex: 1;
     height: 1px;
     background: var(--color-card-border);
-}
-
-.model-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
 }
 
 .model-card {
@@ -803,21 +788,23 @@ onUnmounted(() => {
     box-shadow: 0 0 0 1px rgba(66, 184, 131, 0.15);
 }
 
+.model-card.downloaded {
+    border-color: rgba(66, 184, 131, 0.35);
+    background: rgba(66, 184, 131, 0.02);
+}
+
+.model-card.pending {
+    border-color: rgba(0, 0, 0, 0.06);
+    background: rgba(0, 0, 0, 0.01);
+}
+
 .model-card.downloading {
     border-color: #e6a23c;
     background: rgba(230, 162, 60, 0.04);
 }
 
-.card-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.model-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text-primary);
+.model-card.hidden {
+    opacity: 0.55;
 }
 
 .quant-tag {
@@ -838,52 +825,40 @@ onUnmounted(() => {
     border-radius: 3px;
 }
 
-.card-meta {
-    display: flex;
-    gap: 10px;
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-}
-
-.meta-item {
-    white-space: nowrap;
-}
-
-.card-desc {
-    font-size: 12px;
-    color: var(--color-text-secondary);
-    line-height: 1.4;
-}
-
-.cancelled-hint {
-    font-size: 12px;
-    color: #e6a23c;
-}
-
-.card-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 2px;
-}
-
-.active-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: #42b883;
-}
-
-.running-tag {
+.hidden-tag {
     font-size: 11px;
     font-weight: 600;
-    color: #42b883;
-    background: rgba(66, 184, 131, 0.1);
+    color: #909399;
+    background: rgba(144, 147, 153, 0.1);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: auto;
+}
+
+.status-tag {
+    font-size: 11px;
+    font-weight: 600;
     padding: 2px 8px;
     border-radius: 10px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
     margin-left: auto;
+}
+
+.status-tag.status-active {
+    color: #42b883;
+    background: rgba(66, 184, 131, 0.12);
+}
+
+.status-tag.status-downloaded {
+    color: #67c23a;
+    background: rgba(103, 194, 58, 0.08);
+}
+
+.status-tag.status-pending {
+    color: #909399;
+    background: rgba(144, 147, 153, 0.08);
 }
 
 .running-dot {
@@ -897,23 +872,5 @@ onUnmounted(() => {
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
-}
-
-.llm-empty {
-    padding: 48px 0;
-    text-align: center;
-    font-size: 14px;
-    color: var(--color-text-tertiary);
-}
-
-.llm-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-}
-
-.llm-header .section-heading {
-    margin-bottom: 0;
 }
 </style>

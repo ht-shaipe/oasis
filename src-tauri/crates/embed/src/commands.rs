@@ -40,6 +40,8 @@ pub struct EmbedModelConfig {
     pub custom_models: Vec<CustomModelEntry>,
     #[serde(default)]
     pub auto_activate: bool,
+    #[serde(default)]
+    pub hidden_builtin_ids: Vec<String>,
 }
 
 impl EmbedModelConfig {
@@ -50,6 +52,7 @@ impl EmbedModelConfig {
             active_remote_model_id: None,
             custom_models: Vec::new(),
             auto_activate: true,
+            hidden_builtin_ids: Vec::new(),
         }
     }
 
@@ -368,26 +371,37 @@ pub fn save_config(app: &tauri::AppHandle, config: &EmbedModelConfig) -> Result<
     fs::write(&path, content).map_err(|e| e.to_string())
 }
 
-fn is_model_downloaded(cache_dir: &PathBuf, model_id: &str) -> bool {
-    let org_model = model_id.replace('/', "--");
-    let snapshot_dir = cache_dir
-        .join(format!("models--{}", org_model))
-        .join("snapshots");
-    if !snapshot_dir.exists() {
-        return false;
-    }
-    if let Ok(entries) = fs::read_dir(&snapshot_dir) {
-        for entry in entries.flatten() {
-            if entry.path().is_dir() {
-                let p = entry.path();
-                if p.join("onnx").join("model.onnx").exists()
-                    || p.join("onnx").join("model_optimized.onnx").exists()
-                    || p.join("onnx").join("model_quantized.onnx").exists()
-                    || p.join("model.onnx").exists()
-                    || p.join("model_optimized.onnx").exists()
-                    || p.join("onnx").join("model_q4.onnx").exists()
-                {
-                    return true;
+fn is_model_downloaded(cache_dir: &PathBuf, model_id: &str, config: &EmbedModelConfig) -> bool {
+    let possible_repo_names: Vec<String> = {
+        let mut names = vec![model_id.to_string()];
+        if let Some((model_code, _, _)) = get_model_code_and_files(model_id, config) {
+            if model_code != model_id {
+                names.push(model_code);
+            }
+        }
+        names
+    };
+    for repo_name in &possible_repo_names {
+        let org_model = repo_name.replace('/', "--");
+        let snapshot_dir = cache_dir
+            .join(format!("models--{}", org_model))
+            .join("snapshots");
+        if !snapshot_dir.exists() {
+            continue;
+        }
+        if let Ok(entries) = fs::read_dir(&snapshot_dir) {
+            for entry in entries.flatten() {
+                if entry.path().is_dir() {
+                    let p = entry.path();
+                    if p.join("onnx").join("model.onnx").exists()
+                        || p.join("onnx").join("model_optimized.onnx").exists()
+                        || p.join("onnx").join("model_quantized.onnx").exists()
+                        || p.join("model.onnx").exists()
+                        || p.join("model_optimized.onnx").exists()
+                        || p.join("onnx").join("model_q4.onnx").exists()
+                    {
+                        return true;
+                    }
                 }
             }
         }
@@ -466,8 +480,15 @@ pub fn list_available_embedding_models(
     let config = load_config(&app)?;
     let catalog = model_catalog();
 
+    let hidden_set: std::collections::HashSet<&str> = config
+        .hidden_builtin_ids
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
+
     let mut result: Vec<LocalEmbeddingModel> = catalog
         .iter()
+        .filter(|entry| !hidden_set.contains(entry.id))
         .map(|entry| LocalEmbeddingModel {
             id: entry.id.to_string(),
             name: entry.name.to_string(),
@@ -476,7 +497,7 @@ pub fn list_available_embedding_models(
             size_mb: entry.size_mb,
             license: entry.license.to_string(),
             description: entry.description.to_string(),
-            downloaded: is_model_downloaded(&cache_dir, entry.id),
+            downloaded: is_model_downloaded(&cache_dir, entry.id, &config),
             is_custom: false,
             onnx_file: entry.onnx_file.to_string(),
             additional_files: entry
@@ -497,7 +518,7 @@ pub fn list_available_embedding_models(
                 size_mb: custom.size_mb,
                 license: custom.license.clone(),
                 description: custom.description.clone(),
-                downloaded: is_model_downloaded(&cache_dir, &custom.model_id),
+                downloaded: is_model_downloaded(&cache_dir, &custom.model_id, &config),
                 is_custom: true,
                 onnx_file: custom.onnx_file.clone(),
                 additional_files: custom.additional_files.clone(),
@@ -544,7 +565,6 @@ pub async fn download_embedding_model(
     tauri::async_runtime::spawn_blocking(move || {
         let api = ApiBuilder::new()
             .with_cache_dir(cache_dir)
-            .with_progress(false)
             .build()
             .map_err(|e| format!("Failed to create HF API: {}", e))?;
 
@@ -653,15 +673,28 @@ pub fn delete_embedding_model(
     model_id: String,
 ) -> Result<(), String> {
     let cache_dir = models_cache_dir(&app)?;
-    let org_model = model_id.replace('/', "--");
-    let model_dir = cache_dir.join(format!("models--{}", org_model));
+    let config = load_config(&app)?;
 
-    if model_dir.exists() {
-        fs::remove_dir_all(&model_dir).map_err(|e| e.to_string())?;
+    let possible_repo_names: Vec<String> = {
+        let mut names = vec![model_id.to_string()];
+        if let Some((model_code, _, _)) = get_model_code_and_files(&model_id, &config) {
+            if model_code != model_id {
+                names.push(model_code);
+            }
+        }
+        names
+    };
+
+    for repo_name in &possible_repo_names {
+        let org_model = repo_name.replace('/', "--");
+        let model_dir = cache_dir.join(format!("models--{}", org_model));
+        if model_dir.exists() {
+            fs::remove_dir_all(&model_dir).map_err(|e| e.to_string())?;
+        }
     }
 
-    let mut config = load_config(&app)?;
     if config.active_local_model_id.as_deref() == Some(&model_id) {
+        let mut config = config;
         config.active_local_model_id = None;
         save_config(&app, &config)?;
     }
@@ -680,14 +713,15 @@ pub fn set_active_embedding_model(
     model_id: String,
 ) -> Result<(), String> {
     let cache_dir = models_cache_dir(&app)?;
-    if !is_model_downloaded(&cache_dir, &model_id) {
+    let config = load_config(&app)?;
+    if !is_model_downloaded(&cache_dir, &model_id, &config) {
         return Err(format!(
             "Model '{}' is not downloaded. Please download it first.",
             model_id
         ));
     }
 
-    let mut config = load_config(&app)?;
+    let mut config = config;
     config.active_local_model_id = Some(model_id);
     save_config(&app, &config)?;
 
@@ -761,6 +795,76 @@ pub fn remove_custom_embedding_model(
 
     save_config(&app, &config)?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn hide_embedding_model(
+    app: tauri::AppHandle,
+    model_id: String,
+) -> Result<(), String> {
+    if find_catalog_entry_owned(&model_id).is_none() {
+        return Err(format!(
+            "Only built-in models can be hidden. Use remove_custom for custom models."
+        ));
+    }
+    let mut config = load_config(&app)?;
+    if !config.hidden_builtin_ids.contains(&model_id) {
+        config.hidden_builtin_ids.push(model_id.clone());
+    }
+    if config.active_local_model_id.as_deref() == Some(&model_id) {
+        config.active_local_model_id = None;
+    }
+    save_config(&app, &config)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn restore_embedding_model(
+    app: tauri::AppHandle,
+    model_id: String,
+) -> Result<(), String> {
+    let mut config = load_config(&app)?;
+    config.hidden_builtin_ids.retain(|id| id != &model_id);
+    save_config(&app, &config)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn list_hidden_embedding_models(
+    app: tauri::AppHandle,
+) -> Result<Vec<LocalEmbeddingModel>, String> {
+    let cache_dir = models_cache_dir(&app)?;
+    let config = load_config(&app)?;
+    let catalog = model_catalog();
+    let hidden_set: std::collections::HashSet<&str> = config
+        .hidden_builtin_ids
+        .iter()
+        .map(|s| s.as_str())
+        .collect();
+
+    let result: Vec<LocalEmbeddingModel> = catalog
+        .iter()
+        .filter(|entry| hidden_set.contains(entry.id))
+        .map(|entry| LocalEmbeddingModel {
+            id: entry.id.to_string(),
+            name: entry.name.to_string(),
+            dimensions: entry.dimensions,
+            quantized: entry.quantized,
+            size_mb: entry.size_mb,
+            license: entry.license.to_string(),
+            description: entry.description.to_string(),
+            downloaded: is_model_downloaded(&cache_dir, entry.id, &config),
+            is_custom: false,
+            onnx_file: entry.onnx_file.to_string(),
+            additional_files: entry
+                .additional_files
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        })
+        .collect();
+
+    Ok(result)
 }
 
 #[tauri::command]
