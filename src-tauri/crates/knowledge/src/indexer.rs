@@ -8,15 +8,34 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
+use tauri::{AppHandle, Emitter};
 use tube::value;
 
 static INDEXING_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+
+struct IndexGuard;
+
+impl IndexGuard {
+    fn acquire() -> Result<Self, String> {
+        if INDEXING_IN_PROGRESS.swap(true, Ordering::Relaxed) {
+            return Err("Indexing already in progress".to_string());
+        }
+        Ok(Self)
+    }
+}
+
+impl Drop for IndexGuard {
+    fn drop(&mut self) {
+        INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexResult {
     pub indexed_files: i32,
     pub skipped_files: i32,
+    pub skipped_unchanged: i32,
     pub deleted_files: i32,
     pub total_chunks: i32,
     pub elapsed_secs: f64,
@@ -33,6 +52,25 @@ pub struct KnowledgeStatus {
     pub is_indexing: bool,
     pub embedding_model: Option<String>,
     pub embedding_dim: Option<i32>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexProgress {
+    pub phase: String,
+    pub current: i32,
+    pub total: i32,
+    pub message: String,
+}
+
+fn emit_progress(app: &AppHandle, phase: &str, current: i32, total: i32, message: &str) {
+    let payload = IndexProgress {
+        phase: phase.to_string(),
+        current,
+        total,
+        message: message.to_string(),
+    };
+    let _ = app.emit("index-progress", &payload);
 }
 
 pub fn get_status(conn: &Connection, workspace_dir: &str) -> KnowledgeStatus {
@@ -98,10 +136,10 @@ pub fn run_index(
     conn: &mut Connection,
     workspace_dir: &Path,
     _cancel: &AtomicBool,
+    app: &AppHandle,
+    incremental: bool,
 ) -> Result<IndexResult, String> {
-    if INDEXING_IN_PROGRESS.swap(true, Ordering::Relaxed) {
-        return Err("Indexing already in progress".to_string());
-    }
+    let _guard = IndexGuard::acquire()?;
 
     let start = Instant::now();
     let mut result = IndexResult::default();
@@ -117,6 +155,9 @@ pub fn run_index(
         .collect();
 
     let disk_files = scan_workspace(workspace_dir);
+    let total_disk = disk_files.len() as i32;
+    emit_progress(app, "scanning", 0, total_disk, &format!("Found {} files", total_disk));
+
     let disk_set: std::collections::HashSet<String> = disk_files
         .iter()
         .map(|p| p.to_string_lossy().to_string())
@@ -129,7 +170,7 @@ pub fn run_index(
         }
     }
 
-    for file_path in &disk_files {
+    for (file_idx, file_path) in disk_files.iter().enumerate() {
         if !INDEXING_IN_PROGRESS.load(Ordering::Relaxed) {
             break;
         }
@@ -141,21 +182,62 @@ pub fn run_index(
             .to_string_lossy()
             .to_string();
 
+        let metadata = match std::fs::metadata(file_path) {
+            Ok(m) => m,
+            Err(_) => {
+                result.skipped_files += 1;
+                emit_progress(app, "scanning", file_idx as i32 + 1, total_disk, &format!("Skipped: {}", rel_path));
+                continue;
+            }
+        };
+
+        let mtime_secs = metadata
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+
+        if incremental {
+            if let Some(existing) = existing_map.get(&path_str) {
+                if existing.mtime_secs > 0 && existing.mtime_secs == mtime_secs && existing.size == metadata.len() as i64 {
+                    result.skipped_unchanged += 1;
+                    emit_progress(app, "scanning", file_idx as i32 + 1, total_disk, &format!("Unchanged: {}", rel_path));
+                    continue;
+                }
+            }
+        }
+
         let Some(content) = parser::read_file_content(file_path) else {
             result.skipped_files += 1;
+            emit_progress(app, "scanning", file_idx as i32 + 1, total_disk, &format!("Skipped: {}", rel_path));
             continue;
         };
 
         let hash = parser::compute_hash(&content.content);
 
+        if !incremental {
+            if let Some(existing) = existing_map.get(&path_str) {
+                if existing.hash.as_deref() == Some(&hash) {
+                    result.skipped_unchanged += 1;
+                    emit_progress(app, "scanning", file_idx as i32 + 1, total_disk, &format!("Unchanged: {}", rel_path));
+                    continue;
+                }
+            }
+        }
+
         if let Some(existing) = existing_map.get(&path_str) {
-            if existing.hash.as_deref() == Some(&hash) {
+            if existing.hash.as_deref() == Some(&hash) && existing.mtime_secs == mtime_secs {
+                if existing.mtime_secs == 0 {
+                    db::update_file_mtime(&tx, &existing.id, mtime_secs).map_err(|e| e.to_string())?;
+                }
+                result.skipped_unchanged += 1;
+                emit_progress(app, "scanning", file_idx as i32 + 1, total_disk, &format!("Unchanged: {}", rel_path));
                 continue;
             }
             db::delete_chunks_for_file(&tx, &existing.id).map_err(|e| e.to_string())?;
         }
 
-        let metadata = std::fs::metadata(file_path).map_err(|e| e.to_string())?;
         let modified = metadata
             .modified()
             .ok()
@@ -182,7 +264,10 @@ pub fn run_index(
             hash: Some(hash),
             indexed_at: now_iso(),
             chunk_count: 0,
+            mtime_secs,
         };
+
+        db::upsert_file(&tx, &file_record).map_err(|e| e.to_string())?;
 
         let chunks = chunker::chunk_text(&content.content);
         let chunk_count = chunks.len() as i32;
@@ -202,12 +287,12 @@ pub fn run_index(
             db::insert_chunk(&tx, &chunk_record).map_err(|e| e.to_string())?;
         }
 
-        let mut file_record = file_record;
-        file_record.chunk_count = chunk_count;
-        db::upsert_file(&tx, &file_record).map_err(|e| e.to_string())?;
+        db::update_file_chunk_count(&tx, &file_id, chunk_count).map_err(|e| e.to_string())?;
 
         result.indexed_files += 1;
         result.total_chunks += chunk_count;
+
+        emit_progress(app, "scanning", file_idx as i32 + 1, total_disk, &format!("Indexed: {} ({} chunks)", file_record.rel_path, chunk_count));
     }
 
     let total_chunks = db::count_chunks(&tx).map_err(|e| e.to_string())?;
@@ -219,7 +304,6 @@ pub fn run_index(
     tx.commit().map_err(|e| e.to_string())?;
 
     result.elapsed_secs = start.elapsed().as_secs_f64();
-    INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
 
     Ok(result)
 }
@@ -231,24 +315,28 @@ pub fn generate_embeddings_blocking(
     api_key: &str,
     batch_size: usize,
     app_data_dir: &Path,
+    app: &AppHandle,
 ) -> Result<i32, String> {
-    if INDEXING_IN_PROGRESS.swap(true, Ordering::Relaxed) {
-        return Err("Indexing already in progress".to_string());
-    }
+    let _guard = IndexGuard::acquire()?;
 
     let mut embedded_count = 0i32;
 
     let chunks = db::get_chunks_without_embedding(conn).map_err(|e| e.to_string())?;
     if chunks.is_empty() {
-        INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
         return Ok(0);
     }
+
+    let total = chunks.len() as i32;
+    emit_progress(app, "embedding", 0, total, &format!("Embedding {} chunks (remote: {})", total, model_id));
 
     db::set_meta(conn, "embedding_model", model_id).map_err(|e| e.to_string())?;
 
     let access_token = format!("Bearer {}", api_key);
 
-    for batch in chunks.chunks(batch_size) {
+    let mut dim: Option<i32> = None;
+    let last_emit = std::sync::Mutex::new(std::time::Instant::now());
+
+    for (batch_idx, batch) in chunks.chunks(batch_size).enumerate() {
         if !INDEXING_IN_PROGRESS.load(Ordering::Relaxed) {
             break;
         }
@@ -280,7 +368,6 @@ pub fn generate_embeddings_blocking(
             .ok_or("Invalid embedding response: missing data array")?;
 
         if data.len() != batch.len() {
-            INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
             return Err(format!(
                 "Embedding count mismatch: expected {}, got {}",
                 batch.len(),
@@ -288,7 +375,7 @@ pub fn generate_embeddings_blocking(
             ));
         }
 
-        let mut dim: Option<i32> = None;
+        let mut batch_updates: Vec<(&str, Vec<f32>)> = Vec::with_capacity(batch.len());
 
         for (i, chunk) in batch.iter().enumerate() {
             let embedding_data = data[i]
@@ -309,13 +396,25 @@ pub fn generate_embeddings_blocking(
                 dim = Some(embedding.len() as i32);
             }
 
-            db::update_chunk_embedding(conn, &chunk.id, &embedding)
-                .map_err(|e| e.to_string())?;
-            embedded_count += 1;
+            batch_updates.push((chunk.id.as_str(), embedding));
         }
 
-        if let Some(d) = dim {
-            db::set_meta(conn, "embedding_dim", &d.to_string()).map_err(|e| e.to_string())?;
+        let updates_refs: Vec<(&str, &[f32])> = batch_updates
+            .iter()
+            .map(|(id, emb)| (*id, emb.as_slice()))
+            .collect();
+
+        db::batch_update_chunk_embeddings(conn, &updates_refs)
+            .map_err(|e| e.to_string())?;
+        embedded_count += batch_updates.len() as i32;
+
+        {
+            let mut last = last_emit.lock().unwrap();
+            if last.elapsed() >= std::time::Duration::from_millis(500) || embedded_count == total {
+                let total_batches = (total as usize + batch_size - 1) / batch_size;
+                emit_progress(app, "embedding", embedded_count, total, &format!("Batch {}/{}: {} chunks embedded", batch_idx + 1, total_batches, embedded_count));
+                *last = std::time::Instant::now();
+            }
         }
 
         if batch.len() >= batch_size {
@@ -323,12 +422,16 @@ pub fn generate_embeddings_blocking(
         }
     }
 
+    if let Some(d) = dim {
+        db::set_meta(conn, "embedding_dim", &d.to_string()).map_err(|e| e.to_string())?;
+    }
+
     let _embedded_total = db::count_embedded_chunks(conn).map_err(|e| e.to_string())?;
     db::set_meta(conn, "last_index_time", &now_iso()).map_err(|e| e.to_string())?;
 
+    emit_progress(app, "building_index", 0, 1, "Building vector index...");
     rebuild_vector_index(conn, app_data_dir)?;
-
-    INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
+    emit_progress(app, "building_index", 1, 1, "Vector index built");
 
     Ok(embedded_count)
 }
@@ -337,24 +440,27 @@ pub fn generate_embeddings_local(
     conn: &mut Connection,
     model_id: &str,
     app_data_dir: &Path,
+    app: &AppHandle,
 ) -> Result<i32, String> {
-    if INDEXING_IN_PROGRESS.swap(true, Ordering::Relaxed) {
-        return Err("Indexing already in progress".to_string());
-    }
+    let _guard = IndexGuard::acquire()?;
 
     let mut embedded_count = 0i32;
 
     let chunks = db::get_chunks_without_embedding(conn).map_err(|e| e.to_string())?;
     if chunks.is_empty() {
-        INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
         return Ok(0);
     }
+
+    let total = chunks.len() as i32;
+    emit_progress(app, "embedding", 0, total, &format!("Embedding {} chunks (local: {})", total, model_id));
 
     let cache_dir = app_data_dir.join("embed_models");
     std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
 
     let key = oasis_embed::commands::find_catalog_key(model_id)
         .ok_or(format!("Unknown local model: {}", model_id))?;
+
+    emit_progress(app, "embedding", 0, total, &format!("Loading local model: {}...", model_id));
 
     let mut model = fastembed::TextEmbedding::try_new(
         fastembed::TextInitOptions::new(key).with_cache_dir(cache_dir),
@@ -363,8 +469,11 @@ pub fn generate_embeddings_local(
 
     db::set_meta(conn, "embedding_model", model_id).map_err(|e| e.to_string())?;
 
-    let batch_size = 20;
-    for batch in chunks.chunks(batch_size) {
+    let batch_size = 64;
+    let mut dim: Option<i32> = None;
+    let last_emit = std::sync::Mutex::new(std::time::Instant::now());
+
+    for (batch_idx, batch) in chunks.chunks(batch_size).enumerate() {
         if !INDEXING_IN_PROGRESS.load(Ordering::Relaxed) {
             break;
         }
@@ -376,7 +485,6 @@ pub fn generate_embeddings_local(
             .map_err(|e| format!("Local embedding inference failed: {}", e))?;
 
         if embeddings.len() != batch.len() {
-            INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
             return Err(format!(
                 "Embedding count mismatch: expected {}, got {}",
                 batch.len(),
@@ -384,34 +492,43 @@ pub fn generate_embeddings_local(
             ));
         }
 
-        let mut dim: Option<i32> = None;
-
-        for (i, chunk) in batch.iter().enumerate() {
-            let embedding = &embeddings[i];
-
-            if embedding.is_empty() {
-                continue;
+        if dim.is_none() {
+            if let Some(first) = embeddings.first() {
+                if !first.is_empty() {
+                    dim = Some(first.len() as i32);
+                }
             }
-
-            if dim.is_none() {
-                dim = Some(embedding.len() as i32);
-            }
-
-            db::update_chunk_embedding(conn, &chunk.id, embedding)
-                .map_err(|e| e.to_string())?;
-            embedded_count += 1;
         }
 
-        if let Some(d) = dim {
-            db::set_meta(conn, "embedding_dim", &d.to_string()).map_err(|e| e.to_string())?;
+        let updates: Vec<(&str, &[f32])> = batch
+            .iter()
+            .zip(embeddings.iter())
+            .filter(|(_, emb)| !emb.is_empty())
+            .map(|(chunk, emb)| (chunk.id.as_str(), emb.as_slice()))
+            .collect();
+
+        db::batch_update_chunk_embeddings(conn, &updates)
+            .map_err(|e| e.to_string())?;
+        embedded_count += updates.len() as i32;
+
+        {
+            let mut last = last_emit.lock().unwrap();
+            if last.elapsed() >= std::time::Duration::from_millis(500) || embedded_count == total {
+                let total_batches = (total as usize + batch_size - 1) / batch_size;
+                emit_progress(app, "embedding", embedded_count, total, &format!("Batch {}/{}: {} chunks embedded", batch_idx + 1, total_batches, embedded_count));
+                *last = std::time::Instant::now();
+            }
         }
     }
 
+    if let Some(d) = dim {
+        db::set_meta(conn, "embedding_dim", &d.to_string()).map_err(|e| e.to_string())?;
+    }
     db::set_meta(conn, "last_index_time", &now_iso()).map_err(|e| e.to_string())?;
 
+    emit_progress(app, "building_index", 0, 1, "Building vector index...");
     rebuild_vector_index(conn, app_data_dir)?;
-
-    INDEXING_IN_PROGRESS.store(false, Ordering::Relaxed);
+    emit_progress(app, "building_index", 1, 1, "Vector index built");
 
     Ok(embedded_count)
 }

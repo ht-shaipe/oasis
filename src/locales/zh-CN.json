@@ -157,6 +157,28 @@
       "restore": "恢复",
       "hideSuccess": "模型已从列表隐藏",
       "restoreSuccess": "模型已恢复到列表"
+    },
+    "localModel": {
+      "title": "本地模型",
+      "description": "下载并直接在设备上运行小型 LLM 聊天模型。下载后无需网络连接。",
+      "available": "可用模型",
+      "downloaded": "已下载",
+      "loaded": "已加载",
+      "running": "运行中",
+      "pendingDownload": "未下载",
+      "download": "下载",
+      "cancel": "取消",
+      "downloadCancelled": "下载已取消",
+      "downloadSuccess": "模型下载完成",
+      "activate": "启用",
+      "activateSuccess": "模型已启用并加载",
+      "unload": "卸载",
+      "unloadSuccess": "模型已从内存卸载",
+      "loadingModel": "正在加载模型到内存...",
+      "deleteModel": "删除模型",
+      "deleteConfirm": "将删除已下载的模型文件，是否继续？",
+      "deleteSuccess": "模型已删除",
+      "noModels": "暂无可用本地模型。"
     }
   },
   "finder": {
@@ -776,6 +798,9 @@
     "embeddingModel": "嵌入模型",
     "lastIndexTime": "最后索引时间",
     "indexingProgress": "索引构建中...",
+    "indexPhaseScanning": "扫描文件",
+    "indexPhaseEmbedding": "生成向量",
+    "indexPhaseBuildingIndex": "构建向量索引",
     "startIndexing": "构建索引",
     "indexing": "索引中...",
     "stopIndexing": "停止索引",
@@ -791,15 +816,21 @@
     "downloadModel": "下载",
     "activateModel": "启用",
     "currentModel": "使用中",
+    "goToSettings": "去设置",
+    "otherModels": "其他模型（{count}）",
     "downloadModelSuccess": "模型下载成功",
     "activateModelSuccess": "模型已启用",
     "indexComplete": "索引完成：{files} 个文件，{chunks} 个分块，耗时 {secs} 秒",
+    "indexCompleteIncremental": "增量索引：{files} 个更新，{unchanged} 个未变，{chunks} 个分块，耗时 {secs} 秒",
+    "incrementalMode": "增量索引",
     "semanticSearch": "语义搜索",
     "searchPlaceholder": "按语义搜索内容...",
     "noResults": "未找到匹配结果",
     "clearIndex": "清空索引",
     "clearConfirm": "确定要清空所有索引数据吗？此操作不可恢复。",
-    "clearComplete": "索引已清空"
+    "clearComplete": "索引已清空",
+    "noIndexHint": "尚未构建索引数据，请先构建索引。",
+    "goToIndex": "去构建索引"
   },
   "llm": {
     "title": "LLM模型",
@@ -886,7 +917,9 @@
     "copy": "复制",
     "copied": "已复制",
     "copyCode": "复制代码",
-    "copyMessage": "复制消息"
+    "copyMessage": "复制消息",
+    "localModelLoading": "本地模型加载中，请稍候...",
+    "localModelNotReady": "本地模型未就绪"
   },
   "browserImport": {
     "fdaRequired": "需要完全磁盘访问权限",

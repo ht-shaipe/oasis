@@ -27,6 +27,7 @@
                     <AppearancePanel v-if="activeSection === 'appearance'" />
                     <LlmPanel v-if="activeSection === 'llm'" />
                     <EmbeddingModelPanel v-if="activeSection === 'embedding'" />
+                    <LocalModelPanel v-if="activeSection === 'localModel'" />
                     <AboutPanel v-if="activeSection === 'about'" />
                 </div>
             </el-scrollbar>
@@ -43,6 +44,7 @@ import GeneralPanel from './panels/GeneralPanel.vue';
 import AppearancePanel from './panels/AppearancePanel.vue';
 import LlmPanel from './panels/LlmPanel.vue';
 import EmbeddingModelPanel from './panels/EmbeddingModelPanel.vue';
+import LocalModelPanel from './panels/LocalModelPanel.vue';
 import AboutPanel from './panels/AboutPanel.vue';
 
 const { t } = useI18n();
@@ -63,6 +65,7 @@ const sidebarItems = computed(() => [
     { id: 'appearance', icon: '/assets/icons/Features.svg', label: t('settings.appearance.title') },
     { id: 'llm', icon: '/assets/icons/Books.svg', label: t('settings.llm.title') },
     { id: 'embedding', icon: '/assets/icons/Features.svg', label: t('settings.embedding.title') },
+    { id: 'localModel', icon: '/assets/icons/Books.svg', label: t('settings.localModel.title') },
     { id: 'about', icon: '/assets/icons/AppStore.svg', label: t('settings.about.title') },
 ]);
 

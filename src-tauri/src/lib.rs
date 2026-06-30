@@ -7,6 +7,9 @@ extern crate tube;
 #[macro_use]
 extern crate lazy_static;
 
+use std::collections::HashMap;
+use std::sync::Mutex;
+
 mod net;
 
 use tauri::{
@@ -26,6 +29,9 @@ pub fn run() {
         .setup(|app| {
             setup_tray(app)?;
             setup_window_focus_handler(app.handle());
+            // Register agent plugin system
+            app.manage(Mutex::new(oasis_agent::plugin::AgentRegistry::new()));
+            app.manage(Mutex::new(HashMap::<String, oasis_agent::runtime::AgentProcess>::new()));
             Ok(())
         })
         .run(tauri::generate_context!())

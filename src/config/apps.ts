@@ -12,6 +12,7 @@ import Toolbox from '@/apps/Toolbox/Index.vue';
 import Browser from '@/apps/Browser.vue';
 import Knowledge from '@/apps/Knowledge/Index.vue';
 import Chat from '@/apps/Chat/Index.vue';
+import AgentChat from '@/apps/AgentChat/Index.vue';
 
 export interface AppConfig {
     id: string;
@@ -130,5 +131,14 @@ export const apps: AppConfig[] = [
         showInDock: true,
         showOnDesktop: true,
         nameKey: 'chat.title',
+    },
+    {
+        id: 'agent-chat',
+        name: 'AI Agent',
+        icon: '/assets/icons/Terminal.svg',
+        component: AgentChat,
+        showInDock: true,
+        showOnDesktop: true,
+        nameKey: 'agent.title',
     },
 ];

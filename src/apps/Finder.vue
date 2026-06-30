@@ -42,7 +42,8 @@
             </div>
 
             <div class="finder-content">
-                <KnowledgePanel v-if="activeSidebar === 'knowledge' || activeSidebar === 'semantic-search'" />
+                <IndexPanel v-if="activeSidebar === 'knowledge'" />
+                <SemanticSearchPanel v-else-if="activeSidebar === 'semantic-search'" @go-to-index="activeSidebar = 'knowledge'" />
 
                 <template v-else>
                 <div class="finder-toolbar">
@@ -160,7 +161,8 @@ import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 import { ElMessage } from 'element-plus'
 import MacWindow from '@/components/common/MacWindow.vue'
-import KnowledgePanel from './Finder/components/KnowledgePanel.vue'
+import IndexPanel from './Finder/components/IndexPanel.vue'
+import SemanticSearchPanel from './Finder/components/SemanticSearchPanel.vue'
 import {
     Folder, Document, Loading, Grid, List, Search,
     HomeFilled, Download, Files, Back, Collection,

@@ -8,8 +8,7 @@ pub fn init_db(app_data_dir: &Path) -> SqlResult<Connection> {
     let db_path = app_data_dir.join("knowledge.db");
     let conn = Connection::open(db_path)?;
 
-    conn.execute("PRAGMA foreign_keys = ON", [])?;
-    conn.execute("PRAGMA journal_mode = WAL", [])?;
+    conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;")?;
 
     conn.execute_batch(
         "
@@ -22,7 +21,8 @@ pub fn init_db(app_data_dir: &Path) -> SqlResult<Connection> {
             modified    TEXT NOT NULL,
             hash        TEXT,
             indexed_at  TEXT NOT NULL,
-            chunk_count INTEGER NOT NULL DEFAULT 0
+            chunk_count INTEGER NOT NULL DEFAULT 0,
+            mtime_secs  INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS chunks (
@@ -46,6 +46,8 @@ pub fn init_db(app_data_dir: &Path) -> SqlResult<Connection> {
         );
         ",
     )?;
+
+    conn.execute_batch("ALTER TABLE indexed_files ADD COLUMN mtime_secs INTEGER NOT NULL DEFAULT 0").ok();
 
     Ok(conn)
 }
@@ -89,6 +91,7 @@ pub struct IndexedFile {
     pub hash: Option<String>,
     pub indexed_at: String,
     pub chunk_count: i32,
+    pub mtime_secs: i64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -106,16 +109,16 @@ pub struct Chunk {
 
 pub fn upsert_file(conn: &Connection, file: &IndexedFile) -> SqlResult<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO indexed_files (id, path, rel_path, ext, size, modified, hash, indexed_at, chunk_count)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        params![file.id, file.path, file.rel_path, file.ext, file.size, file.modified, file.hash, file.indexed_at, file.chunk_count],
+        "INSERT OR REPLACE INTO indexed_files (id, path, rel_path, ext, size, modified, hash, indexed_at, chunk_count, mtime_secs)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![file.id, file.path, file.rel_path, file.ext, file.size, file.modified, file.hash, file.indexed_at, file.chunk_count, file.mtime_secs],
     )?;
     Ok(())
 }
 
 pub fn get_file_by_path(conn: &Connection, path: &str) -> SqlResult<Option<IndexedFile>> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, rel_path, ext, size, modified, hash, indexed_at, chunk_count FROM indexed_files WHERE path = ?1",
+        "SELECT id, path, rel_path, ext, size, modified, hash, indexed_at, chunk_count, mtime_secs FROM indexed_files WHERE path = ?1",
     )?;
     let mut rows = stmt.query(params![path])?;
     match rows.next()? {
@@ -129,6 +132,7 @@ pub fn get_file_by_path(conn: &Connection, path: &str) -> SqlResult<Option<Index
             hash: row.get(6)?,
             indexed_at: row.get(7)?,
             chunk_count: row.get(8)?,
+            mtime_secs: row.get(9)?,
         })),
         None => Ok(None),
     }
@@ -164,7 +168,7 @@ pub fn delete_chunks_for_file(conn: &Connection, file_id: &str) -> SqlResult<()>
 
 pub fn get_all_files(conn: &Connection) -> SqlResult<Vec<IndexedFile>> {
     let mut stmt = conn.prepare(
-        "SELECT id, path, rel_path, ext, size, modified, hash, indexed_at, chunk_count FROM indexed_files ORDER BY rel_path",
+        "SELECT id, path, rel_path, ext, size, modified, hash, indexed_at, chunk_count, mtime_secs FROM indexed_files ORDER BY rel_path",
     )?;
     let rows = stmt.query_map([], |row| {
         Ok(IndexedFile {
@@ -177,6 +181,7 @@ pub fn get_all_files(conn: &Connection) -> SqlResult<Vec<IndexedFile>> {
             hash: row.get(6)?,
             indexed_at: row.get(7)?,
             chunk_count: row.get(8)?,
+            mtime_secs: row.get(9)?,
         })
     })?;
     rows.collect()
@@ -229,12 +234,36 @@ pub fn update_file_chunk_count(conn: &Connection, file_id: &str, count: i32) -> 
     Ok(())
 }
 
+pub fn update_file_mtime(conn: &Connection, file_id: &str, mtime_secs: i64) -> SqlResult<()> {
+    conn.execute(
+        "UPDATE indexed_files SET mtime_secs = ?1 WHERE id = ?2",
+        params![mtime_secs, file_id],
+    )?;
+    Ok(())
+}
+
 pub fn update_chunk_embedding(conn: &Connection, chunk_id: &str, embedding: &[f32]) -> SqlResult<()> {
     let blob: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
     conn.execute(
         "UPDATE chunks SET embedding = ?1 WHERE id = ?2",
         params![blob, chunk_id],
     )?;
+    Ok(())
+}
+
+pub fn batch_update_chunk_embeddings(conn: &mut Connection, updates: &[(&str, &[f32])]) -> SqlResult<()> {
+    if updates.is_empty() {
+        return Ok(());
+    }
+    let tx = conn.transaction()?;
+    {
+        let mut stmt = tx.prepare("UPDATE chunks SET embedding = ?1 WHERE id = ?2")?;
+        for (chunk_id, embedding) in updates {
+            let blob: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+            stmt.execute(params![blob, chunk_id])?;
+        }
+    }
+    tx.commit()?;
     Ok(())
 }
 

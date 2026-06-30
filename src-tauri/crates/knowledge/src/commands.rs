@@ -99,6 +99,7 @@ pub fn get_knowledge_status(app: AppHandle) -> Result<KnowledgeStatusResponse, S
 pub struct IndexResultResponse {
     pub indexed_files: i32,
     pub skipped_files: i32,
+    pub skipped_unchanged: i32,
     pub deleted_files: i32,
     pub total_chunks: i32,
     pub elapsed_secs: f64,
@@ -109,6 +110,7 @@ pub struct IndexResultResponse {
 pub struct StartIndexingParams {
     pub mode: String,
     pub model_id: String,
+    pub incremental: bool,
 }
 
 #[tauri::command]
@@ -122,11 +124,12 @@ pub async fn start_indexing(
         return Err(format!("Workspace directory does not exist: {}", ws));
     }
 
+    let incremental = params.incremental;
     let app_for_index = app.clone();
     let index_result = tauri::async_runtime::spawn_blocking(move || {
         let mut conn = get_conn(&app_for_index)?;
         let cancel = std::sync::atomic::AtomicBool::new(true);
-        indexer::run_index(&mut conn, &ws_path, &cancel)
+        indexer::run_index(&mut conn, &ws_path, &cancel, &app_for_index, incremental)
     })
     .await
     .map_err(|e| format!("Index task error: {}", e))??;
@@ -143,6 +146,7 @@ pub async fn start_indexing(
                 &mut conn,
                 &model_id,
                 &app_data_dir_for_embed,
+                &app_for_embed,
             )
         })
         .await
@@ -160,6 +164,7 @@ pub async fn start_indexing(
                 &embedding_config.api_key,
                 20,
                 &app_data_dir_for_embed,
+                &app_for_embed,
             )
         })
         .await
@@ -169,6 +174,7 @@ pub async fn start_indexing(
     Ok(IndexResultResponse {
         indexed_files: index_result.indexed_files,
         skipped_files: index_result.skipped_files,
+        skipped_unchanged: index_result.skipped_unchanged,
         deleted_files: index_result.deleted_files,
         total_chunks: index_result.total_chunks,
         elapsed_secs: index_result.elapsed_secs,

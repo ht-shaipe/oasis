@@ -225,6 +225,38 @@ pub struct StreamChunk {
     pub usage: Option<ChatUsage>,
 }
 
+async fn local_chat_stream(
+    app: AppHandle,
+    request: ChatRequest,
+    channel: Channel<StreamChunk>,
+    _model: &LlmModel,
+) -> std::result::Result<(), String> {
+    oasis_local_llm::inference::load_model(&app, &request.model_id).await?;
+
+    let local_messages: Vec<oasis_local_llm::inference::ChatMessageForLocal> = request
+        .messages
+        .iter()
+        .map(|m| oasis_local_llm::inference::ChatMessageForLocal {
+            role: m.role.clone(),
+            content: m.content.clone(),
+        })
+        .collect();
+
+    let channel_clone = channel.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        oasis_local_llm::inference::chat_stream_blocking(local_messages, move |content, is_over| {
+            let _ = channel_clone.send(StreamChunk {
+                content,
+                reasoning_content: None,
+                is_over,
+                usage: None,
+            });
+        })
+    })
+    .await
+    .map_err(|e| format!("Local inference task error: {}", e))?
+}
+
 /// SSE 流式对话。前端通过 `Channel<StreamChunk>` 逐块接收增量内容。
 #[tauri::command]
 pub async fn ai_chat_stream(
@@ -232,7 +264,20 @@ pub async fn ai_chat_stream(
     request: ChatRequest,
     channel: Channel<StreamChunk>,
 ) -> std::result::Result<(), String> {
-    let (client, model) = get_client_for_model(&app, &request.model_id)?;
+    let config = load_llm_config(&app)?;
+    let model = config
+        .models
+        .iter()
+        .find(|m| m.model_id == request.model_id)
+        .cloned();
+
+    if let Some(ref m) = model {
+        if m.provider == "local" {
+            return local_chat_stream(app, request, channel, m).await;
+        }
+    }
+
+    let (client, model_cfg) = get_client_for_model(&app, &request.model_id)?;
 
     let msgs: Vec<Value> = request
         .messages
@@ -248,8 +293,8 @@ pub async fn ai_chat_stream(
     let body = value!({
         "model": request.model_id.clone(),
         "messages": msgs,
-        "temperature": request.temperature.unwrap_or(model.temperature),
-        "max_tokens": request.max_tokens.unwrap_or(model.max_tokens),
+        "temperature": request.temperature.unwrap_or(model_cfg.temperature),
+        "max_tokens": request.max_tokens.unwrap_or(model_cfg.max_tokens),
         "stream": true,
     });
 

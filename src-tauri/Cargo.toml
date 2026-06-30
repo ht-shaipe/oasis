@@ -22,6 +22,9 @@ oasis-ai = {path = "crates/ai"}
 oasis-chat = {path = "crates/chat"}
 oasis-embed = {path = "crates/embed"}
 oasis-knowledge = {path = "crates/knowledge"}
+oasis-agent = {path = "crates/agent"}
+oasis-project = {path = "crates/project"}
+oasis-local-llm = {path = "crates/local-llm"}
 rand = "0.9"
 reqwest = {version = "0.12", features = ["json", "stream"] }
 ring = "0.17"

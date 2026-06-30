@@ -136,6 +136,7 @@ const providerLabels: Record<string, string> = {
   zhipu: '智谱',
   wenxin: '文心一言',
   xunfei: '讯飞',
+  local: 'Local',
 }
 
 const modelGroups = computed(() => {

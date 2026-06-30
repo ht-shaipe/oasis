@@ -117,6 +117,7 @@ fn take_overlap(text: &str, overlap_chars: usize) -> String {
         return text.to_string();
     }
     let start = text.len() - overlap_chars;
+    let start = (0..=start).rev().find(|&i| text.is_char_boundary(i)).unwrap_or(0);
     let slice = &text[start..];
     if let Some(pos) = slice.find('\n') {
         slice[pos + 1..].to_string()

@@ -40,6 +40,14 @@ fn main() {
             workspace_root.join("crates/embed/src/commands.rs"),
             "oasis_embed::commands::",
         ),
+        (
+            workspace_root.join("crates/agent/src/commands.rs"),
+            "oasis_agent::commands::",
+        ),
+        (
+            workspace_root.join("crates/local-llm/src/commands.rs"),
+            "oasis_local_llm::commands::",
+        ),
     ];
 
     for (path, _) in &sources {

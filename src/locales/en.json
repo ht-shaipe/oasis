@@ -683,6 +683,9 @@
     "embeddingModel": "Embedding Model",
     "lastIndexTime": "Last Indexed",
     "indexingProgress": "Indexing in progress...",
+    "indexPhaseScanning": "Scanning files",
+    "indexPhaseEmbedding": "Generating embeddings",
+    "indexPhaseBuildingIndex": "Building vector index",
     "startIndexing": "Build Index",
     "indexing": "Indexing...",
     "stopIndexing": "Stop Indexing",
@@ -698,15 +701,21 @@
     "downloadModel": "Download",
     "activateModel": "Activate",
     "currentModel": "Active",
+    "goToSettings": "Go to Settings",
+    "otherModels": "Other models ({count})",
     "downloadModelSuccess": "Model downloaded successfully",
     "activateModelSuccess": "Model activated successfully",
     "indexComplete": "Indexing complete: {files} files, {chunks} chunks, {secs}s",
+    "indexCompleteIncremental": "Incremental indexing: {files} updated, {unchanged} unchanged, {chunks} chunks, {secs}s",
+    "incrementalMode": "Incremental",
     "semanticSearch": "Semantic Search",
     "searchPlaceholder": "Search by meaning...",
     "noResults": "No matching results found",
     "clearIndex": "Clear Index",
     "clearConfirm": "Are you sure you want to clear all index data? This cannot be undone.",
-    "clearComplete": "Index cleared"
+    "clearComplete": "Index cleared",
+    "noIndexHint": "No index data yet. Build index first.",
+    "goToIndex": "Go to Index"
   },
   "llm": {
     "title": "LLM Models",
@@ -840,6 +849,28 @@
       "restore": "Restore",
       "hideSuccess": "Model hidden from list",
       "restoreSuccess": "Model restored to list"
+    },
+    "localModel": {
+      "title": "Local Models",
+      "description": "Download and run small LLM chat models directly on your device. No internet required after download.",
+      "available": "Available Models",
+      "downloaded": "Downloaded",
+      "loaded": "Loaded",
+      "running": "Running",
+      "pendingDownload": "Not downloaded",
+      "download": "Download",
+      "cancel": "Cancel",
+      "downloadCancelled": "Download cancelled",
+      "downloadSuccess": "Model downloaded successfully",
+      "activate": "Activate",
+      "activateSuccess": "Model activated and loaded",
+      "unload": "Unload",
+      "unloadSuccess": "Model unloaded from memory",
+      "loadingModel": "Loading model into memory...",
+      "deleteModel": "Delete Model",
+      "deleteConfirm": "This will remove the downloaded model files. Continue?",
+      "deleteSuccess": "Model deleted",
+      "noModels": "No local models available."
     }
   },
   "update": {
@@ -879,7 +910,9 @@
     "copy": "Copy",
     "copied": "Copied",
     "copyCode": "Copy Code",
-    "copyMessage": "Copy Message"
+    "copyMessage": "Copy Message",
+    "localModelLoading": "Local model loading, please wait...",
+    "localModelNotReady": "Local model not ready"
   },
   "browserImport": {
     "fdaRequired": "Full Disk Access Required",

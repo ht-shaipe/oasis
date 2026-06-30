@@ -114,7 +114,7 @@
 
         <div v-if="embedMode === 'local' && models.length > 0" class="grid grid-cols-1 gap-3">
             <div
-                v-for="model in models"
+                v-for="model in sortedModels"
                 :key="model.id"
                 class="model-card"
                 :class="{
@@ -400,6 +400,18 @@ const hfSearching = ref(false)
 const hfSearchResults = ref<HfModelSearchResult[]>([])
 const addingFromHf = ref<string | null>(null)
 const hiddenModels = ref<LocalEmbeddingModel[]>([])
+
+const sortedModels = computed(() => {
+    return [...models.value].sort((a, b) => {
+        const aActive = activeModelId.value === a.id && a.downloaded
+        const bActive = activeModelId.value === b.id && b.downloaded
+        if (aActive && !bActive) return -1
+        if (!aActive && bActive) return 1
+        if (a.downloaded && !b.downloaded) return -1
+        if (!a.downloaded && b.downloaded) return 1
+        return 0
+    })
+})
 
 const downloadedModels = computed(() => models.value.filter((m) => m.downloaded))
 
