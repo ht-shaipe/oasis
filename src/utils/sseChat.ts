@@ -9,6 +9,7 @@ export interface StreamChunk {
     completionTokens: number
     totalTokens: number
   }
+  tokensPerSec?: number
 }
 
 export interface ChatRequest {
@@ -24,13 +25,14 @@ export interface StreamOptions {
   onComplete: (fullContent: string) => void
   onError: (error: string) => void
   onUsage?: (usage: StreamChunk['usage']) => void
+  onTokensPerSec?: (tps: number) => void
 }
 
 export async function streamChat(
   request: ChatRequest,
   options: StreamOptions,
 ): Promise<void> {
-  const { onToken, onReasoning, onComplete, onError, onUsage } = options
+  const { onToken, onReasoning, onComplete, onError, onUsage, onTokensPerSec } = options
 
   let fullContent = ''
   let streamEnded = false
@@ -44,6 +46,10 @@ export async function streamChat(
     if (chunk.content) {
       fullContent += chunk.content
       onToken(chunk.content)
+    }
+
+    if (chunk.tokensPerSec) {
+      onTokensPerSec?.(chunk.tokensPerSec)
     }
 
     if (chunk.isOver) {

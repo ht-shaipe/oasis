@@ -21,6 +21,8 @@ pub enum NormalizedEvent {
         call_id: String,
         tool: String,
         input: serde_json::Value,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tool_kind: Option<crate::classify::ToolKind>,
     },
 
     /// A tool invocation finished.
@@ -28,6 +30,8 @@ pub enum NormalizedEvent {
         call_id: String,
         output: serde_json::Value,
         is_error: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tool_kind: Option<crate::classify::ToolKind>,
     },
 
     /// Incremental thinking / reasoning delta.

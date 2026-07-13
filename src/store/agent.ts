@@ -110,6 +110,51 @@ export interface AgentSession {
   isStreaming: boolean
 }
 
+export interface ProjectMeta {
+  tags: string[]
+  notes: string
+  custom_name: string | null
+}
+
+export interface CustomCommand {
+  id: string
+  name: string
+  description: string
+  command: string
+  cwd: string
+}
+
+export interface EnvStatus {
+  node_installed: boolean
+  node_version: string | null
+  npm_installed: boolean
+  npm_version: string | null
+  python_installed: boolean
+  python_version: string | null
+}
+
+export interface AgentCommandPreset {
+  name: string
+  description: string
+  command: string
+  is_launch: boolean
+  is_resume: boolean
+  is_init: boolean
+}
+
+export interface KnownAgent {
+  id: string
+  display_name: string
+  binary: string
+  installed: boolean
+  version: string | null
+  install_hint: string
+  install_command: string | null
+  home_url: string | null
+  description: string
+  source: string
+}
+
 // ── Store ─────────────────────────────────────────────────────────
 
 export const useAgentStore = defineStore('agent', () => {
@@ -223,6 +268,13 @@ export const useAgentStore = defineStore('agent', () => {
     loadSessions(path)
   }
 
+  function deselectProject() {
+    activeProjectPath.value = null
+    activeSessionId.value = null
+    sessionMessages.value = []
+    sessions.value = []
+  }
+
   // ── Actions: sessions ─────────────────────────────────────────
 
   async function loadSessions(projectPath: string) {
@@ -251,12 +303,15 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
+  function clearActiveSession() {
+    activeSessionId.value = null
+    sessionMessages.value = []
+  }
+
   // ── Actions: chat ─────────────────────────────────────────────
 
   async function sendMessage(text: string): Promise<boolean> {
     if (!activeProjectPath.value) return false
-
-    const sessionId = `pending-${Date.now()}`
 
     try {
       const result = await invoke<ChatResult>('agent_send_message', {
@@ -301,6 +356,147 @@ export const useAgentStore = defineStore('agent', () => {
       })
     } catch (e) {
       console.error('Failed to open terminal:', e)
+    }
+  }
+
+  // ── Actions: project meta ────────────────────────────────────
+
+  const projectMetas = ref<Record<string, ProjectMeta>>({})
+
+  async function loadProjectMetas() {
+    try {
+      projectMetas.value = await invoke<Record<string, ProjectMeta>>('agent_load_project_metas')
+    } catch (e) {
+      console.error('Failed to load project metas:', e)
+    }
+  }
+
+  async function saveProjectMeta(encodedName: string, meta: ProjectMeta) {
+    try {
+      await invoke('agent_save_project_meta', { encodedName, meta })
+      projectMetas.value[encodedName] = meta
+    } catch (e) {
+      console.error('Failed to save project meta:', e)
+    }
+  }
+
+  async function hideProject(encodedName: string) {
+    try {
+      await invoke('agent_hide_project', { encodedName })
+      projects.value = projects.value.filter(p => p.encoded_name !== encodedName)
+    } catch (e) {
+      console.error('Failed to hide project:', e)
+    }
+  }
+
+  async function addManualProject(path: string) {
+    try {
+      await invoke('agent_add_manual_project', { path })
+      await loadProjects()
+    } catch (e) {
+      console.error('Failed to add manual project:', e)
+    }
+  }
+
+  // ── Actions: project merges ──────────────────────────────────
+
+  async function mergeProjects(primary: string, secondaries: string[]) {
+    try {
+      await invoke('agent_merge_projects', { primary, secondaries })
+      await loadProjects()
+    } catch (e) {
+      console.error('Failed to merge projects:', e)
+      throw e
+    }
+  }
+
+  async function splitProject(primary: string) {
+    try {
+      await invoke('agent_split_project', { primary })
+      await loadProjects()
+    } catch (e) {
+      console.error('Failed to split project:', e)
+      throw e
+    }
+  }
+
+  async function getProjectMerges(): Promise<Record<string, string[]>> {
+    try {
+      return await invoke<Record<string, string[]>>('agent_get_project_merges')
+    } catch (e) {
+      console.error('Failed to get project merges:', e)
+      return {}
+    }
+  }
+
+  // ── Actions: commands ────────────────────────────────────────
+
+  const commandPresets = ref<AgentCommandPreset[]>([])
+  const customCommands = ref<CustomCommand[]>([])
+
+  async function loadCommandPresets() {
+    try {
+      commandPresets.value = await invoke<AgentCommandPreset[]>('agent_command_presets')
+    } catch (e) {
+      console.error('Failed to load command presets:', e)
+    }
+  }
+
+  async function loadCustomCommands() {
+    try {
+      customCommands.value = await invoke<CustomCommand[]>('agent_list_custom_commands')
+    } catch (e) {
+      console.error('Failed to load custom commands:', e)
+    }
+  }
+
+  async function saveCustomCommand(cmd: CustomCommand) {
+    try {
+      await invoke('agent_save_custom_command', { cmd })
+      await loadCustomCommands()
+    } catch (e) {
+      console.error('Failed to save custom command:', e)
+    }
+  }
+
+  async function deleteCustomCommand(id: string) {
+    try {
+      await invoke('agent_delete_custom_command', { id })
+      customCommands.value = customCommands.value.filter(c => c.id !== id)
+    } catch (e) {
+      console.error('Failed to delete custom command:', e)
+    }
+  }
+
+  async function runInTerminal(command: string, cwd?: string) {
+    try {
+      await invoke('agent_run_in_terminal', { command, cwd: cwd || null })
+    } catch (e) {
+      console.error('Failed to run in terminal:', e)
+    }
+  }
+
+  // ── Actions: environment ─────────────────────────────────────
+
+  const envStatus = ref<EnvStatus | null>(null)
+
+  async function checkEnvironment() {
+    try {
+      envStatus.value = await invoke<EnvStatus>('agent_check_environment')
+    } catch (e) {
+      console.error('Failed to check environment:', e)
+    }
+  }
+
+  // ── Known agents probe ────────────────────────────────────
+
+  const knownAgents = ref<KnownAgent[]>([])
+
+  async function probeKnownAgents() {
+    try {
+      knownAgents.value = await invoke<KnownAgent[]>('agent_probe_known_agents')
+    } catch (e) {
+      console.error('Failed to probe known agents:', e)
     }
   }
 
@@ -495,26 +691,53 @@ export const useAgentStore = defineStore('agent', () => {
     activeSessionId,
     sessionMessages,
     activeSessions,
+    projectMetas,
+    commandPresets,
+    customCommands,
+    envStatus,
     // computed
     activeAgent,
     activeProject,
     installedAgents,
     activeAgentStatus,
     activeChatSession,
-    // actions
+    // actions: agents
     loadAgents,
     loadAgentStatuses,
     setActiveAgent,
+    // actions: projects
     loadProjects,
     addProject,
     initProject,
     selectProject,
+    deselectProject,
+    loadProjectMetas,
+    saveProjectMeta,
+    hideProject,
+    addManualProject,
+    mergeProjects,
+    splitProject,
+    getProjectMerges,
+    // actions: sessions
     loadSessions,
     loadSessionMessages,
     selectSession,
+    clearActiveSession,
+    // actions: chat
     sendMessage,
     abortChat,
     openInTerminal,
+    // actions: commands
+    loadCommandPresets,
+    loadCustomCommands,
+    saveCustomCommand,
+    deleteCustomCommand,
+    runInTerminal,
+    // actions: environment
+    checkEnvironment,
+    knownAgents,
+    probeKnownAgents,
+    // init
     initialize,
     teardownStreamListener,
   }

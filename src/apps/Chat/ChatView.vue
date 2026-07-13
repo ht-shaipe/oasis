@@ -27,6 +27,9 @@
         <div class="chat-header">
           <span class="chat-title">{{ store.activeConversation.title }}</span>
           <div class="chat-header-actions">
+            <el-tooltip v-if="localTokensPerSec !== null" :content="`${localTokensPerSec.toFixed(1)} tokens/s`" placement="bottom">
+              <span class="tps-badge">{{ localTokensPerSec.toFixed(1) }} t/s</span>
+            </el-tooltip>
             <el-tooltip :content="ragEnabled ? t('chat.ragEnabled') : t('chat.ragDisabled')" placement="bottom">
               <el-button
                 :type="ragEnabled ? 'primary' : 'default'"
@@ -107,6 +110,7 @@ const messagesScrollbarRef = ref<InstanceType<typeof import('element-plus')['ElS
 const inputRef = ref<InstanceType<typeof ChatInput> | null>(null)
 const currentModelId = ref('')
 const ragEnabled = ref(false)
+const localTokensPerSec = ref<number | null>(null)
 
 interface LLMModel {
   id: string
@@ -289,6 +293,11 @@ async function handleSend(text: string) {
     }
   }
 
+  const isLocal = model.provider === 'local'
+  if (isLocal) {
+    localTokensPerSec.value = null
+  }
+
   await streamChat(
     {
       model_id: model.model_id,
@@ -311,6 +320,11 @@ async function handleSend(text: string) {
       onError(error: string) {
         store.setMessageError(conv.id, aiMsgId, error)
         store.isStreaming = false
+      },
+      onTokensPerSec(tps: number) {
+        if (isLocal) {
+          localTokensPerSec.value = tps
+        }
       },
     }
   )
@@ -414,5 +428,15 @@ async function handleSend(text: string) {
   font-size: var(--app-font-12);
   color: var(--color-text-tertiary);
   margin-left: 8px;
+}
+
+.tps-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #42b883;
+  background: rgba(66, 184, 131, 0.12);
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
 }
 </style>

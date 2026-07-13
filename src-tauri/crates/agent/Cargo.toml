@@ -13,3 +13,5 @@ async-trait = "0.1"
 log = "0.4"
 dirs-next = "2"
 oasis-project = {path = "../project"}
+oasis-hub = {path = "../hub"}
+oasis-agent-config = {path = "../agent-config"}

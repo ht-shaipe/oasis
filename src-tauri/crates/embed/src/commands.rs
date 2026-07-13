@@ -543,6 +543,7 @@ pub async fn download_embedding_model(
             .ok_or(format!("Unknown model: {}", model_id))?;
 
     let cache_dir = models_cache_dir(&app)?;
+    let cache_dir_display = cache_dir.display().to_string();
 
     let _ = app.emit(
         "embed-download-progress",
@@ -559,6 +560,7 @@ pub async fn download_embedding_model(
     let app_clone = app.clone();
     let model_id_clone = model_id.clone();
     let model_code_clone = model_code.clone();
+    let model_code_for_err = model_code.clone();
     let onnx_file_clone = onnx_file.clone();
     let additional_files_clone = additional_files.clone();
 
@@ -594,14 +596,6 @@ pub async fn download_embedding_model(
                 return Err("Download cancelled".to_string());
             }
 
-            let file_progress = TauriProgress {
-                app: app_clone.clone(),
-                model_id: model_id_clone.clone(),
-                file_name: String::new(),
-                total: 0,
-                current: 0,
-            };
-
             let overall_pct = ((idx * 100) / total_files) as u32;
 
             let _ = app_clone.emit(
@@ -616,20 +610,44 @@ pub async fn download_embedding_model(
                 },
             );
 
-            match repo.download_with_progress(file_name, file_progress) {
-                Ok(_) => {}
-                Err(e) => {
-                    let err_str = format!("{}", e);
-                    if err_str.contains("404") || err_str.contains("Not Found") {
-                        eprintln!(
-                            "Warning: skipping '{}' for model '{}' (not found in repo)",
-                            file_name, model_id_clone
-                        );
-                    } else {
-                        return Err(format!(
-                            "Failed to download '{}': {}",
-                            file_name, e
-                        ));
+            let max_retries = 3;
+            let mut attempt = 0;
+            loop {
+                attempt += 1;
+                let file_progress = TauriProgress {
+                    app: app_clone.clone(),
+                    model_id: model_id_clone.clone(),
+                    file_name: String::new(),
+                    total: 0,
+                    current: 0,
+                };
+                match repo.download_with_progress(file_name, file_progress) {
+                    Ok(_) => break,
+                    Err(e) => {
+                        let err_str = format!("{}", e);
+                        if err_str.contains("404") || err_str.contains("Not Found") {
+                            eprintln!(
+                                "Warning: skipping '{}' for model '{}' (not found in repo)",
+                                file_name, model_id_clone
+                            );
+                            break;
+                        }
+                        if attempt < max_retries {
+                            eprintln!(
+                                "Retry {}/{} for '{}': {}",
+                                attempt, max_retries, file_name, err_str
+                            );
+                            std::thread::sleep(std::time::Duration::from_secs(2u64.pow(attempt as u32 - 1)));
+                        } else {
+                            let download_url = format!(
+                                "https://huggingface.co/{}/resolve/main/{}",
+                                model_code_for_err, file_name
+                            );
+                            return Err(format!(
+                                "Failed to download '{}' after {} retries: {}\n\nManual download:\n  URL: {}\n  Save to: {}/\n\nAfter downloading, place the file in the directory above and retry.",
+                                file_name, max_retries, err_str, download_url, cache_dir_display
+                            ));
+                        }
                     }
                 }
             }

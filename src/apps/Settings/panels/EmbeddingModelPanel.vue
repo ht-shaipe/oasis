@@ -484,7 +484,12 @@ async function handleDownload(modelId: string) {
         ElMessage.success(t('settings.embedding.downloadSuccess'))
         await Promise.all([loadModels(), loadConfig()])
     } catch (e: unknown) {
-        ElMessage.error(`${e}`)
+        const msg = `${e}`
+        if (msg.includes('Manual download:')) {
+            ElMessageBox.alert(msg, 'Download Failed', { confirmButtonText: 'OK', customClass: 'download-error-msg' })
+        } else {
+            ElMessage.error(msg)
+        }
     } finally {
         downloadingId.value = null
         delete downloadProgress[modelId]
@@ -884,5 +889,15 @@ onUnmounted(() => {
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
+}
+</style>
+
+<style>
+.download-error-msg .el-message-box__message p {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 12px;
+    user-select: text;
 }
 </style>

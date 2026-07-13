@@ -1,7 +1,7 @@
 <template>
   <MacWindow
     ref="macWindowRef"
-    title="AI Agent"
+    title=""
     :is-minimized="isMinimized"
     @close="emit('close')"
     @minimize="emit('minimize')"

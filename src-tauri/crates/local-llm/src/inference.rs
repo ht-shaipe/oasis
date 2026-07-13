@@ -24,16 +24,51 @@ pub struct ModelLoadState {
     pub message: Option<String>,
 }
 
+struct ModelResolveInfo {
+    hf_repo: String,
+    gguf_file: String,
+    tok_model_id: String,
+}
+
+fn resolve_model_info(app: &tauri::AppHandle, model_id: &str) -> Option<ModelResolveInfo> {
+    if let Some(entry) = find_catalog_entry(model_id) {
+        Some(ModelResolveInfo {
+            hf_repo: entry.hf_repo.to_string(),
+            gguf_file: entry.gguf_file.to_string(),
+            tok_model_id: entry.tok_model_id.to_string(),
+        })
+    } else {
+        let cfg = config::load_config(app).ok()?;
+        cfg.custom_models.iter().find(|m| m.model_id == model_id).map(|custom| ModelResolveInfo {
+            hf_repo: custom.hf_repo.clone(),
+            gguf_file: custom.gguf_file.clone(),
+            tok_model_id: custom.tok_model_id.clone(),
+        })
+    }
+}
+
 pub fn is_model_downloaded(app: &tauri::AppHandle, model_id: &str) -> bool {
     let cache_dir = match config::models_cache_dir(app) {
         Ok(d) => d,
         Err(_) => return false,
     };
-    let catalog_entry = match find_catalog_entry(model_id) {
-        Some(e) => e,
+    let info = match resolve_model_info(app, model_id) {
+        Some(i) => i,
         None => return false,
     };
-    let org_model = catalog_entry.hf_repo.replace('/', "--");
+    is_repo_downloaded(&cache_dir, &info.hf_repo, &info.gguf_file)
+}
+
+pub fn is_custom_model_downloaded(app: &tauri::AppHandle, hf_repo: &str, gguf_file: &str) -> bool {
+    let cache_dir = match config::models_cache_dir(app) {
+        Ok(d) => d,
+        Err(_) => return false,
+    };
+    is_repo_downloaded(&cache_dir, hf_repo, gguf_file)
+}
+
+fn is_repo_downloaded(cache_dir: &PathBuf, hf_repo: &str, gguf_file: &str) -> bool {
+    let org_model = hf_repo.replace('/', "--");
     let snapshot_dir = cache_dir
         .join(format!("models--{}", org_model))
         .join("snapshots");
@@ -43,7 +78,7 @@ pub fn is_model_downloaded(app: &tauri::AppHandle, model_id: &str) -> bool {
     if let Ok(entries) = fs::read_dir(&snapshot_dir) {
         for dir_entry in entries.flatten() {
             if dir_entry.path().is_dir() {
-                if dir_entry.path().join(&catalog_entry.gguf_file).exists() {
+                if dir_entry.path().join(gguf_file).exists() {
                     return true;
                 }
             }
@@ -54,16 +89,16 @@ pub fn is_model_downloaded(app: &tauri::AppHandle, model_id: &str) -> bool {
 
 fn find_gguf_path(app: &tauri::AppHandle, model_id: &str) -> Result<PathBuf, String> {
     let cache_dir = config::models_cache_dir(app)?;
-    let catalog_entry = find_catalog_entry(model_id)
+    let info = resolve_model_info(app, model_id)
         .ok_or(format!("Unknown model: {}", model_id))?;
-    let org_model = catalog_entry.hf_repo.replace('/', "--");
+    let org_model = info.hf_repo.replace('/', "--");
     let snapshot_dir = cache_dir
         .join(format!("models--{}", org_model))
         .join("snapshots");
     if let Ok(entries) = fs::read_dir(&snapshot_dir) {
         for entry_dir in entries.flatten() {
             if entry_dir.path().is_dir() {
-                let gguf = entry_dir.path().join(&catalog_entry.gguf_file);
+                let gguf = entry_dir.path().join(&info.gguf_file);
                 if gguf.exists() {
                     return Ok(gguf);
                 }
@@ -101,7 +136,7 @@ pub async fn load_model(
 
     unload_model_internal().await;
 
-    let catalog_entry = find_catalog_entry(model_id)
+    let info = resolve_model_info(app, model_id)
         .ok_or(format!("Unknown model: {}", model_id))?;
 
     let gguf_path = find_gguf_path(app, model_id)?;
@@ -116,7 +151,7 @@ pub async fn load_model(
         .to_string();
 
     let model = GgufModelBuilder::new(&parent_dir, vec![gguf_filename.as_str()])
-        .with_tok_model_id(catalog_entry.tok_model_id)
+        .with_tok_model_id(&info.tok_model_id)
         .with_logging()
         .build()
         .await
@@ -167,7 +202,7 @@ pub struct ChatMessageForLocal {
 
 pub fn chat_stream_blocking(
     messages: Vec<ChatMessageForLocal>,
-    on_chunk: impl Fn(String, bool) + Send + 'static,
+    on_chunk: impl Fn(String, bool, Option<f64>) + Send + 'static,
 ) -> Result<(), String> {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -181,7 +216,7 @@ pub fn chat_stream_blocking(
         let model = match model_guard.as_ref() {
             Some(m) => m,
             None => {
-                on_chunk("No local model loaded.".to_string(), true);
+                on_chunk("No local model loaded.".to_string(), true, None);
                 return;
             }
         };
@@ -199,12 +234,15 @@ pub fn chat_stream_blocking(
         let mut stream = match model.stream_chat_request(text_messages).await {
             Ok(s) => s,
             Err(e) => {
-                on_chunk(format!("Error: {}", e), true);
+                on_chunk(format!("Error: {}", e), true, None);
                 return;
             }
         };
 
         use futures::StreamExt as _;
+
+        let mut token_count: u32 = 0;
+        let start_time = std::time::Instant::now();
 
         while let Some(chunk) = stream.next().await {
             match chunk {
@@ -214,22 +252,35 @@ pub fn chat_stream_blocking(
                         ..
                     }) = choices.first()
                     {
-                        on_chunk(content.clone(), false);
+                        token_count += 1;
+                        let elapsed = start_time.elapsed().as_secs_f64();
+                        let tokens_per_sec = if elapsed > 0.0 && token_count > 3 {
+                            Some(token_count as f64 / elapsed)
+                        } else {
+                            None
+                        };
+                        on_chunk(content.clone(), false, tokens_per_sec);
                     }
                 }
                 Response::ModelError(msg, _) => {
-                    on_chunk(format!("Model error: {}", msg), true);
+                    on_chunk(format!("Model error: {}", msg), true, None);
                     return;
                 }
                 Response::Done(_) => {
-                    on_chunk(String::new(), true);
+                    let elapsed = start_time.elapsed().as_secs_f64();
+                    let tokens_per_sec = if elapsed > 0.0 && token_count > 0 {
+                        Some(token_count as f64 / elapsed)
+                    } else {
+                        None
+                    };
+                    on_chunk(String::new(), true, tokens_per_sec);
                     return;
                 }
                 _ => {}
             }
         }
 
-        on_chunk(String::new(), true);
+        on_chunk(String::new(), true, None);
     });
 
     Ok(())

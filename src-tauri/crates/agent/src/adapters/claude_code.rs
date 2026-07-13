@@ -70,10 +70,12 @@ fn normalize_stream_event_inner(event: &serde_json::Value) -> Vec<NormalizedEven
                 .unwrap_or("tool")
                 .to_string();
             let input = tool_use.get("input").cloned().unwrap_or_default();
+            let tool_kind = Some(crate::classify::classify_tool_call(&name, &input));
             return vec![NormalizedEvent::ToolUseStart {
                 call_id,
                 tool: name,
                 input,
+                tool_kind,
             }];
         }
     }
@@ -112,10 +114,12 @@ fn normalize_assistant(event: &serde_json::Value) -> Vec<NormalizedEvent> {
                 .unwrap_or("tool")
                 .to_string();
             let input = block.get("input").cloned().unwrap_or_default();
+            let tool_kind = Some(crate::classify::classify_tool_call(&name, &input));
             normalized.push(NormalizedEvent::ToolUseStart {
                 call_id,
                 tool: name,
                 input,
+                tool_kind,
             });
         }
     }
@@ -151,6 +155,7 @@ fn normalize_user(event: &serde_json::Value) -> Vec<NormalizedEvent> {
                     call_id: tool_use_id,
                     output,
                     is_error,
+                    tool_kind: None,
                 });
             }
         }

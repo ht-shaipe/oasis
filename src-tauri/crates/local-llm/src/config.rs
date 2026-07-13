@@ -5,6 +5,20 @@ use tauri::Manager;
 
 const CONFIG_FILE: &str = "local_llm_config.json";
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomLocalModelEntry {
+    pub model_id: String,
+    pub name: String,
+    pub params_billions: f64,
+    pub size_mb: f64,
+    pub license: String,
+    pub description: String,
+    pub hf_repo: String,
+    pub gguf_file: String,
+    pub tok_model_id: String,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalLlmConfig {
@@ -12,6 +26,8 @@ pub struct LocalLlmConfig {
     pub active_model_id: Option<String>,
     #[serde(default)]
     pub hidden_ids: Vec<String>,
+    #[serde(default)]
+    pub custom_models: Vec<CustomLocalModelEntry>,
 }
 
 fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {

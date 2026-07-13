@@ -1,0 +1,346 @@
+//! Agent configuration management — ClaudeConfig types and I/O.
+//!
+//! Ported from jishu-hub `config.rs`, reads/writes `~/.claude/settings.json`.
+
+use serde::{Deserialize, Deserializer, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+pub mod project;
+pub mod templates;
+
+// ── Flex deserializer for env values ───────────────────────────
+
+fn deserialize_flex_env<'de, D>(
+    deserializer: D,
+) -> Result<Option<HashMap<String, String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt: Option<HashMap<String, serde_json::Value>> = Option::deserialize(deserializer)?;
+    Ok(opt.map(|map| {
+        map.into_iter()
+            .map(|(k, v)| {
+                let s = match v {
+                    serde_json::Value::String(s) => s,
+                    serde_json::Value::Number(n) => n.to_string(),
+                    serde_json::Value::Bool(b) => b.to_string(),
+                    other => other.to_string(),
+                };
+                (k, s)
+            })
+            .collect()
+    }))
+}
+
+// ── Config types ──────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ClaudeConfig {
+    pub model: Option<String>,
+    #[serde(deserialize_with = "deserialize_flex_env")]
+    pub env: Option<HashMap<String, String>>,
+    #[serde(rename = "enabledPlugins")]
+    pub enabled_plugins: Option<HashMap<String, bool>>,
+    #[serde(rename = "skipDangerousModePermissionPrompt")]
+    pub skip_dangerous: Option<bool>,
+    #[serde(rename = "cleanupPeriodDays")]
+    pub cleanup_period_days: Option<serde_json::Value>,
+    #[serde(rename = "extraKnownMarketplaces")]
+    pub extra_known_marketplaces: Option<serde_json::Value>,
+    pub theme: Option<String>,
+    #[serde(rename = "permissions")]
+    pub permissions: Option<PermissionsConfig>,
+    #[serde(rename = "mcpServers")]
+    pub mcp_servers: Option<HashMap<String, McpServerConfig>>,
+    #[serde(rename = "apiProvider")]
+    pub api_provider: Option<String>,
+    #[serde(rename = "smallModel")]
+    pub small_model: Option<String>,
+    #[serde(rename = "largeModel")]
+    pub large_model: Option<String>,
+    #[serde(rename = "allowedTools")]
+    pub allowed_tools: Option<Vec<String>>,
+    #[serde(rename = "disallowedTools")]
+    pub disallowed_tools: Option<Vec<String>>,
+    #[serde(rename = "hooks")]
+    pub hooks: Option<HashMap<String, Vec<HookMatcher>>>,
+    #[serde(rename = "sandbox")]
+    pub sandbox: Option<SandboxConfig>,
+    #[serde(rename = "verbose")]
+    pub verbose: Option<bool>,
+    #[serde(rename = "maxTurns")]
+    pub max_turns: Option<u64>,
+    #[serde(rename = "contextCompaction")]
+    pub context_compaction: Option<ContextCompactionConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionsConfig {
+    pub allow: Option<Vec<String>>,
+    pub deny: Option<Vec<String>>,
+    #[serde(rename = "defaultMode")]
+    pub default_mode: Option<String>,
+    #[serde(rename = "additionalDirectories")]
+    pub additional_directories: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpServerConfig {
+    pub command: Option<String>,
+    pub args: Option<Vec<String>>,
+    pub env: Option<HashMap<String, serde_json::Value>>,
+    pub cwd: Option<String>,
+    #[serde(rename = "type")]
+    pub server_type: Option<String>,
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HookAction {
+    #[serde(rename = "type")]
+    pub action_type: String,
+    pub command: Option<String>,
+    pub timeout: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HookMatcher {
+    pub matcher: Option<String>,
+    pub hooks: Vec<HookAction>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SandboxConfig {
+    pub enabled: Option<bool>,
+    #[serde(rename = "allowCommand")]
+    pub allow_command: Option<Vec<String>>,
+    #[serde(rename = "denyCommand")]
+    pub deny_command: Option<Vec<String>>,
+    #[serde(rename = "allowPath")]
+    pub allow_path: Option<Vec<String>>,
+    #[serde(rename = "denyPath")]
+    pub deny_path: Option<Vec<String>>,
+    pub network: Option<String>,
+    pub profile: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextCompactionConfig {
+    pub threshold: Option<f64>,
+    pub method: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackupEntry {
+    pub name: String,
+    pub path: String,
+    pub timestamp: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RawConfigInfo {
+    pub content: String,
+    pub format: String,
+}
+
+// ── Config paths ───────────────────────────────────────────────
+
+pub fn claude_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let home = dirs_next::home_dir().ok_or("Cannot find home directory")?;
+    Ok(home.join(".claude"))
+}
+
+pub fn config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    Ok(claude_dir()?.join("settings.json"))
+}
+
+// ── Atomic write helper ────────────────────────────────────────
+
+pub fn atomic_write(path: &PathBuf, content: &[u8]) -> std::io::Result<()> {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let mut name = path
+        .file_name()
+        .map(|n| n.to_os_string())
+        .unwrap_or_default();
+    name.push(format!(".{}-{}.tmp", std::process::id(), nanos));
+    let tmp = path.with_file_name(name);
+    std::fs::write(&tmp, content)?;
+    if let Err(e) = std::fs::rename(&tmp, path) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e);
+    }
+    Ok(())
+}
+
+// ── Config I/O ─────────────────────────────────────────────────
+
+pub fn load_config() -> Result<ClaudeConfig, Box<dyn std::error::Error>> {
+    let path = config_path()?;
+    let content = std::fs::read_to_string(&path)?;
+    let config: ClaudeConfig = serde_json::from_str(&content)?;
+    Ok(config)
+}
+
+pub fn save_config(config: &ClaudeConfig) -> Result<(), Box<dyn std::error::Error>> {
+    let path = config_path()?;
+    backup_config()?;
+
+    let existing = if path.exists() {
+        let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        serde_json::from_str::<serde_json::Value>(&content).ok()
+    } else {
+        None
+    };
+
+    let mut new_value = serde_json::to_value(config).map_err(|e| e.to_string())?;
+
+    if let Some(obj) = new_value.as_object_mut() {
+        obj.retain(|_, v| !v.is_null());
+    }
+
+    if let (Some(existing_obj), Some(new_obj)) = (existing, new_value.as_object_mut()) {
+        for (key, value) in existing_obj.as_object().unwrap_or(&serde_json::Map::new()) {
+            if !new_obj.contains_key(key) {
+                new_obj.insert(key.clone(), value.clone());
+            }
+        }
+    }
+
+    let json = serde_json::to_string_pretty(&new_value).map_err(|e| e.to_string())?;
+    atomic_write(&path, json.as_bytes()).map_err(|e| e.to_string())?;
+
+    let written = std::fs::read_to_string(&path)?;
+    let _: ClaudeConfig = serde_json::from_str(&written)?;
+    Ok(())
+}
+
+pub fn load_raw_config() -> Result<RawConfigInfo, Box<dyn std::error::Error>> {
+    let path = config_path()?;
+    if !path.exists() {
+        return Ok(RawConfigInfo {
+            content: "{}".to_string(),
+            format: "json".to_string(),
+        });
+    }
+    let content = std::fs::read_to_string(&path)?;
+    Ok(RawConfigInfo {
+        content,
+        format: "json".to_string(),
+    })
+}
+
+pub fn save_raw_config(content: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let path = config_path()?;
+    backup_config()?;
+    let _: serde_json::Value = serde_json::from_str(content)?;
+    atomic_write(&path, content.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ── Backup ────────────────────────────────────────────────────
+
+pub fn backup_config() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let dir = claude_dir()?;
+    let backup_dir = dir.join("backups");
+    std::fs::create_dir_all(&backup_dir)?;
+    let src = dir.join("settings.json");
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+    let dst = backup_dir.join(format!("settings_{}.json", timestamp));
+    if src.exists() {
+        std::fs::copy(&src, &dst)?;
+    }
+    cleanup_old_backups(&backup_dir, 10)?;
+    Ok(dst)
+}
+
+fn cleanup_old_backups(
+    backup_dir: &std::path::Path,
+    keep: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut backups: Vec<std::path::PathBuf> = std::fs::read_dir(backup_dir)?
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .map(|ext| ext == "json")
+                .unwrap_or(false)
+                && e.file_name().to_string_lossy().starts_with("settings_")
+        })
+        .map(|e| e.path())
+        .collect();
+    if backups.len() <= keep {
+        return Ok(());
+    }
+    backups.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+    for old in backups.iter().skip(keep) {
+        let _ = std::fs::remove_file(old);
+    }
+    Ok(())
+}
+
+pub fn list_backups() -> Result<Vec<BackupEntry>, Box<dyn std::error::Error>> {
+    let backup_dir = claude_dir()?.join("backups");
+    if !backup_dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut backups: Vec<BackupEntry> = std::fs::read_dir(&backup_dir)?
+        .filter_map(|e| e.ok())
+        .map(|e| {
+            let path = e.path();
+            let name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            let timestamp = path
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .strip_prefix("settings_")
+                .and_then(|s| {
+                    chrono::NaiveDateTime::parse_from_str(s, "%Y%m%d_%H%M%S")
+                        .ok()
+                        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+                });
+            BackupEntry {
+                name,
+                path: path.to_string_lossy().to_string(),
+                timestamp,
+            }
+        })
+        .filter(|b| b.name.ends_with(".json"))
+        .collect();
+    backups.sort_by(|a, b| b.name.cmp(&a.name));
+    Ok(backups)
+}
+
+pub fn restore_backup(backup_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let dst = config_path()?;
+    let content = std::fs::read_to_string(backup_path)?;
+    let _: ClaudeConfig = serde_json::from_str(&content)?;
+    atomic_write(&dst, content.as_bytes())?;
+    Ok(())
+}
+
+pub fn export_config(export_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let src = config_path()?;
+    let content = std::fs::read_to_string(&src)?;
+    atomic_write(
+        &std::path::PathBuf::from(export_path),
+        content.as_bytes(),
+    )?;
+    Ok(())
+}
+
+pub fn import_config(import_path: &str) -> Result<ClaudeConfig, Box<dyn std::error::Error>> {
+    let content = std::fs::read_to_string(import_path)?;
+    let config: ClaudeConfig = serde_json::from_str(&content)?;
+    let dst = config_path()?;
+    backup_config()?;
+    atomic_write(&dst, content.as_bytes())?;
+    Ok(config)
+}

@@ -24,22 +24,46 @@ fn llm_config_path(app: &AppHandle) -> std::result::Result<PathBuf, String> {
 
 // ── 数据模型 ──────────────────────────────────────────────────────
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct LlmModel {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub provider: String,
+    #[serde(default)]
     pub model_id: String,
+    #[serde(default)]
     pub base_url: String,
+    #[serde(default)]
     pub auth_type: String,
+    #[serde(default)]
     pub api_key: String,
+    #[serde(default)]
     pub token_plan: String,
+    #[serde(default = "default_temperature")]
     pub temperature: f64,
+    #[serde(default = "default_max_tokens")]
     pub max_tokens: u32,
+    #[serde(default)]
     pub description: String,
+    #[serde(default = "default_true")]
     pub enabled: bool,
     #[serde(default = "default_model_type")]
     pub model_type: String,
+}
+
+fn default_temperature() -> f64 {
+    0.7
+}
+
+fn default_max_tokens() -> u32 {
+    4096
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_model_type() -> String {
@@ -102,7 +126,31 @@ fn save_llm_config(app: &AppHandle, config: &LlmConfig) -> std::result::Result<(
 #[tauri::command]
 pub fn get_llm_models(app: AppHandle) -> std::result::Result<Vec<LlmModel>, String> {
     let config = load_llm_config(&app)?;
-    Ok(config.models)
+    let mut models = config.models;
+
+    let local_models = oasis_local_llm::commands::list_local_chat_models(app.clone())?;
+    for lm in local_models.iter().filter(|m| m.downloaded) {
+        if models.iter().any(|m| m.model_id == lm.id) {
+            continue;
+        }
+        models.push(LlmModel {
+            id: format!("local-{}", lm.id.replace('/', "--")),
+            name: format!("🖥 {}", lm.name),
+            provider: "local".to_string(),
+            model_id: lm.id.clone(),
+            base_url: String::new(),
+            auth_type: String::new(),
+            api_key: String::new(),
+            token_plan: String::new(),
+            temperature: 0.7,
+            max_tokens: 4096,
+            description: lm.description.clone(),
+            enabled: true,
+            model_type: "chat".to_string(),
+        });
+    }
+
+    Ok(models)
 }
 
 #[tauri::command]
@@ -159,6 +207,23 @@ fn get_client_for_model(app: &AppHandle, model_id: &str) -> std::result::Result<
 
 #[tauri::command]
 pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> std::result::Result<ChatResponse, String> {
+    if is_local_model_id(&app, &request.model_id) {
+        return Err("Local models only support streaming chat. Use ai_chat_stream instead.".to_string());
+    }
+
+    let config = load_llm_config(&app)?;
+    let model = config
+        .models
+        .iter()
+        .find(|m| m.model_id == request.model_id)
+        .cloned();
+
+    if let Some(ref m) = model {
+        if m.provider == "local" {
+            return Err("Local models only support streaming chat. Use ai_chat_stream instead.".to_string());
+        }
+    }
+
     let (client, model) = get_client_for_model(&app, &request.model_id)?;
 
     let msgs: Vec<tube::Value> = request
@@ -223,6 +288,8 @@ pub struct StreamChunk {
     pub reasoning_content: Option<String>,
     pub is_over: bool,
     pub usage: Option<ChatUsage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tokens_per_sec: Option<f64>,
 }
 
 async fn local_chat_stream(
@@ -244,17 +311,24 @@ async fn local_chat_stream(
 
     let channel_clone = channel.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        oasis_local_llm::inference::chat_stream_blocking(local_messages, move |content, is_over| {
+        oasis_local_llm::inference::chat_stream_blocking(local_messages, move |content, is_over, tokens_per_sec| {
             let _ = channel_clone.send(StreamChunk {
                 content,
                 reasoning_content: None,
                 is_over,
                 usage: None,
+                tokens_per_sec,
             });
         })
     })
     .await
     .map_err(|e| format!("Local inference task error: {}", e))?
+}
+
+fn is_local_model_id(app: &AppHandle, model_id: &str) -> bool {
+    oasis_local_llm::commands::list_local_chat_models(app.clone())
+        .map(|list| list.iter().any(|m| m.id == model_id))
+        .unwrap_or(false)
 }
 
 /// SSE 流式对话。前端通过 `Channel<StreamChunk>` 逐块接收增量内容。
@@ -264,6 +338,10 @@ pub async fn ai_chat_stream(
     request: ChatRequest,
     channel: Channel<StreamChunk>,
 ) -> std::result::Result<(), String> {
+    if is_local_model_id(&app, &request.model_id) {
+        return local_chat_stream(app, request, channel, &LlmModel::default()).await;
+    }
+
     let config = load_llm_config(&app)?;
     let model = config
         .models
@@ -314,6 +392,7 @@ pub async fn ai_chat_stream(
                             reasoning_content: None,
                             is_over,
                             usage: None,
+                            tokens_per_sec: None,
                         });
                         return Ok(Value::Null);
                     }
@@ -330,6 +409,7 @@ pub async fn ai_chat_stream(
                             reasoning_content: None,
                             is_over: true,
                             usage: None,
+                            tokens_per_sec: None,
                         });
                         return Ok(Value::Null);
                     }
@@ -363,6 +443,7 @@ pub async fn ai_chat_stream(
                         reasoning_content: chunk_reasoning,
                         is_over,
                         usage: None,
+                        tokens_per_sec: None,
                     });
                     Ok(Value::Null)
                 }) as Pin<Box<dyn Future<Output = TubeResult<Value>> + Send>>
@@ -400,6 +481,7 @@ pub async fn ai_chat_stream(
                     .and_then(|v| v.as_u64())
                     .unwrap_or(0) as u32,
             }),
+            tokens_per_sec: None,
         });
     }
 
