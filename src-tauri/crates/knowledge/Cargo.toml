@@ -20,6 +20,6 @@ shellexpand = "3"
 tauri = {version = "2", features = ["macos-private-api"]}
 tokio = {version = "1", features = ["full"]}
 tube = {workspace = true, features = ["crypto", "utils"]}
-usearch = "2.25.3"
+usearch = "2.26.0"
 uuid = {version = "1", features = ["v4"]}
 walkdir = "2"

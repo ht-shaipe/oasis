@@ -6,7 +6,7 @@ macOS-style desktop efficiency platform built with Tauri v2 + Vue 3 + Rust.
 
 ```bash
 bun install          # install JS deps (uses Bun, not npm/yarn)
-bun run dev          # Vite dev server only (port 1420, HMR port 1421)
+bun run dev          # Vite dev server only (port 1488)
 bun run build        # vue-tsc --noEmit && vite build (frontend only)
 bun run tauri        # tauri dev (starts Vite + Rust backend)
 bun run tauri:build  # tauri build (frontend build + Rust compile + bundle)
@@ -20,14 +20,22 @@ Build script: `scripts/build.sh [web|tauri|all]`
 
 **Frontend** (`src/`): Vue 3 Composition API + Element Plus + Pinia + vue-i18n + vue-router. Entry: `src/main.ts`. Path alias `@` → `src/`.
 
-**Backend** (`src-tauri/`): Rust workspace with 5 sub-crates:
+**Backend** (`src-tauri/`): Rust workspace (edition 2024) with 13 sub-crates:
 - `crates/credential` — encrypted credential storage (SQLite + Ring AES-GCM)
 - `crates/toolbox` — CSV/Excel/JSON tools + network scanner
 - `crates/browser` — Chrome CDP launch & control
+- `crates/browser-data-extract` — browser password/cookie/bookmark/history extraction
 - `crates/ai` — AI features
-- `crates/browser-data-extract` — browser data extraction
+- `crates/chat` — chat functionality
+- `crates/embed` — embedding models
+- `crates/knowledge` — RAG knowledge base
+- `crates/agent` — Agent runtime & plugin system
+- `crates/agent-config` — Agent configuration
+- `crates/project` — project management
+- `crates/hub` — Hub service
+- `crates/local-llm` — local LLM integration
 
-**Tauri command registration is code-generated**: `build.rs` scans `#[tauri::command]` annotations in each crate's `commands.rs` and writes `generated_invoke_handler.rs` into `OUT_DIR`. `lib.rs` includes this file — do NOT manually register handlers.
+**Tauri command registration is code-generated**: `build.rs` scans `#[tauri::command]` annotations in each crate's `commands.rs` and writes `generated_invoke_handler.rs` into `OUT_DIR`. `lib.rs` includes this file via `include!()` — do NOT manually register handlers.
 
 **Local dependency**: `tube` crate is referenced at `../../../../rust/kit/tube` (relative path outside this repo). If `cargo build` fails on `tube`, check that path exists.
 
@@ -38,10 +46,14 @@ Build script: `scripts/build.sh [web|tauri|all]`
 - **App registration**: all built-in apps are declared in `src/config/apps.ts` with id/name/icon/component/dock/desktop flags
 - **Window management**: `HomeView.vue` manages app windows via `windowStates` reactive object + `<Teleport to="body">`
 - **i18n**: use `nameKey` from app config with vue-i18n; locale files in `src/locales/`
+- **Component structure**: system components in `src/components/system/`, common components in `src/components/common/`
+- **Settings panels**: each settings panel is a separate component in `src/apps/Settings/panels/`
 
 ## Key paths
 
-- Tauri config: `src-tauri/tauri.conf.json` (window 1400x1000, Overlay titleBar, macOS private API enabled)
+- Tauri config: `src-tauri/tauri.conf.json` (window 1400×1000, Overlay titleBar, macOS private API enabled)
+- Dev server port: 1488
 - TypeScript: strict mode, ES2021 target, `noUnusedLocals`/`noUnusedParameters` on
 - Rust edition: 2024
 - Build output: `src-tauri/target/release/bundle/` (macOS: .app + .dmg)
+- Generated command handler: `src-tauri/target/debug/build/oasis-*/out/generated_invoke_handler.rs`

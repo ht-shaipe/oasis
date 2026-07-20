@@ -1,19 +1,8 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: c8bc0470d7bdfb9241ace971be1a0b2c_d4daaeb85c9011f1abc85254006c9bbf
-    ReservedCode1: gxdfFPtU2kiT00pH98+bGauIw/dRpR4DPV6y+/ArKUYqQlJ2VjujRvdaZpCNshu/QW23VUUeWHPE0NTXd9CRXx0200KCymnPEdbOfCo87Vqd5LGMMABdSV6RjGPOl1AWDfwtvm4jONF2yJ1wTF+m3OCkt0ZT+ewzkdeFKfgVo4a/4VI1d1f7Zoq1LTY=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: c8bc0470d7bdfb9241ace971be1a0b2c_d4daaeb85c9011f1abc85254006c9bbf
-    ReservedCode2: gxdfFPtU2kiT00pH98+bGauIw/dRpR4DPV6y+/ArKUYqQlJ2VjujRvdaZpCNshu/QW23VUUeWHPE0NTXd9CRXx0200KCymnPEdbOfCo87Vqd5LGMMABdSV6RjGPOl1AWDfwtvm4jONF2yJ1wTF+m3OCkt0ZT+ewzkdeFKfgVo4a/4VI1d1f7Zoq1LTY=
----
-
 # Oasis
 
 > 基于 Tauri v2 + Vue 3 构建的 macOS 风格桌面效率平台。
 
-Oasis 是一个模拟 macOS 桌面环境的桌面应用，集成 Finder、代码编辑器、工具箱、凭据管理器等生产力工具，结合 Rust 高性能后端与 Vue 3 响应式前端。
+Oasis 是一个模拟 macOS 桌面环境的桌面应用，集成 Finder、代码编辑器、AI 对话、工具箱、凭据管理器等生产力工具，结合 Rust 高性能后端与 Vue 3 响应式前端。
 
 ---
 
@@ -22,12 +11,15 @@ Oasis 是一个模拟 macOS 桌面环境的桌面应用，集成 Finder、代码
 | 模块                | 说明                                                                                                     |
 | ------------------- | -------------------------------------------------------------------------------------------------------- |
 | 仿 macOS 桌面 Shell | MenuBar 顶部菜单栏、Dock 底部程序坞、DesktopIcons 桌面图标、ContextMenu 右键菜单，三种视图模式与两种排序 |
-| 多窗口管理          | 11 个内置应用支持独立窗口，可最小化/还原，通过 Teleport 渲染到 body                                      |
-| 系统托盘            | 中/英双语切换，窗口显隐控制                                                                              |
-| 凭据管理器          | SQLite 持久化 + Ring AES-GCM 加密，主密钥 PBKDF2 派生，支持分类管理                                      |
+| 多窗口管理          | 14 个内置应用支持独立窗口，可最小化/还原，通过 Teleport 渲染到 body                                      |
+| 系统托盘            | 窗口显隐控制                                                                                             |
+| 凭据管理器          | SQLite 持久化 + Ring AES-GCM 加密，主密钥 PBKDF2 派生，支持分类管理、网站账号管理、浏览器数据导入         |
 | 工具箱              | CSV 统计/拆分/转换、Excel 行列移动、JSON 转换/合并、网络端口扫描                                         |
 | 浏览器控制          | Chrome CDP 路径探测与启动                                                                                |
+| 浏览器数据提取      | 支持 Chrome/Edge/Firefox/Safari 等浏览器的密码、Cookie、书签、历史记录提取                               |
 | 代码编辑器          | Monaco Editor 集成，支持代码生成联动                                                                     |
+| AI 对话             | 多模型 AI Chat + Agent 模式                                                                              |
+| 知识库              | RAG 知识检索与嵌入                                                                                       |
 
 ---
 
@@ -38,12 +30,12 @@ Oasis 是一个模拟 macOS 桌面环境的桌面应用，集成 Finder、代码
 | 前端框架   | Vue 3.5 (Composition API) + TypeScript 6.0 |
 | 构建工具   | Vite 8 + Bun                               |
 | UI 库      | Element Plus 2.14 + UnoCSS 66.7            |
-| 状态管理   | Pinia 3.0 + Vuex 4.1                       |
+| 状态管理   | Pinia 3.0                                  |
 | 国际化     | vue-i18n 11.4                              |
 | 路由       | vue-router 5.0                             |
 | 代码编辑器 | Monaco Editor (`@monaco-editor/loader`)    |
 | 桌面框架   | Tauri 2                                    |
-| 后端语言   | Rust (stable)                              |
+| 后端语言   | Rust (edition 2024)                        |
 | 数据库     | SQLite (rusqlite, bundled)                 |
 | 加密       | Ring 0.17 (AES-GCM)                        |
 | 包管理     | Bun                                        |
@@ -59,68 +51,100 @@ oasis/
 │   ├── App.vue                       # 根组件：el-config-provider + RouterView
 │   ├── views/
 │   │   └── HomeView.vue              # 桌面 Shell 主视图（窗口管理/事件路由）
-│   ├── apps/                         # 内置应用组件 (11 个)
-│   │   ├── Finder.vue                # 文件资源管理 / 版本管理
+│   ├── apps/                         # 内置应用组件 (14 个)
+│   │   ├── Finder.vue                # 文件资源管理（旧版）
+│   │   ├── Finder/                   # 文件资源管理（新版目录）
 │   │   ├── Generator.vue             # 代码生成器
 │   │   ├── CodeEditor.vue            # Monaco 代码编辑器
 │   │   ├── Safari.vue                # 内置网页预览
 │   │   ├── Browser.vue               # 浏览器 CDP 控制器
 │   │   ├── Notes.vue                 # 备忘录
-│   │   ├── About.vue                 # 关于 / 设置面板
 │   │   ├── Profile.vue               # 用户资料
 │   │   ├── ContinueDialog.vue        # AI 续写对话框
-│   │   ├── Toolbox/                  # 工具箱 (含 7 个子工具面板)
-│   │   │   └── Index.vue
-│   │   └── Credential/        # 凭据管理器 (5 文件)
-│   │       ├── index.vue / Sidebar.vue / Toolbar.vue
-│   │       ├── AuthCard.vue / credentialForm.ts
-│   ├── components/                   # 系统组件 (9 个)
-│   │   ├── MenuBar.vue               # 顶部菜单栏
-│   │   ├── Dock.vue                  # 底部程序坞
-│   │   ├── DesktopIcons.vue          # 桌面图标（三视图模式）
-│   │   ├── ContextMenu.vue           # 桌面右键菜单
-│   │   ├── MacWindow.vue             # macOS 风格应用窗口
-│   │   ├── LoginScreen.vue           # 登录界面
-│   │   ├── LoginForm.vue             # 登录表单
-│   │   ├── ProfileMenu.vue           # 用户菜单
-│   │   └── Settings.vue              # 设置面板
+│   │   ├── Settings/                 # 设置面板
+│   │   │   ├── index.vue
+│   │   │   └── panels/              # AboutPanel / GeneralPanel / AppearancePanel /
+│   │   │                             # AgentConfigPanel / LlmPanel / EmbeddingModelPanel
+│   │   ├── Credential/               # 凭据管理器 (12 文件)
+│   │   │   ├── Index.vue / Sidebar.vue / Toolbar.vue
+│   │   │   ├── AuthCard.vue / SiteAccountManager.vue / SiteList.vue
+│   │   │   ├── CredentialFormDialog.vue / CredentialTable.vue
+│   │   │   ├── BrowserImportDialog.vue / MergePreviewDialog.vue
+│   │   │   ├── TemplateManager.vue / credentialForm.ts
+│   │   ├── Toolbox/                  # 工具箱
+│   │   │   ├── Index.vue / Sidebar.vue
+│   │   │   ├── tools/               # CsvTool / ExcelMove / JsonConvert / JsonMerge / NetworkScan
+│   │   │   ├── composables/ / constants.ts / types.ts
+│   │   ├── Chat/                     # AI 对话
+│   │   │   ├── Index.vue / ChatView.vue / components/
+│   │   ├── AgentChat/               # AI Agent
+│   │   │   ├── Index.vue / AgentChatView.vue / components/
+│   │   │   └── Knowledge/           # 知识库
+│   │       └── Index.vue
+│   ├── components/                   # 系统组件
+│   │   ├── system/                   # 桌面 Shell 组件 (9 个)
+│   │   │   ├── MenuBar.vue / Dock.vue / DesktopIcons.vue / ContextMenu.vue
+│   │   │   ├── LoginScreen.vue / NotificationCenter.vue / Calendar.vue
+│   │   │   ├── SignInModal.vue / UpdateDialog.vue
+│   │   ├── common/                   # 通用组件 (2 个)
+│   │   │   ├── MacWindow.vue / AppDialog.vue
 │   ├── config/
-│   │   ├── apps.ts                   # 应用注册表 (id/name/icon/component/Dock/Desktop)
+│   │   ├── apps.ts                   # 应用注册表 (id/name/icon/component/dock/desktop)
 │   │   └── menuBar.ts                # 菜单栏组件显隐配置
 │   ├── store/
 │   │   ├── locale.ts                 # 语言 Pinia store
-│   │   └── theme.ts                  # 主题 Pinia store
+│   │   ├── theme.ts                  # 主题 Pinia store
+│   │   ├── fontSize.ts              # 字号 Pinia store
+│   │   ├── agent.ts                 # Agent Pinia store
+│   │   └── chat.ts                  # Chat Pinia store
 │   ├── locales/
-│   │   ├── zh-CN.json                # 简体中文
-│   │   └── en.json                   # English
+│   │   ├── zh-CN.json               # 简体中文
+│   │   ├── en.json                   # English
+│   │   └── index.ts                  # i18n 初始化
 │   ├── composables/
-│   │   └── useCredential.ts          # 凭据管理 composable
+│   │   ├── useCredential.ts          # 凭据管理 composable
+│   │   ├── useAppUpdate.ts           # 应用更新 composable
+│   │   └── useFileDialog.ts          # 文件对话框 composable
 │   ├── utils/
 │   │   ├── apiService.ts             # API 服务封装
 │   │   ├── request.ts                # HTTP 请求工具
-│   │   └── mockData.ts               # Mock 数据
+│   │   ├── mockData.ts               # Mock 数据
+│   │   └── sseChat.ts                # SSE 聊天工具
 │   ├── styles/
 │   │   └── theme.css                 # 主题样式变量
 │   └── router/
 │       └── index.ts                  # 路由 (仅 / → HomeView)
 ├── public/assets/
-│   └── icons/                        # SVG 图标 (47 个)
-│       ├── Toolbox.svg / Browser.svg / Finder.svg / ...
-│       └── CsvStats.svg / CsvSplit.svg / ...          # 工具箱子工具图标
+│   ├── icons/                        # SVG 图标
+│   ├── logo.png
+│   ├── profile.jpg
+│   └── wallpaper/
 ├── src-tauri/                        # Rust 后端
 │   ├── src/
 │   │   ├── main.rs                   # 程序入口
-│   │   ├── lib.rs                    # 核心库：setup() / setup_tray() / 命令注册
-│   │   ├── commands.rs               # 通用命令 (greet / update_tray_locale)
+│   │   ├── lib.rs                    # 核心库：setup() / setup_tray() / 命令注册（code-generated）
+│   │   ├── commands.rs               # 通用命令 (greet / update_tray_locale / check_update)
+│   │   ├── tary_icon.rs              # 托盘图标
 │   │   └── net/                      # 网络代理模块
 │   │       ├── client.rs             # HTTP 客户端
 │   │       ├── config.rs             # 代理配置 (proxy.toml)
 │   │       ├── proxy.rs              # 代理管理（路径路由）
 │   │       └── response.rs           # 统一响应体
-│   ├── crates/                       # 子 crate (3 个)
-│   │   ├── oasis-credential/         # 凭据管理 (12 个 Tauri 命令)
-│   │   ├── oasis-toolbox/            # 工具箱 (9 个 Tauri 命令)
-│   │   └── oasis-browser/            # 浏览器控制 (2 个 Tauri 命令)
+│   ├── crates/                       # 子 crate (13 个)
+│   │   ├── oasis-credential/         # 凭据管理 (加密存储)
+│   │   ├── oasis-toolbox/            # 工具箱 (CSV/Excel/JSON/网络扫描)
+│   │   ├── oasis-browser/            # 浏览器 CDP 控制
+│   │   ├── oasis-browser-data-extract/ # 浏览器数据提取
+│   │   ├── oasis-ai/                 # AI 功能
+│   │   ├── oasis-chat/               # 聊天功能
+│   │   ├── oasis-embed/              # 嵌入模型
+│   │   ├── oasis-knowledge/          # 知识库
+│   │   ├── oasis-agent/              # Agent 运行时
+│   │   ├── oasis-agent-config/       # Agent 配置
+│   │   ├── oasis-project/            # 项目管理
+│   │   ├── oasis-hub/                # Hub 服务
+│   │   └── oasis-local-llm/          # 本地 LLM
+│   ├── build.rs                      # 构建脚本：扫描 #[tauri::command] 生成命令注册
 │   ├── tauri.conf.json               # Tauri 配置 (窗口/安全/打包)
 │   ├── capabilities/default.json     # 权限声明
 │   └── Cargo.toml                    # Rust workspace 配置
@@ -129,10 +153,13 @@ oasis/
 │   ├── architecture.md
 │   ├── credential-storage.md
 │   ├── credential-backend-spec.md
-│   └── credential-frontend-spec.md
+│   ├── credential-frontend-spec.md
+│   └── UPDATE_RELEASE_GUIDE.md
+├── scripts/                          # 构建脚本
 ├── vite.config.ts
 ├── tsconfig.json
 ├── uno.config.ts
+├── Makefile
 └── package.json
 ```
 
@@ -142,53 +169,42 @@ oasis/
 
 | 应用           | ID                   | Dock  | 桌面  | 说明                                   |
 | -------------- | -------------------- | :---: | :---: | -------------------------------------- |
-| Finder         | `finder`             |   ✅   |       | 文件资源管理与版本控制                 |
+| Finder         | `Finder`             |   ✅   |       | 文件资源管理与版本控制                 |
 | Generator      | `generator`          |   ✅   |       | 代码片段生成，联动 CodeEditor + Safari |
-| CodeEditor     | `code-editor`        |   ✅   |       | Monaco Editor，支持多语言编辑          |
+| CodeEditor     | `editor`             |   ✅   |       | Monaco Editor，支持多语言编辑          |
 | Safari         | `safari`             |   ✅   |       | 内置网页预览                           |
 | Browser        | `browser`            |   ✅   |       | Chrome CDP 启动与控制                  |
-| Toolbox        | `toolbox`            |   ✅   |       | 7 合 1 工具箱                          |
+| Toolbox        | `toolbox`            |   ✅   |   ✅   | 多合 1 工具箱                          |
 | Credential     | `credential-manager` |   ✅   |   ✅   | 加密凭据管理                           |
-| About          | `about`              |   ✅   |   ✅   | 关于与系统设置                         |
+| Settings       | `settings`           |   ✅   |   ✅   | 系统设置                               |
+| Knowledge      | `knowledge`          |   ✅   |   ✅   | RAG 知识库                             |
+| Chat           | `chat`               |   ✅   |   ✅   | AI 多模型对话                          |
+| Agent Chat     | `agent-chat`         |   ✅   |   ✅   | AI Agent 模式                          |
 | Notes          | `notes`              |       |   ✅   | 备忘录                                 |
 | Profile        | `profile`            |       |       | 用户资料                               |
 | ContinueDialog | `continue-dialog`    |       |       | AI 续写                                |
 
 ---
 
-## Rust 后端 — Tauri 命令
+## Rust 后端
 
-共注册 **25 个** Tauri 命令，分布在 1 个核心模块 + 3 个 crate 中：
+共 **13 个**子 crate，命令注册由 `build.rs` 自动扫描 `#[tauri::command]` 注解生成 `generated_invoke_handler.rs`，`lib.rs` 通过 `include!` 引入——**不要手动注册命令**。
 
-| 模块                 | 命令数 | 功能                                                                   |
-| -------------------- | :----: | ---------------------------------------------------------------------- |
-| 核心 (`commands.rs`) |   2    | greet / update_tray_locale                                             |
-| `oasis-credential`   |   12   | 主密钥管理 (4) + 分类管理 (3) + 凭据 CRUD (5)                          |
-| `oasis-toolbox`      |   9    | CSV 统计/拆分/转换、Excel 移动预览/应用、JSON 转换/批量/合并、网络扫描 |
-| `oasis-browser`      |   2    | find_chrome_path / launch_chrome_cdp                                   |
-
-### `oasis-credential` 命令清单
-
-```
-is_master_key_set  setup_master_key  verify_master_key  change_master_key
-list_categories    create_category   delete_category
-list_credentials   get_credential    create_credential   update_credential  delete_credential
-```
-
-### `oasis-toolbox` 命令清单
-
-```
-csv_scan_dir       csv_split_file    csv_convert_file
-excel_move_preview excel_move_apply
-json_convert_file  json_convert_batch  json_merge_files
-network_scan_ports
-```
-
-### `oasis-browser` 命令清单
-
-```
-find_chrome_path  launch_chrome_cdp
-```
+| Crate                         | 功能                                                   |
+| ----------------------------- | ------------------------------------------------------ |
+| `oasis-credential`            | 凭据加密存储 (SQLite + Ring AES-GCM，主密钥 PBKDF2)    |
+| `oasis-toolbox`               | CSV 统计/拆分/转换、Excel 移动预览/应用、JSON 转换/合并、网络扫描 |
+| `oasis-browser`               | Chrome CDP 路径探测与启动                              |
+| `oasis-browser-data-extract`  | 浏览器密码/Cookie/书签/历史记录/下载记录提取           |
+| `oasis-ai`                    | AI 功能                                                |
+| `oasis-chat`                  | 聊天功能                                               |
+| `oasis-embed`                 | 嵌入模型                                               |
+| `oasis-knowledge`             | RAG 知识库                                             |
+| `oasis-agent`                 | Agent 运行时与插件系统                                 |
+| `oasis-agent-config`          | Agent 配置管理                                         |
+| `oasis-project`               | 项目管理                                               |
+| `oasis-hub`                   | Hub 服务                                               |
+| `oasis-local-llm`             | 本地 LLM                                               |
 
 ---
 
@@ -199,24 +215,27 @@ find_chrome_path  launch_chrome_cdp
 - [Rust](https://www.rust-lang.org/tools/install) stable
 - [Bun](https://bun.sh/)
 - macOS: Xcode Command Line Tools
-- Windows: WebView2 Runtime
 
 ### 开发
 
 ```bash
 bun install
-bun tauri dev
+bun run tauri
+# 或
+make dev
 ```
 
-前端 Vite Dev Server 端口 1420，HMR 端口 1421。Rust 代码修改后自动重新编译。
+Vite Dev Server 端口 1488。Rust 代码修改后自动重新编译，前端支持热重载。
 
 ### 构建
 
 ```bash
-bun tauri build
+bun run tauri:build
+# 或
+make bundle
 ```
 
-产物位于 `src-tauri/target/release/bundle/`。
+产物位于 `src-tauri/target/release/bundle/`（macOS: `.app` + `.dmg`）。
 
 ---
 
@@ -230,8 +249,8 @@ Vue 3 Frontend  ──invoke()──▶  Tauri Commands  ──▶  Rust Crates
 ```
 
 - **前端**：Vue 3 Composition API + Element Plus + Pinia，通过 `@tauri-apps/api/core` 的 `invoke` 调用后端命令。
-- **后端**：Rust workspace，3 个功能 crate 通过 `_handlers!()` 宏批量注册 Tauri 命令到 `lib.rs`。
-- **窗口管理**：`HomeView.vue` 通过 `windowStates` reactive 对象 + `<Teleport to="body">` 管理 11 个应用窗口的显隐与最小化状态。
+- **后端**：Rust workspace，13 个功能 crate，命令注册由 `build.rs` 自动生成。
+- **窗口管理**：`HomeView.vue` 通过 `windowStates` reactive 对象 + `<Teleport to="body">` 管理应用窗口的显隐与最小化状态。
 - **数据流**：Generator 生成代码 → emit → HomeView 打开 CodeEditor + Safari；Finder 加载版本 → emit → 联动编辑器与预览。
 - **安全**：凭据模块使用 Ring AES-256-GCM 加密，主密钥 PBKDF2 派生，存储在 SQLite (bundled)。
 
@@ -239,12 +258,20 @@ Vue 3 Frontend  ──invoke()──▶  Tauri Commands  ──▶  Rust Crates
 
 ## 构建配置
 
-| 配置       | 值                             |
-| ---------- | ------------------------------ |
-| Tauri 窗口 | 1200×800，居中，Overlay 标题栏 |
-| TypeScript | strict 全开，target ES2021     |
-| 路径别名   | `@` → `./src`                  |
-| 打包格式   | macOS: app + dmg               |
+| 配置       | 值                               |
+| ---------- | -------------------------------- |
+| Tauri 窗口 | 1400×1000，居中，Overlay 标题栏  |
+| Dev 端口   | 1488                             |
+| TypeScript | strict 全开，target ES2021       |
+| 路径别名   | `@` → `./src`                    |
+| Rust 版本  | edition 2024                     |
+| 打包格式   | macOS: app + dmg                 |
+
+---
+
+## 本地依赖
+
+`tube` crate 引用路径为 `../../../../rust/kit/tube`（项目外相对路径）。若 `cargo build` 报 `tube` 相关错误，请确认该路径存在。
 
 ---
 
@@ -255,10 +282,11 @@ Vue 3 Frontend  ──invoke()──▶  Tauri Commands  ──▶  Rust Crates
 - [凭据存储方案](docs/credential-storage.md)
 - [凭据管理后端规范](docs/credential-backend-spec.md)
 - [凭据管理前端规范](docs/credential-frontend-spec.md)
+- [更新发布指南](docs/UPDATE_RELEASE_GUIDE.md)
+- [浏览器数据提取](src-tauri/crates/browser-data-extract/README.md)
 
 ---
 
 ## 许可证
 
 [MIT License](LICENSE)
-*（内容由AI生成，仅供参考）*

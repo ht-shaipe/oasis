@@ -1,14 +1,12 @@
 # 凭据存储方案 (Credential Storage)
 
-本文档详细说明 Oasis 凭据管理器（Credential Manager）的后端存储逻辑和加密流程。对应的 Rust crate 为 `oasis-credential`，注册 12 个 Tauri 命令。
+本文档说明 Oasis 凭据管理器（Credential Manager）的后端存储逻辑和加密流程。对应的 Rust crate 为 `oasis-credential`。
 
-## 🔐 加密架构
-
-为了确保用户密码和敏感数据的安全，我们采用了行业标准的对称加密和密钥派生算法。
+## 加密架构
 
 ### 1. 密钥派生链路 (Key Derivation)
 
-当用户设置或输入主密钥（Master Password）时，程序会执行以下流程：
+当用户设置或输入主密钥（Master Password）时，程序执行以下流程：
 
 - **主密钥验证**:
     - 用户输入 `Password` + 随机 `Salt`。
@@ -27,7 +25,7 @@
     - 使用 `DEK` 加密敏感信息（Sensitive JSON）。
     - 将 `Ciphertext` 和 `Nonce` 存入数据库。
 
-## 🗄️ 数据库设计 (SQLite)
+## 数据库设计 (SQLite)
 
 数据库文件位于 Tauri 的 `app_data_dir` 目录下的 `credentials.db`。
 
@@ -42,8 +40,10 @@
     - `encrypted_data`: 经过 AES 加密后的密文。
     - `nonce`: 加密所用的 Nonce。
 - **`categories`**: 凭据分类表。
+- **`sites`**: 网站主记录表（网站账号管理功能）。
+- **`site_accounts`**: 网站账号子记录表（一个网站下多个账号）。
 
-## 🛡️ 安全保证
+## 安全保证
 
 1. **零明文存储**: 数据库中不包含任何主密钥或解密后的敏感数据。
 2. **内存隔离**: 解密后的数据仅在前端组件中短暂存在，后端不缓存 DEK。
