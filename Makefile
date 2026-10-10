@@ -1,5 +1,8 @@
 # Makefile for Oasis (Tauri + Bun)
 
+# Skip Metal shader precompilation (requires full Xcode for Metal compiler)
+export MISTRALRS_METAL_PRECOMPILE := 0
+
 .PHONY: dev build bundle install git help
 
 # Default target

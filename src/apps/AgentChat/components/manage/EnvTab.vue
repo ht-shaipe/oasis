@@ -127,6 +127,7 @@ function handleInstallAgent(agentId: string) {
     window.open(`terminal://run?cmd=${encodeURIComponent(status.native_install_command || status.install_hint)}`, '_blank')
   }
 }
+void handleInstallAgent
 
 async function openUrl(url: string) {
   try {

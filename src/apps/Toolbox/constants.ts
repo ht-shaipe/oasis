@@ -8,6 +8,8 @@ export const TOOL_ICONS = {
     JSON_CONVERT: '/assets/icons/JsonConvert.svg',
     JSON_MERGE: '/assets/icons/JsonMerge.svg',
     NETWORK_SCAN: '/assets/icons/NetworkScan.svg',
+    IMAGE_COMPRESS: '/assets/icons/ImageCompress.svg',
+    HTTP_REQUEST: '/assets/icons/HttpRequest.svg',
 } as const;
 
 // ── Tool Definitions ───────────────────────────────────────────────────────
@@ -18,6 +20,8 @@ export const TOOLS: Tool[] = [
     { id: 'json-convert', icon: TOOL_ICONS.JSON_CONVERT, labelKey: 'toolbox.jsonConvert' },
     { id: 'json-merge', icon: TOOL_ICONS.JSON_MERGE, labelKey: 'toolbox.jsonMerge' },
     { id: 'network-scan', icon: TOOL_ICONS.NETWORK_SCAN, labelKey: 'toolbox.networkScan' },
+    { id: 'image-compress', icon: TOOL_ICONS.IMAGE_COMPRESS, labelKey: 'toolbox.imageCompress.title' },
+    { id: 'http-request', icon: TOOL_ICONS.HTTP_REQUEST, labelKey: 'toolbox.httpRequest.title' },
 ];
 
 // ── Sidebar Configuration ───────────────────────────────────────────────────

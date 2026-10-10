@@ -267,7 +267,7 @@ pub fn json_merge_files(
 
 // ── 网络扫描 ──
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ScanResultItem {
     pub ip: String,
     pub port: u16,
@@ -282,37 +282,75 @@ pub struct NetworkScanResult {
 }
 
 #[tauri::command]
-pub fn network_scan_ports(
+pub fn network_scan_parse(ip_range: String, ports_str: String) -> Result<Vec<(String, u16)>, String> {
+    let ips = network_scan::parse_ip_range(&ip_range)?;
+    let ports = network_scan::parse_ports(&ports_str)?;
+    let targets: Vec<(String, u16)> = ips
+        .iter()
+        .flat_map(|ip| ports.iter().map(move |p| (ip.to_string(), *p)))
+        .collect();
+    Ok(targets)
+}
+
+#[tauri::command]
+pub async fn network_scan_single(ip: String, port: u16, timeout_ms: u64) -> ScanResultItem {
+    let addr_str = format!("{}:{}", ip, port);
+    tokio::task::spawn_blocking(move || {
+        let addr: std::net::SocketAddr = addr_str.parse().unwrap_or_else(|_| {
+            std::net::SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), port)
+        });
+        let r = network_scan::scan_port(addr, timeout_ms);
+        ScanResultItem {
+            ip: r.ip.to_string(),
+            port: r.port,
+            open: r.open,
+            latency_ms: r.latency_ms,
+        }
+    })
+    .await
+    .unwrap_or(ScanResultItem {
+        ip,
+        port,
+        open: false,
+        latency_ms: None,
+    })
+}
+
+#[tauri::command]
+pub async fn network_scan_ports(
     ip_range: String,
     ports_str: String,
     timeout_ms: u64,
     show_closed: bool,
 ) -> Result<NetworkScanResult, String> {
-    let ips = network_scan::parse_ip_range(&ip_range)?;
-    let ports = network_scan::parse_ports(&ports_str)?;
+    tokio::task::spawn_blocking(move || {
+        let ips = network_scan::parse_ip_range(&ip_range)?;
+        let ports = network_scan::parse_ports(&ports_str)?;
 
-    let mut results = Vec::new();
-    for &ip in &ips {
-        for &port in &ports {
-            let addr = std::net::SocketAddr::new(std::net::IpAddr::V4(ip), port);
-            let r = network_scan::scan_port(addr, timeout_ms);
-            results.push(r);
+        let mut results = Vec::new();
+        for &ip in &ips {
+            for &port in &ports {
+                let addr = std::net::SocketAddr::new(std::net::IpAddr::V4(ip), port);
+                let r = network_scan::scan_port(addr, timeout_ms);
+                results.push(r);
+            }
         }
-    }
-    // 转换为可序列化的结构
-    let items: Vec<ScanResultItem> = results
-        .iter()
-        .map(|r| ScanResultItem {
-            ip: r.ip.to_string(),
-            port: r.port,
-            open: r.open,
-            latency_ms: r.latency_ms,
-        })
-        .collect();
-    let format_text = network_scan::format_scan_results(&results, show_closed);
+        let items: Vec<ScanResultItem> = results
+            .iter()
+            .map(|r| ScanResultItem {
+                ip: r.ip.to_string(),
+                port: r.port,
+                open: r.open,
+                latency_ms: r.latency_ms,
+            })
+            .collect();
+        let format_text = network_scan::format_scan_results(&results, show_closed);
 
-    Ok(NetworkScanResult {
-        results: items,
-        format_text,
+        Ok(NetworkScanResult {
+            results: items,
+            format_text,
+        })
     })
+    .await
+    .map_err(|e| format!("Task error: {}", e))?
 }

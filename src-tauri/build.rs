@@ -48,6 +48,10 @@ fn main() {
             workspace_root.join("crates/local-llm/src/commands.rs"),
             "oasis_local_llm::commands::",
         ),
+        (
+            workspace_root.join("crates/image-compress/src/commands.rs"),
+            "oasis_image_compress::commands::",
+        ),
     ];
 
     for (path, _) in &sources {

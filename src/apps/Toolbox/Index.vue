@@ -1,5 +1,5 @@
 <template>
-    <MacWindow ref="macWindowRef" :title="t('toolbox.title')" width="840" height="560" @close="emit('close')" @minimize="emit('minimize')">
+    <MacWindow ref="macWindowRef" :title="t('toolbox.title')" width="1024" height="680" no-scrollbar @close="emit('close')" @minimize="emit('minimize')">
         <div class="toolbox-container flex h-full">
             <!-- <div>sidebarSize: {{ sidebarSize }} {{ SIDEBAR_MIN }} - {{ SIDEBAR_MAX }}</div> -->
             <el-splitter class="flex-1">
@@ -7,13 +7,15 @@
                     <Sidebar :tools="tools" :active-tool="activeTool" @set-tool="setActiveTool" />
                 </el-splitter-panel>
                 <el-splitter-panel>
-                    <main class="toolbox-main overflow-y-auto">
+                    <main class="toolbox-main">
                         <Transition name="panel-fade" mode="out-in">
                             <CsvTool v-if="activeTool === 'csv-tool'" :key="'csv-tool'" />
                             <ExcelMove v-else-if="activeTool === 'excel-move'" :key="'excel-move'" />
                             <JsonConvert v-else-if="activeTool === 'json-convert'" :key="'json-convert'" />
                             <JsonMerge v-else-if="activeTool === 'json-merge'" :key="'json-merge'" />
                             <NetworkScan v-else-if="activeTool === 'network-scan'" :key="'network-scan'" />
+                            <ImageCompress v-else-if="activeTool === 'image-compress'" :key="'image-compress'" />
+                            <HttpRequest v-else-if="activeTool === 'http-request'" :key="'http-request'" />
                         </Transition>
                     </main>
                 </el-splitter-panel>
@@ -34,6 +36,8 @@ import ExcelMove from './tools/ExcelMove.vue';
 import JsonConvert from './tools/JsonConvert.vue';
 import JsonMerge from './tools/JsonMerge.vue';
 import NetworkScan from './tools/NetworkScan.vue';
+import ImageCompress from './tools/ImageCompress.vue';
+import HttpRequest from './tools/HttpRequest.vue';
 
 const { t } = useI18n();
 const emit = defineEmits<{
@@ -90,8 +94,18 @@ defineOptions({ name: 'ToolboxApp' });
 
 .toolbox-main {
     flex: 1;
+    min-height: 0;
     padding: 24px 28px;
     background: var(--color-bg);
+    display: flex;
+    flex-direction: column;
+}
+
+.toolbox-main :deep(.tool-panel) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ── Panel transitions ── */

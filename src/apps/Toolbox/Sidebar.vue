@@ -6,7 +6,7 @@
             class="tool-nav-item"
             :class="{ active: activeTool === tool.id }"
             @click="setActiveTool(tool.id)">
-            <img :src="tool.icon" class="tool-icon" :alt="t(tool.labelKey)" />
+            <span class="tool-icon" v-html="getIcon(tool.id)" />
             <span class="tool-name">{{ t(tool.labelKey) }}</span>
         </div>
     </aside>
@@ -15,6 +15,13 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import type { Tool } from './types';
+import CsvStatsIcon from '/assets/icons/CsvStats.svg?raw';
+import ExcelMoveIcon from '/assets/icons/ExcelMove.svg?raw';
+import JsonConvertIcon from '/assets/icons/JsonConvert.svg?raw';
+import JsonMergeIcon from '/assets/icons/JsonMerge.svg?raw';
+import NetworkScanIcon from '/assets/icons/NetworkScan.svg?raw';
+import ImageCompressIcon from '/assets/icons/ImageCompress.svg?raw';
+import HttpRequestIcon from '/assets/icons/HttpRequest.svg?raw';
 
 defineProps<{
     tools: Tool[];
@@ -26,6 +33,20 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const iconMap: Record<string, string> = {
+    'csv-tool': CsvStatsIcon,
+    'excel-move': ExcelMoveIcon,
+    'json-convert': JsonConvertIcon,
+    'json-merge': JsonMergeIcon,
+    'network-scan': NetworkScanIcon,
+    'image-compress': ImageCompressIcon,
+    'http-request': HttpRequestIcon,
+};
+
+function getIcon(toolId: string): string {
+    return iconMap[toolId] || '';
+}
 
 function setActiveTool(toolId: string) {
     emit('set-tool', toolId);
@@ -70,6 +91,15 @@ function setActiveTool(toolId: string) {
     flex-shrink: 0;
     opacity: 0.7;
     transition: opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tool-icon :deep(svg) {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
 }
 
 .tool-nav-item.active .tool-icon {

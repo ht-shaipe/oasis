@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 mod net;
+mod tary_icon;
 
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
@@ -25,6 +26,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(include!(concat!(env!("OUT_DIR"), "/generated_invoke_handler.rs")))
         .setup(|app| {
             setup_tray(app)?;
@@ -49,8 +51,10 @@ fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .items(&[&show, &hide, &sep, &about, &quit])
         .build()?;
 
+    let tray_icon = tary_icon::load_tray_icon()?;
     let _tray = TrayIconBuilder::with_id("main")
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(tray_icon)
+        .icon_as_template(true)
         .tooltip("Oasis")
         .menu(&menu)
         .on_menu_event(|app, event| match event.id().as_ref() {

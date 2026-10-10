@@ -1,0 +1,15 @@
+[package]
+edition = {workspace = true}
+name = "oasis-image-compress"
+version = {workspace = true}
+
+[dependencies]
+image = { version = "0.25", features = ["jpeg", "png", "webp", "avif", "rayon"] }
+webp = "0.3"
+oxipng = { version = "9.1", features = ["parallel", "zopfli"], default-features = false }
+rayon = "1.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2" }
+tokio = { version = "1", features = ["rt"] }
+walkdir = "2.5"

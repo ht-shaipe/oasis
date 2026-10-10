@@ -5,3 +5,5 @@ src-tauri/target/
 *.local
 
 *.lock
+.workbuddy
+.deveco

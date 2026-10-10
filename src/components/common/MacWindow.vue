@@ -25,9 +25,12 @@
             </div>
             <div class="window-title">{{ title }}</div>
         </div>
-        <el-scrollbar class="window-content" :height="scrollbarHeight">
+        <el-scrollbar v-if="!noScrollbar" class="window-content" :height="scrollbarHeight">
             <slot></slot>
         </el-scrollbar>
+        <div v-else class="window-content">
+            <slot></slot>
+        </div>
         <!-- 调整大小的手柄 -->
         <div class="resize-handle resize-handle-se" @mousedown="startResize($event, 'se')"></div>
         <div class="resize-handle resize-handle-sw" @mousedown="startResize($event, 'sw')"></div>
@@ -69,6 +72,10 @@ const props = defineProps({
     zIndex: {
         type: Number,
         default: 1000, // 将从CSS变量 --z-index-window 获取
+    },
+    noScrollbar: {
+        type: Boolean,
+        default: false,
     },
 });
 

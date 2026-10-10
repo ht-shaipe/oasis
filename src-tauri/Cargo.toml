@@ -27,6 +27,7 @@ oasis-project = {path = "crates/project"}
 oasis-hub = {path = "crates/hub"}
 oasis-agent-config = {path = "crates/agent-config"}
 oasis-local-llm = {path = "crates/local-llm"}
+oasis-image-compress = {path = "crates/image-compress"}
 rand = "0.9"
 reqwest = {version = "0.12", features = ["json", "stream"] }
 ring = "0.17"
@@ -36,12 +37,14 @@ serde_json = "1"
 tauri = {version = "2", features = ["macos-private-api", "tray-icon", "unstable"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-shell = "2"
 futures-util = "0.3"
 tokio = {version = "1", features = ["full"] }
 toml = "0.8"
 tube = {path = "../../../../rust/kit/tube", features = ["net", "sync_net"] }
 dirs-next = "2"
-time = "~0.3.54"
+image = "0.25"
+time = "~0.3.55"
 
 [workspace.package]
 edition = "2024"

@@ -88,5 +88,28 @@ export interface NetworkScanParams {
 }
 
 export interface NetworkScanResult {
+    results: Array<{
+        ip: string;
+        port: number;
+        open: boolean;
+        latency_ms: number | null;
+    }>;
     format_text: string;
+}
+
+// ── HTTP Request Types ─────────────────────────────────────────────────
+
+export interface HeaderEntry {
+    key: string;
+    value: string;
+    description?: string;
+}
+
+export interface HttpResponse {
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    body: string;
+    duration: number;
+    size: number;
 }

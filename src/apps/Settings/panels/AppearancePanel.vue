@@ -48,7 +48,7 @@ const toggleTheme = () => themeStore.toggle();
 
 const fontSizeStore = useFontSizeStore();
 const fontSize = computed(() => fontSizeStore.size);
-const fontSizeOptions = computed(() => [
+const fontSizeOptions = computed<{ value: FontSize; label: string; preview: string }[]>(() => [
     { value: 'small', label: t('settings.appearance.fontSizeSmall'), preview: 'Aa' },
     { value: 'medium', label: t('settings.appearance.fontSizeMedium'), preview: 'Aa' },
     { value: 'large', label: t('settings.appearance.fontSizeLarge'), preview: 'Aa' }

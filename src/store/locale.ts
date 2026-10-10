@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import i18n from '@/locales'
+import type { WritableComputedRef } from 'vue'
+
+type I18nGlobal = typeof i18n.global & {
+  locale: WritableComputedRef<string>
+}
 
 export type Locale = 'zh-CN' | 'en'
 
@@ -25,7 +30,7 @@ export const useLocaleStore = defineStore('locale', () => {
   // 同步到 i18n 实例和 localStorage，并更新原生托盘菜单文字
   watch(locale, async (val) => {
     localStorage.setItem('locale', val)
-    ;(i18n.global.locale as any).value = val
+    ;(i18n.global as I18nGlobal).locale.value = val
     // 更新 Rust 端托盘菜单
     try {
       const { invoke } = await import('@tauri-apps/api/core')
